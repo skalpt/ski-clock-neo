@@ -1,0 +1,41 @@
+2025-11-19T11:56:48.5789830Z ##[group]Run arduino-cli compile --fqbn esp32:esp32:esp32 \
+2025-11-19T11:56:48.5790258Z [36;1marduino-cli compile --fqbn esp32:esp32:esp32 \[0m
+2025-11-19T11:56:48.5790612Z [36;1m  --build-property "build.partitions=min_spiffs" \[0m
+2025-11-19T11:56:48.5791604Z [36;1m  --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"***\" -DDOWNLOAD_API_KEY=\"***\" -DFIRMWARE_VERSION=\"2025.11.19.5\"" \[0m
+2025-11-19T11:56:48.5792399Z [36;1m  --output-dir build/esp32 \[0m
+2025-11-19T11:56:48.5792650Z [36;1m  firmware/ski-clock-neo[0m
+2025-11-19T11:56:48.5793004Z [36;1mcp build/esp32/ski-clock-neo.ino.bin build/ski-clock-neo-esp32.bin[0m
+2025-11-19T11:56:48.5824488Z shell: /usr/bin/bash -e {0}
+2025-11-19T11:56:48.5824724Z ##[endgroup]
+2025-11-19T11:57:12.6250256Z In file included from /home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/ski-clock-neo.ino:4:
+2025-11-19T11:57:12.6253838Z /home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/wifi_config.h: In function 'int getStoredNetworkCount()':
+2025-11-19T11:57:12.6256032Z /home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/wifi_config.h:134:17: error: 'using AutoConnect = class AutoConnectExt<AutoConnectConfigExt>' {aka 'class AutoConnectExt<AutoConnectConfigExt>'} has no member named 'credential'; did you mean '_credential'?
+2025-11-19T11:57:12.6257301Z    return portal.credential();
+2025-11-19T11:57:12.6257566Z                  ^~~~~~~~~~
+2025-11-19T11:57:12.6257795Z                  _credential
+2025-11-19T11:57:12.6257952Z 
+2025-11-19T11:57:12.7540567Z Error during build: exit status 1
+2025-11-19T11:57:12.7540954Z 
+2025-11-19T11:57:12.7542122Z [92mUsed library[0m      [92mVersion[0m [90mPath[0m                                                                                   
+2025-11-19T11:57:12.7543786Z [93mAdafruit NeoPixel[0m 1.15.2  [90m/home/runner/Arduino/libraries/Adafruit_NeoPixel[0m                                       
+2025-11-19T11:57:12.7545581Z [93mWiFi[0m              2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFi[0m            
+2025-11-19T11:57:12.7547271Z [93mWebServer[0m         2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WebServer[0m       
+2025-11-19T11:57:12.7548781Z [93mAutoConnect[0m       1.4.2   [90m/home/runner/Arduino/libraries/AutoConnect[0m                                             
+2025-11-19T11:57:12.7550215Z [93mDNSServer[0m         2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/DNSServer[0m       
+2025-11-19T11:57:12.7551614Z [93mEEPROM[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/EEPROM[0m          
+2025-11-19T11:57:12.7553023Z [93mPageBuilder[0m       1.5.6   [90m/home/runner/Arduino/libraries/PageBuilder[0m                                             
+2025-11-19T11:57:12.7554279Z [93mFS[0m                2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/FS[0m              
+2025-11-19T11:57:12.7555545Z [93mSPIFFS[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPIFFS[0m          
+2025-11-19T11:57:12.7556778Z [93mSD[0m                2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SD[0m              
+2025-11-19T11:57:12.7558001Z [93mSPI[0m               2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPI[0m             
+2025-11-19T11:57:12.7559275Z [93mPreferences[0m       2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Preferences[0m     
+2025-11-19T11:57:12.7560608Z [93mTicker[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Ticker[0m          
+2025-11-19T11:57:12.7562154Z [93mArduinoJson[0m       7.4.2   [90m/home/runner/Arduino/libraries/ArduinoJson[0m                                             
+2025-11-19T11:57:12.7563868Z [93mHTTPClient[0m        2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPClient[0m      
+2025-11-19T11:57:12.7565249Z [93mWiFiClientSecure[0m  2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFiClientSecure[0m
+2025-11-19T11:57:12.7566700Z [93mHTTPUpdate[0m        2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPUpdate[0m      
+2025-11-19T11:57:12.7568131Z [93mUpdate[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Update[0m          
+2025-11-19T11:57:12.7568830Z 
+2025-11-19T11:57:12.7569347Z [92mUsed platform[0m [92mVersion[0m [90mPath[0m                                                        
+2025-11-19T11:57:12.7570434Z [93mesp32:esp32[0m   2.0.14  [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14[0m
+2025-11-19T11:57:12.7602139Z ##[error]Process completed with exit code 1.

@@ -12,6 +12,7 @@
 #endif
 
 #include <AutoConnect.h>
+#include <AutoConnectCredential.h>
 
 // Configuration constants
 const char* AP_SSID = "SkiClock-Setup";
@@ -131,7 +132,8 @@ String getWiFiStatus() {
 
 // Get number of stored credentials
 int getStoredNetworkCount() {
-  return portal.credential();
+  AutoConnectCredential credential;
+  return credential.entries();
 }
 
 // Force disconnect and show portal (for manual network switching)
