@@ -69,7 +69,7 @@ jobs:
 
       - name: Build for ESP32-C3
         run: |
-          arduino-cli compile --fqbn esp32:esp32:esp32c3 \
+          arduino-cli compile --fqbn esp32:esp32:esp32c3:CDCOnBoot=cdc \
             --build-property "build.partitions=min_spiffs" \
             --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DBOARD_ESP32C3" \
             --output-dir build/esp32c3 \
@@ -78,7 +78,7 @@ jobs:
 
       - name: Build for ESP32-S3
         run: |
-          arduino-cli compile --fqbn esp32:esp32:esp32s3 \
+          arduino-cli compile --fqbn esp32:esp32:esp32s3:CDCOnBoot=cdc \
             --build-property "build.partitions=min_spiffs" \
             --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DBOARD_ESP32S3" \
             --output-dir build/esp32s3 \
