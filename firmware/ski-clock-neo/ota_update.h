@@ -17,7 +17,6 @@
 
 #include <WiFiClientSecure.h>
 #include <Ticker.h>
-#include "certificates.h"
 #include "debug.h"
 
 // OTA Ticker (software-driven for non-blocking operation)
