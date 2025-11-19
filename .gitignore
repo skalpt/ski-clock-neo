@@ -1,0 +1,12 @@
+# Replit
+.replit
+.config/
+.upm/
+.cache/
+.breakpoints
+replit.nix
+
+# General
+.DS_Store
+*.swp
+*~
