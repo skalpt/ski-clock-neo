@@ -22,6 +22,22 @@ The project consists of two main components:
     *   **Deployment**: Fully automatic CI/CD via GitHub Actions builds firmware for various board variants, generates timestamp-based versions (`year.month.day.buildnum`), and uploads binaries and configuration to the dashboard.
     *   **System Design Choices**: Emphasizes automated versioning, secure communication, and graceful fallback for optional services like Object Storage. Secrets are managed securely in GitHub and Replit, with GitHub Actions injecting configuration into the dashboard.
 
+## Build Optimizations
+
+### ESP32-C3 Size Optimization
+The ESP32-C3 has limited flash space and requires special build optimizations:
+- **Link Time Optimization (LTO)**: Enabled with `-flto` flag for aggressive code size reduction
+- **Size Optimization**: Uses `-Os` compiler flag to prioritize code size over speed
+- **C++ RTTI/Exceptions Disabled**: Uses `-fno-rtti -fno-exceptions` to remove unused C++ features
+- **Dead Code Elimination**: Uses `-Wl,--gc-sections` linker flag to remove unused functions
+
+### Debug Logging System
+To save ~10-20KB of flash space, all `Serial.print` statements are gated behind a `DEBUG_LOGGING` flag:
+- **Default**: Debug logging is **disabled** in production builds (saves flash space)
+- **Enable**: Uncomment `#define DEBUG_LOGGING` in `firmware/ski-clock-neo/debug.h` to enable Serial output
+- **Macros**: All code uses `DEBUG_PRINT()` and `DEBUG_PRINTLN()` instead of `Serial.print()`
+- **Benefits**: When disabled, all debug strings are removed from the compiled binary
+
 ## External Dependencies
 -   **Adafruit_NeoPixel**: For controlling NeoPixel LED matrices.
 -   **AutoConnect**: Arduino library for advanced WiFi management and captive portal.
