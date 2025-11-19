@@ -11,6 +11,11 @@ enum LedPattern {
   LED_OFF               // No flashing
 };
 
+// Fallback for boards that don't define LED_BUILTIN
+#ifndef LED_BUILTIN
+  #define LED_BUILTIN 2  // GPIO2 is standard for most ESP8266/ESP32 boards
+#endif
+
 // Use LED_BUILTIN (can be overridden per-board if needed)
 #ifndef LED_PIN
   #define LED_PIN LED_BUILTIN
@@ -69,7 +74,8 @@ volatile bool ledState = false;
 void setupLED() {
   pinMode(LED_PIN, OUTPUT);
   ledOff();
-  Serial.println("LED indicator initialized");
+  Serial.print("LED indicator initialized on GPIO");
+  Serial.println(LED_PIN);
 }
 
 // LED update callback - called by interrupt ticker
