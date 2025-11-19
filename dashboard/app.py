@@ -74,10 +74,9 @@ def load_versions():
     try:
         storage = ObjectStorageService()
         bucket_name = storage.get_bucket_name()
-        object_path = f"/{bucket_name}/{VERSIONS_OBJECT_PATH}"
         
-        if storage.exists(object_path):
-            versions_json = storage.download_as_string(object_path)
+        if storage.exists(VERSIONS_OBJECT_PATH):
+            versions_json = storage.download_as_string(VERSIONS_OBJECT_PATH)
             saved_versions = json.loads(versions_json)
             print(f"✓ Loaded {len([v for v in saved_versions.values() if v])} firmware versions from Object Storage")
             return saved_versions
@@ -104,7 +103,7 @@ def save_versions():
         bucket_name = storage.get_bucket_name()
         
         versions_json = json.dumps(LATEST_VERSIONS, indent=2)
-        storage.upload_string(versions_json, VERSIONS_OBJECT_PATH)
+        storage.upload_string(VERSIONS_OBJECT_PATH, versions_json)
         print(f"✓ Saved firmware versions to Object Storage")
     except ObjectStorageError as e:
         print(f"Object Storage not available, saving to local file: {e}")

@@ -19,8 +19,8 @@ The project consists of two main components:
 
 2.  **Dashboard Server**: A Python Flask application for firmware distribution and device management.
     *   **Features**: API-based firmware distribution supporting multiple platforms (ESP32, ESP32-C3, ESP32-S3, ESP-12F, ESP-01, Wemos D1 Mini), upload/download endpoints with API key authentication, platform aliasing (e.g., ESP8266 to ESP-12F), SHA256 checksums, and status monitoring.
-    *   **Deployment**: Fully automatic CI/CD via GitHub Actions builds firmware for various board variants, generates timestamp-based versions (`year.month.day.buildnum`), and uploads binaries and configuration to the dashboard.
-    *   **System Design Choices**: Emphasizes automated versioning, secure communication, and graceful fallback for optional services like Object Storage. Secrets are managed securely in GitHub and Replit, with GitHub Actions injecting configuration into the dashboard.
+    *   **Deployment**: VM deployment (always-on) ensures consistent state across requests. Fully automatic CI/CD via GitHub Actions builds firmware for various board variants, generates timestamp-based versions (`year.month.day.buildnum`), and uploads binaries and configuration to the dashboard.
+    *   **System Design Choices**: Emphasizes automated versioning, secure communication, and graceful fallback for optional services like Object Storage. Secrets are managed securely in GitHub and Replit, with GitHub Actions injecting configuration into the dashboard. VM deployment prevents multi-instance state synchronization issues.
 
 ## Build Configuration
 
@@ -46,6 +46,7 @@ Debug logging is **enabled** by default for development and troubleshooting:
 -   **GitHub Actions**: CI/CD platform for automated firmware builds, versioning, and deployment to the dashboard.
 ## Recent Changes
 
+- **2025-11-19**: Switched deployment from autoscale to VM to fix multi-worker state synchronization issues
 - **2025-11-19**: Removed aggressive compiler optimizations (LTO, -Os, etc.) - min_spiffs partition provides sufficient space
 - **2025-11-19**: Enabled debug logging by default for development and troubleshooting
 - **2025-11-19**: Implemented freeze-proof clock system with hardware interrupt timers for LED status
