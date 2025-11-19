@@ -26,8 +26,8 @@ const uint8_t ROW_WIDTH                = 16;   // 1 panel x 16 pixels wide
 const uint8_t ROW_HEIGHT               = 16;   // All panels 16 pixels high
 
 // ----------- Display brightness & refresh rate -----------
-const uint8_t BRIGHTNESS               = 32;   // 0-255 (increased for visibility)
-const unsigned long UPDATE_INTERVAL_MS = 2000; // 2 second refresh rate
+const uint8_t BRIGHTNESS               = 1;    // 0-255 (keeping it as dim as possible while I'm developing in the office)
+const unsigned long UPDATE_INTERVAL_MS = 200; // 0.2 second refresh rate
 
 // ----------------- Declare display rows ------------------
 const uint16_t NUM_LEDS_PER_ROW = (uint16_t)ROW_WIDTH * ROW_HEIGHT;
