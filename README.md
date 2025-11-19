@@ -27,12 +27,12 @@ The sketch currently:
 
 ## Code Structure
 
-The project is organized into modular components:
-- **ski-clock-neo.ino**: Main application logic and display control
-- **font_5x7.h**: Font definitions for all displayable characters
-- **scale_smooth.h**: Diagonal smoothing algorithm for 2x scaling
+The project is cleanly organized into modular components:
+- **ski-clock-neo.ino**: Main sketch with constants, setup(), and loop() only
+- **font_5x7.h**: Font definitions for all displayable characters (0-9, :, -, ., °, C)
+- **neopixel_render.h**: All NeoPixel rendering functions including character mapping, coordinate transformation, glyph drawing, and 2x diagonal smoothing
 
-This modular approach improves code maintainability and reduces memory usage.
+This clean separation makes the code highly maintainable and easy to understand at a glance.
 
 ## Running This Code
 
