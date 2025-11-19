@@ -62,10 +62,33 @@ ski-clock-neo/
 - **Backward compatibility** for legacy ESP8266 devices (auto-mapped to ESP-12F firmware)
 - **SHA256 checksums** for integrity verification
 - **Status monitoring** showing all platforms including legacy alias
+- **Persistent storage**: Object Storage integration with graceful local fallback
+
+## Object Storage Configuration (Optional)
+
+**Purpose**: Firmware binaries and versions.json persist across Replit deployments using Object Storage (Google Cloud Storage).
+
+**Without Object Storage**:
+- ✅ System works normally using local filesystem
+- ⚠️ Firmware files lost when Replit republishes the deployment
+- ℹ️ GitHub Actions re-uploads firmware on every build (no data loss)
+
+**With Object Storage** (recommended for production):
+1. Create Object Storage bucket in Replit (Tools → Object Storage)
+2. Set `OBJECT_STORAGE_BUCKET` environment variable to your bucket name
+3. Restart the Dashboard Server workflow
+4. Firmware persists across deployments automatically
+
+**What gets stored**:
+- ✅ Firmware binaries (`firmwares/*.bin`) → Object Storage
+- ✅ Version metadata (`versions.json`) → Object Storage
+- ❌ API keys/secrets (`config.json`) → Replit Secrets (NOT Object Storage)
+
+**Architecture Decision**: Graceful fallback ensures the system works with or without Object Storage.
 
 ## Secrets Configuration
 
-**Architecture Decision**: Secrets are stored ONLY in GitHub, not in Replit. The dashboard receives configuration automatically from GitHub Actions on each build.
+**Architecture Decision**: Secrets are stored in BOTH GitHub (for Actions) and Replit (for dashboard authentication).
 
 ### GitHub Repository Secrets (⚠️ Required)
 Must be configured in GitHub repo (Settings → Secrets → Actions):
