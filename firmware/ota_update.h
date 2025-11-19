@@ -61,29 +61,51 @@ String getPlatform() {
 #endif
 }
 
-// Parse version string (vX.Y.Z) to comparable integer
-// v1.2.3 -> 1002003 (major*1000000 + minor*1000 + patch)
+// Parse version string to comparable integer
+// Supports both formats:
+// - Semantic: v1.2.3 -> 1002003 (major*1000000 + minor*1000 + patch)
+// - Timestamp: 2025.11.19.1 -> year*100000000 + month*1000000 + day*10000 + build
 long parseVersion(String version) {
   // Remove 'v' prefix if present
   if (version.startsWith("v") || version.startsWith("V")) {
     version = version.substring(1);
   }
   
-  int major = 0, minor = 0, patch = 0;
-  int firstDot = version.indexOf('.');
-  int secondDot = version.indexOf('.', firstDot + 1);
-  
-  if (firstDot > 0) {
-    major = version.substring(0, firstDot).toInt();
-    if (secondDot > firstDot) {
-      minor = version.substring(firstDot + 1, secondDot).toInt();
-      patch = version.substring(secondDot + 1).toInt();
-    } else {
-      minor = version.substring(firstDot + 1).toInt();
-    }
+  // Count dots to determine format
+  int dotCount = 0;
+  for (int i = 0; i < version.length(); i++) {
+    if (version.charAt(i) == '.') dotCount++;
   }
   
-  return (long)major * 1000000 + (long)minor * 1000 + (long)patch;
+  int firstDot = version.indexOf('.');
+  int secondDot = version.indexOf('.', firstDot + 1);
+  int thirdDot = version.indexOf('.', secondDot + 1);
+  
+  if (dotCount == 3 && firstDot > 0) {
+    // Timestamp format: 2025.11.19.1
+    int year = version.substring(0, firstDot).toInt();
+    int month = version.substring(firstDot + 1, secondDot).toInt();
+    int day = version.substring(secondDot + 1, thirdDot).toInt();
+    int build = version.substring(thirdDot + 1).toInt();
+    
+    // Normalize year (2025 = base year)
+    return (long)(year - 2025) * 100000000 + (long)month * 1000000 + (long)day * 10000 + (long)build;
+  } else {
+    // Semantic format: v1.2.3 (legacy support)
+    int major = 0, minor = 0, patch = 0;
+    
+    if (firstDot > 0) {
+      major = version.substring(0, firstDot).toInt();
+      if (secondDot > firstDot) {
+        minor = version.substring(firstDot + 1, secondDot).toInt();
+        patch = version.substring(secondDot + 1).toInt();
+      } else {
+        minor = version.substring(firstDot + 1).toInt();
+      }
+    }
+    
+    return (long)major * 1000000 + (long)minor * 1000 + (long)patch;
+  }
 }
 
 // Check update server for latest version
