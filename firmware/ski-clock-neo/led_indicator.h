@@ -36,9 +36,24 @@ enum LedPattern {
   #define FAST_PIN_HIGH(pin) GPOS = (1 << (pin))
   #define FAST_PIN_LOW(pin)  GPOC = (1 << (pin))
 #elif defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S3)
-  // ESP32-C3 and ESP32-S3 have different GPIO structures - use digitalWrite
-  #define FAST_PIN_HIGH(pin) digitalWrite(pin, HIGH)
-  #define FAST_PIN_LOW(pin)  digitalWrite(pin, LOW)
+  // ESP32-C3 (22 GPIOs) and ESP32-S3 (48 GPIOs) use .val accessor
+  #include <soc/gpio_reg.h>
+  // Handle both GPIO banks for S3 (pins 0-31 and 32-48)
+  #define FAST_PIN_HIGH(pin) do { \
+    if ((pin) < 32) { \
+      GPIO.out_w1ts.val = (1UL << (pin)); \
+    } else { \
+      GPIO.out1_w1ts.val = (1UL << ((pin) - 32)); \
+    } \
+  } while(0)
+  
+  #define FAST_PIN_LOW(pin) do { \
+    if ((pin) < 32) { \
+      GPIO.out_w1tc.val = (1UL << (pin)); \
+    } else { \
+      GPIO.out1_w1tc.val = (1UL << ((pin) - 32)); \
+    } \
+  } while(0)
 #elif defined(ESP32)
   // ESP32 original - direct register access
   #include <soc/gpio_reg.h>
