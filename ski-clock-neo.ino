@@ -1,5 +1,7 @@
+#include <Adafruit_NeoPixel.h>
 #include "font_5x7.h"
 #include "neopixel_render.h"
+#include "wifi_config.h"
 
 // -------------------- Pin definitions --------------------
 #define PIN_MATRIX_ROW1                  4     // WS2812 data for top row
@@ -25,6 +27,11 @@ void setup() {
   Serial.begin(115200);
   Serial.println("Booted.");
 
+  // Initialise WiFi (with configuration portal if needed)
+  setupWiFi();
+  Serial.print("WiFi status: ");
+  Serial.println(getWiFiStatus());
+
   // Initialise NeoPixels
   row1.begin();
   row1.setBrightness(BRIGHTNESS);
@@ -33,6 +40,9 @@ void setup() {
 }
 
 void loop() {
+  // Handle WiFi tasks (config portal or reconnection)
+  updateWiFi();
+
   unsigned long nowMs = millis();
   if (nowMs - lastUpdateMs < UPDATE_INTERVAL_MS) {
     return;
