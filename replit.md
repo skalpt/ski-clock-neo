@@ -71,9 +71,10 @@ This code needs to be uploaded to an ESP32 or ESP8266 board using the Arduino ID
 - **Network Roaming**: Device automatically connects to the strongest available stored network
 
 ### OTA Updates Setup
-1. **Update configuration** in `ski-clock-neo.ino`:
-   - Change `GITHUB_REPO_OWNER` to your GitHub username
-   - Change `GITHUB_REPO_NAME` if your repository name differs
+1. **GitHub repository secrets are configured**:
+   - `GITHUB_REPO_OWNER` and `GITHUB_REPO_NAME` are stored in Replit secrets
+   - These are automatically injected during GitHub Actions builds
+   - Also add these same secrets to your GitHub repository (Settings → Secrets → Actions)
 2. **Create a new release** on GitHub:
    - Push code with a version tag: `git tag v1.0.0 && git push origin v1.0.0`
    - GitHub Actions automatically builds firmware for ESP32 and ESP8266

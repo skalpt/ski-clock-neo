@@ -18,13 +18,15 @@
 #include <WiFiClientSecure.h>
 #include "certificates.h"
 
-// Configuration - UPDATE THESE VALUES FOR YOUR GITHUB REPO
+// GitHub repository configuration
+// These are injected at build time from Replit secrets via GitHub Actions
+// Fallback values are provided for local development only
 #ifndef GITHUB_REPO_OWNER
-  #define GITHUB_REPO_OWNER "your-username"  // Change to your GitHub username
+  #define GITHUB_REPO_OWNER "your-username"  // Fallback - will be replaced by GitHub Actions
 #endif
 
 #ifndef GITHUB_REPO_NAME
-  #define GITHUB_REPO_NAME "ski-clock-neo"  // Change to your repository name
+  #define GITHUB_REPO_NAME "ski-clock-neo"  // Fallback - will be replaced by GitHub Actions
 #endif
 
 // Firmware version - this should match your GitHub release tag

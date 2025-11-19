@@ -36,6 +36,7 @@ jobs:
         run: |
           arduino-cli compile --fqbn esp32:esp32:esp32 \
             --build-property "build.partitions=min_spiffs" \
+            --build-property "compiler.cpp.extra_flags=-DGITHUB_REPO_OWNER=\"${{ secrets.GITHUB_REPO_OWNER }}\" -DGITHUB_REPO_NAME=\"${{ secrets.GITHUB_REPO_NAME }}\"" \
             --output-dir build/esp32 \
             .
           cp build/esp32/ski-clock-neo.ino.bin build/ski-clock-neo-esp32.bin
@@ -44,6 +45,7 @@ jobs:
         run: |
           arduino-cli compile --fqbn esp8266:esp8266:nodemcuv2 \
             --build-property "build.flash_size=4M3M" \
+            --build-property "compiler.cpp.extra_flags=-DGITHUB_REPO_OWNER=\"${{ secrets.GITHUB_REPO_OWNER }}\" -DGITHUB_REPO_NAME=\"${{ secrets.GITHUB_REPO_NAME }}\"" \
             --output-dir build/esp8266 \
             .
           cp build/esp8266/ski-clock-neo.ino.bin build/ski-clock-neo-esp8266.bin

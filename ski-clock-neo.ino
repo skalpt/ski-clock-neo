@@ -6,9 +6,8 @@
 // -------------------- Firmware version -------------------
 #define FIRMWARE_VERSION "v1.0.0"
 
-// -------------------- GitHub configuration ---------------
-#define GITHUB_REPO_OWNER "your-username"     // CHANGE THIS to your GitHub username
-#define GITHUB_REPO_NAME "ski-clock-neo"      // CHANGE THIS if your repo has a different name
+// GitHub repo configuration comes from Replit secrets (injected at build time)
+// No need to hardcode these values here anymore
 
 #include "ota_update.h"
 

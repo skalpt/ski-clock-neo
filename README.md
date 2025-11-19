@@ -82,20 +82,25 @@ The project includes automatic firmware updates from GitHub Releases.
 
 ### Setup Instructions
 
-1. **Update Configuration** in `ski-clock-neo.ino`:
-   ```cpp
-   #define GITHUB_REPO_OWNER "your-username"  // Change to your GitHub username
-   #define GITHUB_REPO_NAME "ski-clock-neo"    // Change if different
-   ```
+1. **Configure GitHub Repository Secrets** in Replit:
+   - The `GITHUB_REPO_OWNER` and `GITHUB_REPO_NAME` secrets are already configured
+   - These are automatically injected into the firmware during GitHub Actions builds
+   - No code changes needed!
 
-2. **Create a Release on GitHub**:
+2. **Add the same secrets to your GitHub repository**:
+   - Go to your GitHub repo → Settings → Secrets and variables → Actions
+   - Add repository secrets:
+     - `GITHUB_REPO_OWNER`: Your GitHub username
+     - `GITHUB_REPO_NAME`: Your repository name (e.g., "ski-clock-neo")
+
+3. **Create a Release on GitHub**:
    ```bash
    # Tag your code with a version number
    git tag v1.0.0
    git push origin v1.0.0
    ```
    
-3. **GitHub Actions builds automatically**:
+4. **GitHub Actions builds automatically**:
    - Compiles firmware for ESP32 and ESP8266
    - Creates a GitHub release with binaries attached
    - Devices automatically detect and install updates
