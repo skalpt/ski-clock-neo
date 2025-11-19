@@ -28,7 +28,6 @@
 #endif
 
 const uint16_t MQTT_PORT = 8883;  // TLS port for HiveMQ Cloud
-const uint16_t MQTT_KEEPALIVE = 60;  // 60 seconds
 
 // MQTT topics
 #define MQTT_TOPIC_HEARTBEAT "skiclock/heartbeat"
@@ -146,8 +145,8 @@ void setupMQTT() {
   // Configure MQTT client
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
   mqttClient.setCallback(mqttCallback);
-  mqttClient.setKeepAlive(MQTT_KEEPALIVE);
   mqttClient.setBufferSize(512);  // Increase buffer for JSON messages
+  // Keep-alive defaults to 15 seconds (PubSubClient library default)
   
   DEBUG_PRINT("MQTT broker: ");
   DEBUG_PRINT(MQTT_HOST);
