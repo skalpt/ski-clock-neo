@@ -33,26 +33,13 @@ const uint16_t NUM_LEDS_PER_ROW = (uint16_t)ROW_WIDTH * ROW_HEIGHT;
 Adafruit_NeoPixel row1(NUM_LEDS_PER_ROW, PIN_MATRIX_ROW1, NEO_GRB + NEO_KHZ800);
 
 // --------------------- Tickers for timing ----------------------
-Ticker neopixelTicker;
-Ticker otaTicker;
+Ticker neopixelTicker;  // Software ticker for NeoPixel updates
+// otaTicker is declared in ota_update.h
 
 // --------------------- Display state ----------------------
 int curNum = 0;
-volatile bool neopixelUpdateFlag = false;
-volatile bool otaCheckFlag = false;
-bool initialOtaCheckScheduled = false;
-unsigned long initialOtaCheckTime = 0;
 
-// Ticker callbacks - ONLY set flags, no heavy work in ISR!
-void neopixelTimerCallback() {
-  neopixelUpdateFlag = true;
-}
-
-void otaTimerCallback() {
-  otaCheckFlag = true;
-}
-
-// NeoPixel refresh function (called from loop when flag is set)
+// NeoPixel refresh function (called directly by software ticker)
 void updateNeoPixels() {
   char numStr[2];
   curNum++;
@@ -71,7 +58,7 @@ void updateNeoPixels() {
 }
 
 void setup() {
-  // Initialise serial (no delay needed - will be ready for first few prints)
+  // Initialise serial
   Serial.begin(115200);
   Serial.println("\n\n===========================================");
   Serial.println("Ski Clock Neo - Starting Up");
@@ -79,9 +66,9 @@ void setup() {
   Serial.print("Firmware version: ");
   Serial.println(FIRMWARE_VERSION);
 
-  // Initialize LED indicator FIRST
+  // Initialize LED indicator and start quick flash immediately
   setupLED();
-  setLedPattern(LED_QUICK_FLASH);  // Show quick flash during setup
+  setLedPattern(LED_QUICK_FLASH);  // Interrupt-driven ticker starts now
 
   // Initialise WiFi (with configuration portal if needed)
   Serial.println("Starting WiFi setup...");
@@ -98,18 +85,12 @@ void setup() {
   row1.show();
   Serial.println("NeoPixels initialised.");
   
-  // Schedule initial OTA check for 30 seconds from now (non-blocking)
-  initialOtaCheckTime = millis() + 30000;
-  initialOtaCheckScheduled = true;
-  Serial.println("Initial OTA check scheduled for 30 seconds from now");
+  // Initialize OTA system (schedules first check in 30s, then hourly)
+  setupOTA(30);
   
-  // Start NeoPixel refresh ticker (2 second interval) - sets flag only
-  neopixelTicker.attach_ms(UPDATE_INTERVAL_MS, neopixelTimerCallback);
-  Serial.println("NeoPixel ticker started");
-  
-  // Start OTA check ticker (check every hour) - sets flag only
-  otaTicker.attach(3600, otaTimerCallback);  // 3600 seconds = 1 hour
-  Serial.println("OTA ticker started (1 hour interval)");
+  // Start NeoPixel refresh ticker (2 second interval, software-driven)
+  neopixelTicker.attach_ms(UPDATE_INTERVAL_MS, updateNeoPixels);
+  Serial.println("NeoPixel ticker started (2 second interval)");
   
   Serial.println("===========================================");
   Serial.println("Setup complete - entering main loop");
@@ -120,31 +101,13 @@ void loop() {
   // Handle WiFi tasks (config portal or reconnection)
   updateWiFi();
   
-  // Update LED indicator based on WiFi status
+  // Update LED pattern based on WiFi status (interrupt ticker handles actual flashing)
   updateLedStatus();
   
-  // Handle OTA update checks (non-blocking, manual checks with retry logic)
+  // Handle OTA update retry logic only (checks are triggered by tickers)
   updateOTA();
   
-  // Perform scheduled initial OTA check (non-blocking)
-  if (initialOtaCheckScheduled && millis() >= initialOtaCheckTime) {
-    initialOtaCheckScheduled = false;
-    Serial.println("Performing scheduled initial OTA check...");
-    forceOTACheck();
-  }
-  
-  // Handle NeoPixel updates when ticker sets flag
-  if (neopixelUpdateFlag) {
-    neopixelUpdateFlag = false;
-    updateNeoPixels();
-  }
-  
-  // Handle OTA checks when ticker sets flag
-  if (otaCheckFlag) {
-    otaCheckFlag = false;
-    Serial.println("Hourly OTA check triggered by ticker");
-    forceOTACheck();
-  }
-  
-  // No delay needed - tickers and WiFi portal handle all timing
+  // NeoPixel updates handled by software ticker (calls updateNeoPixels directly)
+  // LED flashing handled by interrupt ticker (calls ledTimerCallback directly)
+  // OTA checks scheduled by software ticker (initial: one-shot, recurring: attach after first check)
 }

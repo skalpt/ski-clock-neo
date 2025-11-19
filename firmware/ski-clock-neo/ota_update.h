@@ -16,7 +16,11 @@
 #endif
 
 #include <WiFiClientSecure.h>
+#include <Ticker.h>
 #include "certificates.h"
+
+// OTA Ticker (software-driven for non-blocking operation)
+Ticker otaTicker;
 
 // Update server configuration
 // These MUST be injected at build time from GitHub Actions
@@ -525,6 +529,20 @@ void updateOTA() {
 void forceOTACheck() {
   Serial.println("Forcing OTA update check...");
   checkForOTAUpdate(true);
+  
+  // Schedule next check in 1 hour (software ticker)
+  otaTicker.once(3600, forceOTACheck);
+  Serial.println("Next OTA check scheduled in 1 hour");
+}
+
+// Initialize OTA system with initial check delay
+void setupOTA(int initialDelaySeconds) {
+  Serial.print("OTA system initialized. First check in ");
+  Serial.print(initialDelaySeconds);
+  Serial.println(" seconds");
+  
+  // Schedule initial OTA check using one-shot ticker
+  otaTicker.once(initialDelaySeconds, forceOTACheck);
 }
 
 #endif
