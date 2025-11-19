@@ -211,6 +211,8 @@ Must be configured in GitHub repo (Settings → Secrets → Actions):
 
 ## Recent Changes
 
+- **2025-11-19**: ESP32-C3 LED_PIN overridden to GPIO8 (board-specific requirement)
+- **2025-11-19**: Separated ESP32-C3/S3 preprocessor directives (C3 has no out1 registers, S3 needs dual banks)
 - **2025-11-19**: Fixed ESP32-C3/S3 fast GPIO with dual GPIO bank support (0-31, 32-48) for ~10-20 MHz toggle speed
 - **2025-11-19**: ESP32-S3 high-pin support for LED_BUILTIN on GPIO48 using GPIO.out1_w1ts.val
 - **2025-11-19**: Added LED_BUILTIN fallback to GPIO2 for boards without native definition (generic ESP8266)

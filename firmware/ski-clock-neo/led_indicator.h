@@ -16,9 +16,11 @@ enum LedPattern {
   #define LED_BUILTIN 2  // GPIO2 is standard for most ESP8266/ESP32 boards
 #endif
 
-// Use LED_BUILTIN (can be overridden per-board if needed)
-#ifndef LED_PIN
-  #define LED_PIN LED_BUILTIN
+// Board-specific LED pin overrides
+#if defined(CONFIG_IDF_TARGET_ESP32C3)
+  #define LED_PIN 8  // ESP32-C3 uses GPIO8
+#elif !defined(LED_PIN)
+  #define LED_PIN LED_BUILTIN  // Default to LED_BUILTIN for other boards
 #endif
 
 // LED GPIO state - ESP32 and ESP8266 both use inverted logic (LOW = LED on)
