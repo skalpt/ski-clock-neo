@@ -14,8 +14,12 @@ This is an Arduino project for a ski clock display using WS2812 NeoPixel LED mat
 - Custom 5x7 pixel font for digits 0-9 and special characters (-,., °, C, :)
 - 2x scaling with diagonal smoothing for better appearance
 - Serpentine wiring support for LED matrices
-- **WiFi configuration portal** - Easy setup through captive portal web interface
-- Persistent WiFi credential storage
+- **Advanced WiFi Management** (powered by AutoConnect):
+  - Multiple network credential storage with automatic fallback
+  - Captive portal always available (even when connected) for network switching
+  - Background auto-reconnection on temporary dropouts
+  - Tries all stored networks on boot until one succeeds
+  - Beautiful mobile-responsive configuration interface
 - OTA update ready
 - Currently displays counting digits 0-9 in red
 
@@ -27,9 +31,11 @@ This is an Arduino project for a ski clock display using WS2812 NeoPixel LED mat
 - `info.sh` - Information script for Replit environment
 
 ## Libraries Required
-- Adafruit_NeoPixel
-- ESP32/ESP8266 WiFi libraries (built-in)
-- DNSServer (built-in with ESP boards)
+- **Adafruit_NeoPixel** - LED matrix control
+- **AutoConnect** - Robust WiFi management with captive portal
+  - Install via Arduino IDE Library Manager: Search "AutoConnect"
+  - Or PlatformIO: `hieromon/AutoConnect@^1.4.2`
+- ESP32/ESP8266 WiFi libraries (built-in with board package)
 
 ## How to Use
 This code needs to be uploaded to an ESP32 or ESP8266 board using the Arduino IDE or PlatformIO:
@@ -45,14 +51,21 @@ This code needs to be uploaded to an ESP32 or ESP8266 board using the Arduino ID
    - **SSID:** `SkiClock-Setup`
    - **Password:** `configure`
 2. Connect to this network with your phone/computer
-3. A captive portal will open automatically (or navigate to `192.168.4.1`)
+3. A captive portal will open automatically
 4. Select your WiFi network and enter the password
-5. The device will save credentials and restart
-6. Future boots will connect automatically to your WiFi
+5. The device will save credentials and connect
+
+### Advanced WiFi Features
+- **Multiple Network Support**: Add multiple WiFi networks - the device automatically tries them in order
+- **Always Accessible Portal**: The configuration portal remains available even when connected
+  - Connect to `SkiClock-Setup` at any time to switch networks or add new ones
+- **Auto-Reconnect**: Temporary WiFi dropouts are handled gracefully with background retry
+- **Network Roaming**: Device automatically connects to the strongest available stored network
 
 ### Normal Operation
 - The display cycles through digits 0-9 every 2 seconds
-- WiFi credentials are stored permanently
+- All WiFi credentials are stored permanently
+- Portal accessible anytime for network management
 - Ready for OTA updates
 
 ## Development in Replit
@@ -72,6 +85,7 @@ The code has been refactored for excellent maintainability:
 - **Extended character support**: Recognizes actual degree symbol (0xB0) in addition to '*' placeholder
 
 ## Recent Changes
+- 2025-11-19: Replaced custom WiFi with AutoConnect library for robust multi-network management, always-available portal, and auto-reconnection
 - 2025-11-19: Added WiFi support with captive portal configuration interface, persistent credential storage, preparation for OTA updates
 - 2025-11-19: Refactored code - extracted font data to font_5x7.h, all rendering to neopixel_render.h, improved memory efficiency, added degree symbol support
 - 2025-11-19: Initial import from GitHub
