@@ -11,18 +11,20 @@ This project combines Arduino firmware for NeoPixel LED matrix displays with a c
 
 ```
 ski-clock-neo/
-├── firmware/               # Arduino firmware code
-│   ├── ski-clock-neo.ino   # Main sketch
-│   ├── font_5x7.h          # Font definitions
-│   ├── neopixel_render.h   # LED rendering functions
-│   ├── wifi_config.h       # WiFi management (AutoConnect)
-│   ├── ota_update.h        # OTA update system
-│   ├── certificates.h      # HTTPS root CA certificates
-│   └── info.sh             # Information script
+├── firmware/                    # Arduino firmware code
+│   └── ski-clock-neo/           # Arduino sketch folder (required by Arduino CLI)
+│       ├── ski-clock-neo.ino    # Main sketch
+│       ├── font_5x7.h           # Font definitions
+│       ├── neopixel_render.h    # LED rendering functions
+│       ├── wifi_config.h        # WiFi management (AutoConnect)
+│       ├── ota_update.h         # OTA update system
+│       ├── certificates.h       # HTTPS root CA certificates
+│       └── info.sh              # Information script
 ├── dashboard/              # Flask update server
 │   ├── app.py              # Main Flask application
 │   ├── requirements.txt    # Python dependencies
 │   ├── firmwares/          # Uploaded firmware binaries (gitignored)
+│   ├── config.json         # Configuration from GitHub Actions (gitignored)
 │   └── .gitignore          # Dashboard-specific gitignore
 ├── .github/
 │   └── workflows/
@@ -135,6 +137,8 @@ Must be configured in GitHub repo (Settings → Secrets → Actions):
 - ✅ Enables future device monitoring features
 
 ## Recent Changes
+- **2025-11-19**: Restructured firmware to Arduino-standard folder layout (firmware/ski-clock-neo/ski-clock-neo.ino)
+- **2025-11-19**: Fixed deployment configuration to use gunicorn for production
 - **2025-11-19**: Implemented automatic timestamp-based versioning (year.month.day.buildnum)
 - **2025-11-19**: Migrated to GitHub-only secrets (dashboard reads from config uploaded by Actions)
 - **2025-11-19**: Changed workflow to trigger on push to main (no manual tagging required)
