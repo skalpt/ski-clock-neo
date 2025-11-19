@@ -60,7 +60,7 @@ jobs:
             --build-property "build.partitions=min_spiffs" \
             --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\"" \
             --output-dir build/esp32 \
-            firmware/
+            firmware/ski-clock-neo.ino
           cp build/esp32/ski-clock-neo.ino.bin build/ski-clock-neo-esp32.bin
           
       - name: Build for ESP8266
@@ -69,7 +69,7 @@ jobs:
             --build-property "build.flash_size=4M3M" \
             --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\"" \
             --output-dir build/esp8266 \
-            firmware/
+            firmware/ski-clock-neo.ino
           cp build/esp8266/ski-clock-neo.ino.bin build/ski-clock-neo-esp8266.bin
         
       - name: Upload ESP32 firmware to server
