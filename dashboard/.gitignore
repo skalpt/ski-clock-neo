@@ -6,3 +6,4 @@ __pycache__/
 firmwares/*.bin
 venv/
 .env
+config.json

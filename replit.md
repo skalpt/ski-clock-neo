@@ -60,28 +60,45 @@ ski-clock-neo/
 
 ## Secrets Configuration
 
-### Replit Secrets (✅ Configured)
+**Architecture Decision**: Secrets are stored ONLY in GitHub, not in Replit. The dashboard receives configuration automatically from GitHub Actions on each build.
+
+### GitHub Repository Secrets (⚠️ Required)
+Must be configured in GitHub repo (Settings → Secrets → Actions):
 - `UPDATE_SERVER_URL` - Dashboard server URL (your Replit deployment)
-- `UPLOAD_API_KEY` - Used by GitHub Actions to upload binaries
+- `UPLOAD_API_KEY` - Used by GitHub Actions to upload binaries and config
 - `DOWNLOAD_API_KEY` - Embedded in firmware for downloads
 
-### GitHub Repository Secrets (⚠️ User must add)
-Add the same three secrets to GitHub repo (Settings → Secrets → Actions):
-- `UPDATE_SERVER_URL`
-- `UPLOAD_API_KEY`
-- `DOWNLOAD_API_KEY`
+### Dashboard Configuration
+- Dashboard reads from `config.json` (uploaded by GitHub Actions)
+- Fallback to environment variables for backward compatibility
+- `/api/config` endpoint receives config updates from GitHub Actions
+- `config.json` is gitignored to prevent accidental secret commits
+
+## Versioning System
+
+**Automatic Timestamp-Based Versioning**: No manual tagging required!
+
+- **Format**: `year.month.day.buildnum` (e.g., `2025.11.19.1`)
+- **Generation**: Automatic on every push to `main` branch
+- **Build number**: GitHub Actions `run_number` (auto-increments)
+- **Comparison**: `(year-2025)*100000000 + month*1000000 + day*10000 + build`
+- **Legacy support**: Still supports semantic versioning (`v1.2.3`) for backward compatibility
 
 ## Deployment Flow
 
-1. **Code Changes** → Push to GitHub
-2. **Tag Version** → `git tag v1.0.0 && git push origin v1.0.0`
-3. **GitHub Actions**:
+**Fully Automatic** - just push to main:
+
+1. **Code Changes** → `git push origin main`
+2. **GitHub Actions** (automatic):
+   - Generates timestamp version (e.g., `2025.11.19.1`)
+   - Creates config.json with all three secrets
+   - Uploads config to dashboard server
    - Compiles firmware for ESP32 and ESP8266
    - Injects UPDATE_SERVER_URL and DOWNLOAD_API_KEY at build time
-   - Uploads binaries to dashboard server via UPLOAD_API_KEY
+   - Uploads binaries to dashboard server with version metadata
    - Saves artifacts for manual download
-4. **Dashboard** → Stores firmware and serves to devices
-5. **Devices** → Check hourly, download, and install updates
+3. **Dashboard** → Stores config and firmware, serves to devices
+4. **Devices** → Check hourly, download, and install updates automatically
 
 ## Libraries Required
 - **Adafruit_NeoPixel** - LED matrix control
@@ -99,7 +116,8 @@ Add the same three secrets to GitHub repo (Settings → Secrets → Actions):
 ### Version Checking
 - Devices check every 1 hour when successful
 - Retry every 5 minutes on failure
-- Version comparison: `v1.2.3` → `1002003` (major*1000000 + minor*1000 + patch)
+- **Timestamp format**: `2025.11.19.1` → `(year-2025)*100000000 + month*1000000 + day*10000 + build`
+- **Legacy support**: `v1.2.3` → `1002003` (major*1000000 + minor*1000 + patch)
 - Only updates when newer version available
 
 ### Security
@@ -117,6 +135,11 @@ Add the same three secrets to GitHub repo (Settings → Secrets → Actions):
 - ✅ Enables future device monitoring features
 
 ## Recent Changes
+- **2025-11-19**: Implemented automatic timestamp-based versioning (year.month.day.buildnum)
+- **2025-11-19**: Migrated to GitHub-only secrets (dashboard reads from config uploaded by Actions)
+- **2025-11-19**: Changed workflow to trigger on push to main (no manual tagging required)
+- **2025-11-19**: Updated version parsing in firmware and dashboard to support timestamp format
+- **2025-11-19**: Added /api/config endpoint for GitHub Actions to upload configuration
 - **2025-11-19**: Implemented custom firmware update server with Flask dashboard
 - **2025-11-19**: Restructured project into firmware/ and dashboard/ directories  
 - **2025-11-19**: Migrated from GitHub Releases to custom server for OTA updates

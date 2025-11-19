@@ -72,41 +72,47 @@ The dashboard server handles firmware distribution and will monitor deployed dev
 
 ## Setup Instructions
 
-### 1. Configure Secrets
+### 1. Configure Secrets (GitHub Only)
 
-You need to set up secrets in both Replit and GitHub:
+All secrets are managed in **GitHub only**. The dashboard receives them automatically from GitHub Actions.
 
-#### Replit Secrets (Already configured)
-- `UPDATE_SERVER_URL` - Your Replit deployment URL (e.g., `https://your-repl.username.repl.co`)
-- `UPLOAD_API_KEY` - Key for GitHub Actions to upload firmware
-- `DOWNLOAD_API_KEY` - Key for devices to download firmware
-
-#### GitHub Repository Secrets
-Add the same three secrets to your GitHub repository:
+#### GitHub Repository Secrets (Required)
 1. Go to GitHub repo → Settings → Secrets and variables → Actions
 2. Add repository secrets:
-   - `UPDATE_SERVER_URL` - Same as Replit
-   - `UPLOAD_API_KEY` - Same as Replit
-   - `DOWNLOAD_API_KEY` - Same as Replit
+   - `UPDATE_SERVER_URL` - Your Replit deployment URL (e.g., `https://ski-clock-neo.yourname.repl.co`)
+   - `UPLOAD_API_KEY` - Key for GitHub Actions to upload firmware (generate a random 32+ character string)
+   - `DOWNLOAD_API_KEY` - Key for devices to download firmware (generate a different random 32+ character string)
+
+**Note**: You do NOT need to configure secrets in Replit. The dashboard automatically receives configuration from GitHub Actions on each build.
 
 ### 2. Deploy the Dashboard
 
-The dashboard runs automatically on Replit at port 5000. When you publish your Repl, it will be accessible at your Replit deployment URL.
+The dashboard runs automatically on Replit at port 5000. 
 
-### 3. Create a Firmware Release
+1. Click the **"Publish"** button in Replit to get a permanent URL
+2. Copy your published URL (e.g., `https://ski-clock-neo.yourname.repl.co`)
+3. Set this URL as `UPDATE_SERVER_URL` in GitHub secrets
 
-Tag and push a version to trigger GitHub Actions:
+### 3. Automatic Firmware Builds
+
+**No manual tagging required!** Every push to the `main` branch automatically:
+
+1. Generates a version number: `year.month.day.buildnum` (e.g., `2025.11.19.1`)
+2. Uploads configuration to your dashboard server
+3. Compiles firmware for ESP32 and ESP8266
+4. Injects UPDATE_SERVER_URL and DOWNLOAD_API_KEY
+5. Uploads binaries to your dashboard server
+6. Saves artifacts for manual download
+
+Simply push your changes:
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+git add .
+git commit -m "Your changes"
+git push origin main
 ```
 
-GitHub Actions will:
-1. Compile firmware for ESP32 and ESP8266
-2. Inject your UPDATE_SERVER_URL and DOWNLOAD_API_KEY
-3. Upload binaries to your dashboard server
-4. Save artifacts for manual download
+GitHub Actions handles the rest automatically!
 
 ### 4. WiFi Setup on Device
 
