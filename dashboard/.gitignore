@@ -7,3 +7,4 @@ firmwares/*.bin
 venv/
 .env
 config.json
+versions.json

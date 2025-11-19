@@ -12,6 +12,7 @@ FIRMWARES_DIR = Path(__file__).parent / 'firmwares'
 FIRMWARES_DIR.mkdir(exist_ok=True)
 
 CONFIG_FILE = Path(__file__).parent / 'config.json'
+VERSIONS_FILE = Path(__file__).parent / 'versions.json'
 
 # Load configuration from file (uploaded by GitHub Actions) or fallback to environment
 def load_config():
@@ -52,9 +53,30 @@ PLATFORM_FIRMWARE_MAPPING = {
     'esp8266': 'esp12f',  # Legacy ESP8266 devices get ESP-12F firmware
 }
 
-LATEST_VERSIONS: Dict[str, Optional[Dict[str, Any]]] = {
-    platform: None for platform in SUPPORTED_PLATFORMS
-}
+# Load firmware versions from disk (persists across restarts)
+def load_versions():
+    if VERSIONS_FILE.exists():
+        try:
+            with open(VERSIONS_FILE, 'r') as f:
+                saved_versions = json.load(f)
+                print(f"Loaded {len([v for v in saved_versions.values() if v])} firmware versions from disk")
+                return saved_versions
+        except Exception as e:
+            print(f"Warning: Could not load versions file: {e}")
+    
+    # Initialize with None for all platforms
+    return {platform: None for platform in SUPPORTED_PLATFORMS}
+
+# Save firmware versions to disk
+def save_versions():
+    try:
+        with open(VERSIONS_FILE, 'w') as f:
+            json.dump(LATEST_VERSIONS, f, indent=2)
+        print(f"Saved firmware versions to {VERSIONS_FILE}")
+    except Exception as e:
+        print(f"Error saving versions file: {e}")
+
+LATEST_VERSIONS: Dict[str, Optional[Dict[str, Any]]] = load_versions()
 
 @app.route('/')
 def index():
@@ -258,6 +280,9 @@ def upload_firmware():
         LATEST_VERSIONS['esp8266'] = version_info.copy()
         LATEST_VERSIONS['esp8266']['download_url'] = '/api/firmware/esp8266'
         LATEST_VERSIONS['esp8266']['note'] = 'Legacy alias for ESP-12F (backward compatibility)'
+    
+    # Persist versions to disk (survives server restarts)
+    save_versions()
     
     return jsonify({
         'success': True,

@@ -1,0 +1,62 @@
+5s
+Run for file in build/*.bin; do
+Uploading build/ski-clock-neo-d1mini.bin (platform=d1mini version=2025.11.19.12)...
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100  562k  100   321  100  562k   1642  2878k --:--:-- --:--:-- --:--:-- 2886k
+{"message":"Firmware uploaded successfully","success":true,"version_info":{"download_url":"/api/firmware/d1mini","filename":"firmware-d1mini-2025.11.19.12.bin","sha256":"d667ed8ba60fc3aac26d15e799fbe34dc18d619c3ab543eea3f969eacdd9d2fc","size":575504,"uploaded_at":"2025-11-19T14:31:44.309326","version":"2025.11.19.12"}}
+
+✓ Upload for platform 'd1mini' succeeded
+Uploading build/ski-clock-neo-esp01.bin (platform=esp01 version=2025.11.19.12)...
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100  562k  100   319  100  562k   1381  2435k --:--:-- --:--:-- --:--:-- 2446k
+{"message":"Firmware uploaded successfully","success":true,"version_info":{"download_url":"/api/firmware/esp01","filename":"firmware-esp01-2025.11.19.12.bin","sha256":"4e222b08018fa209e03c5f5c1b3e0dae74bbaa5a53b3cf411a858f99b8bc1c62","size":575504,"uploaded_at":"2025-11-19T14:31:44.550019","version":"2025.11.19.12"}}
+
+✓ Upload for platform 'esp01' succeeded
+Uploading build/ski-clock-neo-esp12f.bin (platform=esp12f version=2025.11.19.12)...
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100  562k  100   321  100  562k   1797  3149k --:--:-- --:--:-- --:--:-- 3143k
+{"message":"Firmware uploaded successfully","success":true,"version_info":{"download_url":"/api/firmware/esp12f","filename":"firmware-esp12f-2025.11.19.12.bin","sha256":"45743c4300e11adc8374ffed822967803f152a77fcf157c29007008e587ec4b8","size":575504,"uploaded_at":"2025-11-19T14:31:44.741218","version":"2025.11.19.12"}}
+
+✓ Upload for platform 'esp12f' succeeded
+Uploading build/ski-clock-neo-esp32.bin (platform=esp32 version=2025.11.19.12)...
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100 1169k    0     0  100 1169k      0  1032k  0:00:01  0:00:01 --:--:-- 1033k
+100 1169k    0     0  100 1169k      0   548k  0:00:02  0:00:02 --:--:--  548k
+100 1169k    0     0  100 1169k      0   373k  0:00:03  0:00:03 --:--:--  373k
+100 1169k    0     0  100 1169k      0   282k  0:00:04  0:00:04 --:--:--  282k
+100 1169k  100   320  100 1169k     74   273k  0:00:04  0:00:04 --:--:--  273k
+{"message":"Firmware uploaded successfully","success":true,"version_info":{"download_url":"/api/firmware/esp32","filename":"firmware-esp32-2025.11.19.12.bin","sha256":"a2e3f26e66afb5f73876a4a5cefdc3dbaa87a1c32a4b9c2f3534f5ef2cd4336b","size":1197104,"uploaded_at":"2025-11-19T14:31:48.996066","version":"2025.11.19.12"}}
+
+✓ Upload for platform 'esp32' succeeded
+Uploading build/ski-clock-neo-esp32c3.bin (platform=esp32c3 version=2025.11.19.12)...
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100 1362k  100   324  100 1362k    556  2340k --:--:-- --:--:-- --:--:-- 2337k
+100 1362k  100   324  100 1362k    556  2339k --:--:-- --:--:-- --:--:-- 2337k
+{"message":"Firmware uploaded successfully","success":true,"version_info":{"download_url":"/api/firmware/esp32c3","filename":"firmware-esp32c3-2025.11.19.12.bin","sha256":"8980e22236285e7248b702c605dda365dcda6da2faf5d9f69e6471c6a8b02da7","size":1394704,"uploaded_at":"2025-11-19T14:31:49.622242","version":"2025.11.19.12"}}
+
+✓ Upload for platform 'esp32c3' succeeded
+Uploading build/ski-clock-neo-esp32s3.bin (platform=esp32s3 version=2025.11.19.12)...
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+{"message":"Firmware uploaded successfully","success":true,"version_info":{"download_url":"/api/firmware/esp32s3","filename":"firmware-esp32s3-2025.11.19.12.bin","sha256":"57a91fa89ab09db6be3a57249c42342393893d31c19cf7bf71aa37157b49b886","size":1134736,"uploaded_at":"2025-11-19T14:31:49.795452","version":"2025.11.19.12"}}
+100 1108k  100   324  100 1108k   2007  6870k --:--:-- --:--:-- --:--:-- 6887k
+
+✓ Upload for platform 'esp32s3' succeeded
