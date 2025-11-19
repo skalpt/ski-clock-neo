@@ -35,7 +35,12 @@ enum LedPattern {
   #include <esp8266_peri.h>
   #define FAST_PIN_HIGH(pin) GPOS = (1 << (pin))
   #define FAST_PIN_LOW(pin)  GPOC = (1 << (pin))
+#elif defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S3)
+  // ESP32-C3 and ESP32-S3 have different GPIO structures - use digitalWrite
+  #define FAST_PIN_HIGH(pin) digitalWrite(pin, HIGH)
+  #define FAST_PIN_LOW(pin)  digitalWrite(pin, LOW)
 #elif defined(ESP32)
+  // ESP32 original - direct register access
   #include <soc/gpio_reg.h>
   #define FAST_PIN_HIGH(pin) GPIO.out_w1ts = (1 << (pin))
   #define FAST_PIN_LOW(pin)  GPIO.out_w1tc = (1 << (pin))
