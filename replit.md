@@ -43,16 +43,28 @@ ski-clock-neo/
 ## Firmware Features
 - Custom 5x7 pixel font with 2x diagonal smoothing
 - Multi-panel support with serpentine wiring
+- **LED Status Indicator** (built-in LED):
+  - Quick flash during setup (WiFi connecting)
+  - 1 flash + 2s pause when WiFi connected
+  - 3 flashes + 2s pause when WiFi disconnected
+  - Ticker-based non-blocking updates
 - **Advanced WiFi** (AutoConnect library):
   - Multiple network credentials with auto-fallback
-  - Always-available captive portal
+  - Always-available captive portal (non-blocking)
   - Background auto-reconnection
+  - Responsive immediately at boot (no blocking delays)
 - **Secure OTA Updates**:
   - Custom update server (not GitHub-dependent)
   - API key authentication
   - Configurable server URL for easy migration
+  - Ticker-based scheduling (1h interval, initial check at 30s)
   - Dual-timer retry logic (1h success, 5m failure)
   - HTTPS support with cert validation
+- **Ticker-Based Timing**:
+  - All periodic tasks use Ticker library
+  - ISR callbacks only set flags (no heavy work in ISR)
+  - Heavy operations run in main loop when flags checked
+  - No blocking delays in setup() or loop()
 
 ## Dashboard Server Features
 - **API-based firmware distribution**
@@ -167,9 +179,14 @@ Must be configured in GitHub repo (Settings → Secrets → Actions):
 
 ## Recent Changes
 - **2025-11-19**: **PRODUCTION-READY**: Multi-platform OTA firmware system with 6 board variants
+- **2025-11-19**: Added LED status indicators for WiFi debugging (quick flash, 1-flash, 3-flash patterns)
+- **2025-11-19**: Converted all timing to Ticker-based non-blocking architecture
+- **2025-11-19**: Removed blocking delay(30000) from setup() - captive portal now responsive immediately
+- **2025-11-19**: Increased NeoPixel brightness from 1 to 32 for better visibility
+- **2025-11-19**: Implemented ISR-safe flag pattern for all Ticker callbacks
 - **2025-11-19**: Migrated firmware storage to Replit Object Storage for persistence across deployments
 - **2025-11-19**: Added graceful fallback to local filesystem when Object Storage not configured
-- **2025-11-19**: Created object_storage.py module for Google Cloud Storage integration
+- **2025-11-19**: Created object_storage.py module with replit-object-storage library
 - **2025-11-19**: Fixed GitHub Actions to pin ESP32 core to v2.0.14 (AutoConnect compatibility)
 - **2025-11-19**: Fixed ESP-01 FQBN to use generic board with 1M flash (esp8266:esp8266:generic:eesz=1M)
 - **2025-11-19**: Added secrets to both GitHub and Replit for proper API authentication
