@@ -20,7 +20,7 @@ jobs:
       - name: Install ESP32 platform
         run: |
           arduino-cli core update-index
-          arduino-cli core install esp32:esp32
+          arduino-cli core install esp32:esp32@2.0.14
           
       - name: Install ESP8266 platform
         run: |

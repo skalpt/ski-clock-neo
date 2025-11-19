@@ -105,7 +105,8 @@ Must be configured in GitHub repo (Settings → Secrets → Actions):
 ## Libraries Required
 - **Adafruit_NeoPixel** - LED matrix control
 - **AutoConnect** - WiFi management (install via Library Manager)
-- ESP32/ESP8266 WiFi libraries (built-in)
+- **ESP32 Arduino Core 2.0.14** - Required for AutoConnect compatibility (Core 3.x not supported)
+- ESP8266 WiFi libraries (built-in)
 
 ## WiFi Configuration
 - **First boot**: Device creates `SkiClock-Setup` AP (password: `configure`)
@@ -137,6 +138,7 @@ Must be configured in GitHub repo (Settings → Secrets → Actions):
 - ✅ Enables future device monitoring features
 
 ## Recent Changes
+- **2025-11-19**: Pinned ESP32 Core to v2.0.14 for AutoConnect compatibility (v3.x not supported)
 - **2025-11-19**: Restructured firmware to Arduino-standard folder layout (firmware/ski-clock-neo/ski-clock-neo.ino)
 - **2025-11-19**: Fixed deployment configuration to use gunicorn for production
 - **2025-11-19**: Implemented automatic timestamp-based versioning (year.month.day.buildnum)

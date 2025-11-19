@@ -1,0 +1,140 @@
+2025-11-19T11:44:03.7628523Z ##[group]Run arduino-cli compile --fqbn esp32:esp32:esp32 \
+2025-11-19T11:44:03.7628939Z [36;1marduino-cli compile --fqbn esp32:esp32:esp32 \[0m
+2025-11-19T11:44:03.7629295Z [36;1m  --build-property "build.partitions=min_spiffs" \[0m
+2025-11-19T11:44:03.7630407Z [36;1m  --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"***\" -DDOWNLOAD_API_KEY=\"***\" -DFIRMWARE_VERSION=\"2025.11.19.4\"" \[0m
+2025-11-19T11:44:03.7630951Z [36;1m  --output-dir build/esp32 \[0m
+2025-11-19T11:44:03.7631199Z [36;1m  firmware/ski-clock-neo[0m
+2025-11-19T11:44:03.7631540Z [36;1mcp build/esp32/ski-clock-neo.ino.bin build/ski-clock-neo-esp32.bin[0m
+2025-11-19T11:44:03.7660770Z shell: /usr/bin/bash -e {0}
+2025-11-19T11:44:03.7661002Z ##[endgroup]
+2025-11-19T11:44:58.8678561Z In file included from /home/runner/Arduino/libraries/AutoConnect/src/AutoConnectCore.hpp:31,
+2025-11-19T11:44:58.8679675Z                  from /home/runner/Arduino/libraries/AutoConnect/src/AutoConnectCoreImpl.hpp:13,
+2025-11-19T11:44:58.8680659Z                  from /home/runner/Arduino/libraries/AutoConnect/src/AutoConnectExt.hpp:15,
+2025-11-19T11:44:58.8681523Z                  from /home/runner/Arduino/libraries/AutoConnect/src/AutoConnectExtImpl.hpp:13,
+2025-11-19T11:44:58.8682258Z                  from /home/runner/Arduino/libraries/AutoConnect/src/AutoConnect.h:15,
+2025-11-19T11:44:58.8682799Z                  from /home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/wifi_config.h:14,
+2025-11-19T11:44:58.8683811Z                  from /home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/ski-clock-neo.ino:4:
+2025-11-19T11:44:58.8685165Z /home/runner/Arduino/libraries/PageBuilder/src/PageBuilder.h:301:80: error: 'decltype' cannot resolve address of overloaded function
+2025-11-19T11:44:58.8692561Z   301 |     std::is_lvalue_reference<TypeOfArgument<decltype(&RequestHandler::canHandle)>::arg<1>::type>::value,
+2025-11-19T11:44:58.8693071Z       |                                                                                ^
+2025-11-19T11:44:58.8693630Z /home/runner/Arduino/libraries/PageBuilder/src/PageBuilder.h:301:81: error: template argument 1 is invalid
+2025-11-19T11:44:58.8694357Z   301 |     std::is_lvalue_reference<TypeOfArgument<decltype(&RequestHandler::canHandle)>::arg<1>::type>::value,
+2025-11-19T11:44:58.8694815Z       |                                                                                 ^
+2025-11-19T11:44:58.8695321Z /home/runner/Arduino/libraries/PageBuilder/src/PageBuilder.h:301:89: error: template argument 1 is invalid
+2025-11-19T11:44:58.8695991Z   301 |     std::is_lvalue_reference<TypeOfArgument<decltype(&RequestHandler::canHandle)>::arg<1>::type>::value,
+2025-11-19T11:44:58.8696432Z       |                                                                                         ^
+2025-11-19T11:44:58.8697000Z /home/runner/Arduino/libraries/PageBuilder/src/PageBuilder.h:301:96: error: wrong number of template arguments (1, should be 3)
+2025-11-19T11:44:58.8698097Z   301 |     std::is_lvalue_reference<TypeOfArgument<decltype(&RequestHandler::canHandle)>::arg<1>::type>::value,
+2025-11-19T11:44:58.8698561Z       |                                                                                                ^
+2025-11-19T11:44:58.8699133Z In file included from /home/runner/.arduino15/packages/esp32/tools/esp-x32/2507/xtensa-esp-elf/include/c++/14.2.0/bits/stl_pair.h:60,
+2025-11-19T11:44:58.8699935Z                  from /home/runner/.arduino15/packages/esp32/tools/esp-x32/2507/xtensa-esp-elf/include/c++/14.2.0/bits/stl_algobase.h:64,
+2025-11-19T11:44:58.8700685Z                  from /home/runner/.arduino15/packages/esp32/tools/esp-x32/2507/xtensa-esp-elf/include/c++/14.2.0/bits/specfun.h:43,
+2025-11-19T11:44:58.8701389Z                  from /home/runner/.arduino15/packages/esp32/tools/esp-x32/2507/xtensa-esp-elf/include/c++/14.2.0/cmath:3898,
+2025-11-19T11:44:58.8702065Z                  from /home/runner/.arduino15/packages/esp32/tools/esp-x32/2507/xtensa-esp-elf/include/c++/14.2.0/math.h:36,
+2025-11-19T11:44:58.8702950Z                  from /home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/cores/esp32/esp32-hal.h:30,
+2025-11-19T11:44:58.8703518Z                  from /home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/cores/esp32/Arduino.h:44,
+2025-11-19T11:44:58.8704250Z                  from /tmp/arduino/sketches/A112E18D136C6DC1ED5764BF8E0E7FBE/sketch/ski-clock-neo.ino.cpp:1:
+2025-11-19T11:44:58.8705215Z /home/runner/.arduino15/packages/esp32/tools/esp-x32/2507/xtensa-esp-elf/include/c++/14.2.0/type_traits:2319:12: note: provided for 'template<bool _Cond, class _Iftrue, class _Iffalse> struct std::conditional'
+2025-11-19T11:44:58.8705975Z  2319 |     struct conditional
+2025-11-19T11:44:58.8706185Z       |            ^~~~~~~~~~~
+2025-11-19T11:44:58.8706715Z /home/runner/Arduino/libraries/PageBuilder/src/PageBuilder.h:338:53: error: 'PageBuilderUtil::URI_TYPE_SIGNATURE' has not been declared
+2025-11-19T11:44:58.8707745Z   338 |   virtual bool  canHandle(HTTPMethod requestMethod, PageBuilderUtil::URI_TYPE_SIGNATURE requestUri) override;
+2025-11-19T11:44:58.8708245Z       |                                                     ^~~~~~~~~~~~~~~
+2025-11-19T11:44:58.8708831Z /home/runner/Arduino/libraries/PageBuilder/src/PageBuilder.h:339:27: error: 'PageBuilderUtil::URI_TYPE_SIGNATURE' has not been declared
+2025-11-19T11:44:58.8709520Z   339 |   virtual bool  canUpload(PageBuilderUtil::URI_TYPE_SIGNATURE uri) override;
+2025-11-19T11:44:58.8709878Z       |                           ^~~~~~~~~~~~~~~
+2025-11-19T11:44:58.8710438Z /home/runner/Arduino/libraries/PageBuilder/src/PageBuilder.h:343:61: error: 'PageBuilderUtil::URI_TYPE_SIGNATURE' has not been declared
+2025-11-19T11:44:58.8711271Z   343 |   bool  handle(WebServer& server, HTTPMethod requestMethod, PageBuilderUtil::URI_TYPE_SIGNATURE requestUri) override;
+2025-11-19T11:44:58.8711769Z       |                                                             ^~~~~~~~~~~~~~~
+2025-11-19T11:44:58.8712347Z /home/runner/Arduino/libraries/PageBuilder/src/PageBuilder.h:350:43: error: 'PageBuilderUtil::URI_TYPE_SIGNATURE' has not been declared
+2025-11-19T11:44:58.8713154Z   350 |   virtual void  upload(WebServer& server, PageBuilderUtil::URI_TYPE_SIGNATURE requestUri, HTTPUpload& upload) override;
+2025-11-19T11:44:58.8713644Z       |                                           ^~~~~~~~~~~~~~~
+2025-11-19T11:44:58.8714330Z /home/runner/Arduino/libraries/PageBuilder/src/PageBuilder.h:338:17: error: 'virtual bool PageBuilder::canHandle(HTTPMethod, int)' marked 'override', but does not override
+2025-11-19T11:44:58.8715224Z   338 |   virtual bool  canHandle(HTTPMethod requestMethod, PageBuilderUtil::URI_TYPE_SIGNATURE requestUri) override;
+2025-11-19T11:44:58.8715691Z       |                 ^~~~~~~~~
+2025-11-19T11:44:58.8716295Z /home/runner/Arduino/libraries/PageBuilder/src/PageBuilder.h:339:17: error: 'virtual bool PageBuilder::canUpload(int)' marked 'override', but does not override
+2025-11-19T11:44:58.8717379Z   339 |   virtual bool  canUpload(PageBuilderUtil::URI_TYPE_SIGNATURE uri) override;
+2025-11-19T11:44:58.8717767Z       |                 ^~~~~~~~~
+2025-11-19T11:44:58.8718425Z /home/runner/Arduino/libraries/PageBuilder/src/PageBuilder.h:343:9: error: 'bool PageBuilder::handle(WebServer&, HTTPMethod, int)' marked 'override', but does not override
+2025-11-19T11:44:58.8719348Z   343 |   bool  handle(WebServer& server, HTTPMethod requestMethod, PageBuilderUtil::URI_TYPE_SIGNATURE requestUri) override;
+2025-11-19T11:44:58.8719826Z       |         ^~~~~~
+2025-11-19T11:44:58.8720498Z /home/runner/Arduino/libraries/PageBuilder/src/PageBuilder.h:350:17: error: 'virtual void PageBuilder::upload(WebServer&, int, HTTPUpload&)' marked 'override', but does not override
+2025-11-19T11:44:58.8721441Z   350 |   virtual void  upload(WebServer& server, PageBuilderUtil::URI_TYPE_SIGNATURE requestUri, HTTPUpload& upload) override;
+2025-11-19T11:44:58.8721916Z       |                 ^~~~~~
+2025-11-19T11:44:58.8722316Z In file included from /home/runner/Arduino/libraries/AutoConnect/src/AutoConnectCoreImpl.hpp:14:
+2025-11-19T11:44:58.8723330Z /home/runner/Arduino/libraries/AutoConnect/src/AutoConnectPageImpl.hpp: In static member function 'static uint32_t AutoConnectCore<T>::_getFlashChipRealSize()':
+2025-11-19T11:44:58.8724773Z /home/runner/Arduino/libraries/AutoConnect/src/AutoConnectPageImpl.hpp:1001:20: error: there are no arguments to 'spi_flash_get_chip_size' that depend on a template parameter, so a declaration of 'spi_flash_get_chip_size' must be available [-fpermissive]
+2025-11-19T11:44:58.8725726Z  1001 |   return (uint32_t)spi_flash_get_chip_size();
+2025-11-19T11:44:58.8726000Z       |                    ^~~~~~~~~~~~~~~~~~~~~~~
+2025-11-19T11:44:58.8726740Z /home/runner/Arduino/libraries/AutoConnect/src/AutoConnectPageImpl.hpp:1001:20: note: (if you use '-fpermissive', G++ will accept your code, but allowing the use of an undeclared name is deprecated)
+2025-11-19T11:44:58.8728138Z /home/runner/Arduino/libraries/AutoConnect/src/AutoConnectCoreImpl.hpp: In member function 'bool AutoConnectCore<T>::begin(const char*, const char*, long unsigned int)':
+2025-11-19T11:44:58.8729281Z /home/runner/Arduino/libraries/AutoConnect/src/AutoConnectCoreImpl.hpp:249:12: error: 'class WiFiClass' has no member named 'setAutoConnect'; did you mean 'setAutoReconnect'?
+2025-11-19T11:44:58.8729973Z   249 |       WiFi.setAutoConnect(false);
+2025-11-19T11:44:58.8730212Z       |            ^~~~~~~~~~~~~~
+2025-11-19T11:44:58.8730453Z       |            setAutoReconnect
+2025-11-19T11:44:58.8731115Z /home/runner/Arduino/libraries/AutoConnect/src/AutoConnectCoreImpl.hpp: In member function 'void AutoConnectCore<T>::handleRequest()':
+2025-11-19T11:44:58.8732173Z /home/runner/Arduino/libraries/AutoConnect/src/AutoConnectCoreImpl.hpp:562:16: error: 'class WiFiClass' has no member named 'getAutoConnect'; did you mean 'getAutoReconnect'?
+2025-11-19T11:44:58.8732863Z   562 |       if (WiFi.getAutoConnect())
+2025-11-19T11:44:58.8750320Z       |                ^~~~~~~~~~~~~~
+2025-11-19T11:44:58.8750638Z       |                getAutoReconnect
+2025-11-19T11:44:58.8751203Z /home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/wifi_config.h: In function 'int getStoredNetworkCount()':
+2025-11-19T11:44:58.8752803Z /home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/wifi_config.h:134:17: error: 'using AutoConnect = class AutoConnectExt<AutoConnectConfigExt>' {aka 'class AutoConnectExt<AutoConnectConfigExt>'} has no member named 'credential'; did you mean 'station_config_t AutoConnectCore<AutoConnectConfigExt>::_credential'? (not accessible from this context)
+2025-11-19T11:44:58.8754083Z   134 |   return portal.credential();
+2025-11-19T11:44:58.8754335Z       |                 ^~~~~~~~~~
+2025-11-19T11:44:58.8754808Z /home/runner/Arduino/libraries/AutoConnect/src/AutoConnectCore.hpp:162:22: note: declared protected here
+2025-11-19T11:44:58.8755313Z   162 |   station_config_t   _credential;
+2025-11-19T11:44:58.8755554Z       |                      ^~~~~~~~~~~
+2025-11-19T11:44:58.8756387Z /home/runner/Arduino/libraries/AutoConnect/src/AutoConnectPageImpl.hpp: In instantiation of 'static uint32_t AutoConnectCore<T>::_getFlashChipRealSize() [with T = AutoConnectConfigExt; uint32_t = long unsigned int]':
+2025-11-19T11:44:58.8757920Z /home/runner/Arduino/libraries/AutoConnect/src/AutoConnectPageImpl.hpp:1242:38:   required from 'String AutoConnectCore<T>::_token_FLASH_SIZE(PageArgument&) [with T = AutoConnectConfigExt]'
+2025-11-19T11:44:58.8758702Z  1242 |   return String(_getFlashChipRealSize());
+2025-11-19T11:44:58.8758982Z       |                 ~~~~~~~~~~~~~~~~~~~~~^~
+2025-11-19T11:44:58.8759712Z /home/runner/Arduino/libraries/AutoConnect/src/AutoConnectPageImpl.hpp:1647:50:   required from 'PageElement* AutoConnectCore<T>::_setupPage(String&) [with T = AutoConnectConfigExt]'
+2025-11-19T11:44:58.8760665Z  1647 |     elm->addToken(FPSTR("FLASH_SIZE"), std::bind(&AutoConnectCore<T>::_token_FLASH_SIZE, this, std::placeholders::_1));
+2025-11-19T11:44:58.8761148Z       |                                                  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2025-11-19T11:44:58.8762230Z /home/runner/Arduino/libraries/AutoConnect/src/AutoConnectCoreImpl.hpp:1447:29:   required from 'bool AutoConnectCore<T>::_classifyHandle(HTTPMethod, String) [with T = AutoConnectConfigExt; HTTPMethod = http_method]'
+2025-11-19T11:44:58.8763210Z  1447 |   _currentPageElement.reset(_setupPage(uri));
+2025-11-19T11:44:58.8763486Z       |                             ^~~~~~~~~~
+2025-11-19T11:44:58.8764176Z /home/runner/Arduino/libraries/AutoConnect/src/AutoConnectCoreImpl.hpp:1093:44:   required from 'void AutoConnectCore<T>::_startWebServer() [with T = AutoConnectConfigExt]'
+2025-11-19T11:44:58.8765163Z  1093 |     _responsePage->exitCanHandle(std::bind(&AutoConnectCore<T>::_classifyHandle, this, std::placeholders::_1, std::placeholders::_2));
+2025-11-19T11:44:58.8765713Z       |                                            ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2025-11-19T11:44:58.8766522Z /home/runner/Arduino/libraries/AutoConnect/src/AutoConnectCoreImpl.hpp:260:7:   required from 'bool AutoConnectCore<T>::begin(const char*, const char*, long unsigned int) [with T = AutoConnectConfigExt]'
+2025-11-19T11:44:58.8767487Z   260 |       _startWebServer();
+2025-11-19T11:44:58.8767714Z       |       ^~~~~~~~~~~~~~~
+2025-11-19T11:44:58.8768340Z /home/runner/Arduino/libraries/AutoConnect/src/AutoConnectCoreImpl.hpp:74:15:   required from 'bool AutoConnectCore<T>::begin() [with T = AutoConnectConfigExt]'
+2025-11-19T11:44:58.8769056Z    74 |   return begin(nullptr, nullptr, _apConfig.beginTimeout);
+2025-11-19T11:44:58.8769373Z       |          ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2025-11-19T11:44:58.8769850Z /home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/wifi_config.h:86:19:   required from here
+2025-11-19T11:44:58.8770321Z    86 |   if (portal.begin()) {
+2025-11-19T11:44:58.8770531Z       |       ~~~~~~~~~~~~^~
+2025-11-19T11:44:58.8771091Z /home/runner/Arduino/libraries/AutoConnect/src/AutoConnectPageImpl.hpp:1001:43: error: 'spi_flash_get_chip_size' was not declared in this scope
+2025-11-19T11:44:58.8771711Z  1001 |   return (uint32_t)spi_flash_get_chip_size();
+2025-11-19T11:44:58.8771982Z       |                    ~~~~~~~~~~~~~~~~~~~~~~~^~
+2025-11-19T11:44:58.8772153Z 
+2025-11-19T11:44:58.9909736Z Error during build: exit status 1
+2025-11-19T11:44:58.9910149Z 
+2025-11-19T11:44:58.9911128Z [92mUsed library[0m        [92mVersion[0m [90mPath[0m                                                                                     
+2025-11-19T11:44:58.9912853Z [93mAdafruit NeoPixel[0m   1.15.2  [90m/home/runner/Arduino/libraries/Adafruit_NeoPixel[0m                                         
+2025-11-19T11:44:58.9914748Z [93mWiFi[0m                3.3.3   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/WiFi[0m               
+2025-11-19T11:44:58.9916580Z [93mNetworking[0m          3.3.3   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/Network[0m            
+2025-11-19T11:44:58.9918311Z [93mWebServer[0m           3.3.3   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/WebServer[0m          
+2025-11-19T11:44:58.9919678Z [93mFS[0m                  3.3.3   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/FS[0m                 
+2025-11-19T11:44:58.9921018Z [93mAutoConnect[0m         1.4.2   [90m/home/runner/Arduino/libraries/AutoConnect[0m                                               
+2025-11-19T11:44:58.9922495Z [93mDNSServer[0m           3.3.3   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/DNSServer[0m          
+2025-11-19T11:44:58.9923981Z [93mESP32 Async UDP[0m     3.3.3   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/AsyncUDP[0m           
+2025-11-19T11:44:58.9925369Z [93mEEPROM[0m              3.3.3   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/EEPROM[0m             
+2025-11-19T11:44:58.9927325Z [93mPageBuilder[0m         1.5.6   [90m/home/runner/Arduino/libraries/PageBuilder[0m                                               
+2025-11-19T11:44:58.9928744Z [93mSPIFFS[0m              3.3.3   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/SPIFFS[0m             
+2025-11-19T11:44:58.9930343Z [93mSD[0m                  3.3.3   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/SD[0m                 
+2025-11-19T11:44:58.9931738Z [93mSPI[0m                 3.3.3   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/SPI[0m                
+2025-11-19T11:44:58.9933193Z [93mPreferences[0m         3.3.3   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/Preferences[0m        
+2025-11-19T11:44:58.9934675Z [93mTicker[0m              3.3.3   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/Ticker[0m             
+2025-11-19T11:44:58.9936119Z [93mArduinoJson[0m         7.4.2   [90m/home/runner/Arduino/libraries/ArduinoJson[0m                                               
+2025-11-19T11:44:58.9937750Z [93mHTTPClient[0m          3.3.3   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/HTTPClient[0m         
+2025-11-19T11:44:58.9939341Z [93mNetworkClientSecure[0m 3.3.3   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/NetworkClientSecure[0m
+2025-11-19T11:44:58.9940911Z [93mHTTPUpdate[0m          3.3.3   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/HTTPUpdate[0m         
+2025-11-19T11:44:58.9942277Z [93mUpdate[0m              3.3.3   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/Update[0m             
+2025-11-19T11:44:58.9943508Z [93mHash[0m                3.3.3   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/Hash[0m               
+2025-11-19T11:44:58.9944180Z 
+2025-11-19T11:44:58.9944699Z [92mUsed platform[0m [92mVersion[0m [90mPath[0m                                                       
+2025-11-19T11:44:58.9945764Z [93mesp32:esp32[0m   3.3.3   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3[0m
+2025-11-19T11:44:58.9969062Z ##[error]Process completed with exit code 1.
