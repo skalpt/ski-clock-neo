@@ -21,13 +21,13 @@ enum LedPattern {
   #define LED_PIN LED_BUILTIN
 #endif
 
-// LED state - ESP32 and ESP8266 both use inverted logic (LOW = LED on)
+// LED GPIO state - ESP32 and ESP8266 both use inverted logic (LOW = LED on)
 #if defined(ESP8266) || defined(ESP32)
-  #define LED_ON LOW
-  #define LED_OFF HIGH
+  #define LED_GPIO_ON LOW
+  #define LED_GPIO_OFF HIGH
 #else
-  #define LED_ON HIGH
-  #define LED_OFF LOW
+  #define LED_GPIO_ON HIGH
+  #define LED_GPIO_OFF LOW
 #endif
 
 // Direct port manipulation for fast GPIO operations in interrupt context
@@ -47,7 +47,7 @@ enum LedPattern {
 
 // Helper functions to handle LED on/off with inverted logic
 inline void ledOn() {
-  if (LED_ON == LOW) {
+  if (LED_GPIO_ON == LOW) {
     FAST_PIN_LOW(LED_PIN);
   } else {
     FAST_PIN_HIGH(LED_PIN);
@@ -55,7 +55,7 @@ inline void ledOn() {
 }
 
 inline void ledOff() {
-  if (LED_ON == LOW) {
+  if (LED_GPIO_ON == LOW) {
     FAST_PIN_HIGH(LED_PIN);
   } else {
     FAST_PIN_LOW(LED_PIN);

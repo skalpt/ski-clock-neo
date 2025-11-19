@@ -1,0 +1,54 @@
+Run arduino-cli compile --fqbn esp32:esp32:esp32 \
+In file included from /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/cores/esp32/esp32-hal.h:83,
+                 from /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/cores/esp32/Arduino.h:36,
+                 from /tmp/arduino/sketches/A112E18D136C6DC1ED5764BF8E0E7FBE/sketch/ski-clock-neo.ino.cpp:1:
+/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/cores/esp32/esp32-hal-gpio.h:42:27: error: invalid conversion from 'int' to 'LedPattern' [-fpermissive]
+ #define HIGH              0x1
+                           ^~~
+/home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/led_indicator.h:27:19: note: in expansion of macro 'HIGH'
+   #define LED_OFF HIGH
+                   ^~~~
+/home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/led_indicator.h:69:38: note: in expansion of macro 'LED_OFF'
+ volatile LedPattern currentPattern = LED_OFF;
+                                      ^~~~~~~
+In file included from /home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/ski-clock-neo.ino:6:
+/home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/led_indicator.h: In function 'void ledTimerCallback()':
+/home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/led_indicator.h:133:5: error: duplicate case value
+     case LED_OFF:
+     ^~~~
+/home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/led_indicator.h:95:5: note: previously used here
+     case LED_ONE_FLASH:
+     ^~~~
+/home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/led_indicator.h: In function 'void setLedPattern(LedPattern)':
+/home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/led_indicator.h:165:5: error: duplicate case value
+     case LED_OFF:
+     ^~~~
+/home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/led_indicator.h:159:5: note: previously used here
+     case LED_ONE_FLASH:
+     ^~~~
+
+Error during build: exit status 1
+
+Used library      Version Path                                                                                   
+Adafruit NeoPixel 1.15.2  /home/runner/Arduino/libraries/Adafruit_NeoPixel                                       
+Ticker            2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Ticker          
+WiFi              2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFi            
+WebServer         2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WebServer       
+AutoConnect       1.4.2   /home/runner/Arduino/libraries/AutoConnect                                             
+DNSServer         2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/DNSServer       
+EEPROM            2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/EEPROM          
+PageBuilder       1.5.6   /home/runner/Arduino/libraries/PageBuilder                                             
+FS                2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/FS              
+SPIFFS            2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPIFFS          
+SD                2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SD              
+SPI               2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPI             
+Preferences       2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Preferences     
+ArduinoJson       7.4.2   /home/runner/Arduino/libraries/ArduinoJson                                             
+HTTPClient        2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPClient      
+WiFiClientSecure  2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFiClientSecure
+HTTPUpdate        2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPUpdate      
+Update            2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Update          
+
+Used platform Version Path                                                        
+esp32:esp32   2.0.14  /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14
+Error: Process completed with exit code 1.
