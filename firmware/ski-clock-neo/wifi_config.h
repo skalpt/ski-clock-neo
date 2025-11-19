@@ -57,27 +57,27 @@ void setupWiFi() {
   // KEY FEATURES for your requirements:
   
   // 1. Keep Access Point running alongside WiFi connection
-  config.apBehavior = AC_COEXIST;  // Run AP and STA concurrently
-  
-  // 2. Keep portal web interface available even after WiFi connection
+  // retainPortal keeps the SoftAP (and web interface) running after WiFi connects
+  // NOTE: The auto-popup captive portal only works BEFORE WiFi connects
+  //       After connection, users must manually connect to AP and visit its IP (usually 192.168.4.1)
   config.retainPortal = true;
   
-  // 3. Automatically reconnect when connection drops
+  // 2. Automatically reconnect when connection drops
   config.autoReconnect = true;
   
-  // 4. Auto-save credentials for multiple networks
+  // 3. Auto-save credentials for multiple networks
   config.autoSave = AC_SAVECREDENTIAL_AUTO;
   
-  // 5. Set reconnect interval for background retry (5 seconds)
+  // 4. Set reconnect interval for background retry (5 seconds)
   config.reconnectInterval = 5;
   
-  // 6. Configure portal timeout (0 = never timeout)
+  // 5. Configure portal timeout (0 = never timeout)
   config.portalTimeout = 0;  // Portal always available
   
-  // 7. Try to connect to known networks on boot
+  // 6. Try to connect to known networks on boot
   config.autoRise = true;
   
-  // 8. Minimum RSSI to connect (signal strength threshold)
+  // 7. Minimum RSSI to connect (signal strength threshold)
   config.minRSSI = -80;
   
   // Apply configuration

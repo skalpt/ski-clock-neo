@@ -47,7 +47,7 @@ Debug logging is **enabled** by default for development and troubleshooting:
 ## Recent Changes
 
 - **2025-11-19**: Converted NeoPixel updates to FreeRTOS tasks on ESP32 (Core 1 for dual-core, high priority for C3) to prevent freezing during OTA checks
-- **2025-11-19**: Added AC_COEXIST to keep captive portal AP running alongside WiFi connection
+- **2025-11-19**: Configured retainPortal to keep captive portal AP accessible after WiFi connection
 - **2025-11-19**: Enabled USB CDC On Boot for ESP32-C3/S3 builds to fix Serial output
 - **2025-11-19**: Fixed getLatestVersion() buffer size limit (200→1024 bytes) to handle full JSON responses
 - **2025-11-19**: Fixed OTA download WiFiClient scope bug causing "connection lost" errors during firmware downloads
