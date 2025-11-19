@@ -1,0 +1,46 @@
+Run arduino-cli compile --fqbn esp8266:esp8266:generic:eesz=4M3M \
+In file included from /home/runner/Arduino/libraries/AutoConnect/src/AutoConnectAux.cpp:15:
+/home/runner/Arduino/libraries/AutoConnect/src/AutoConnectElementJsonImpl.h:20:13: warning: JSON_OBJECT_SIZE is deprecated, you don't need to compute the size anymore
+   20 |   size_t  size = JSON_OBJECT_SIZE(6);
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~                                                   
+In file included from /home/runner/Arduino/libraries/AutoConnect/src/AutoConnectAux.cpp:15:
+/home/runner/Arduino/libraries/AutoConnect/src/AutoConnectElementJsonImpl.h:129:13: warning: JSON_OBJECT_SIZE is deprecated, you don't need to compute the size anymore
+  129 |   size_t  size = AutoConnectElementJson::getObjectSize() + JSON_OBJECT_SIZE(1);
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~         
+/home/runner/Arduino/libraries/AutoConnect/src/AutoConnectElementJsonImpl.h:167:13: warning: JSON_OBJECT_SIZE is deprecated, you don't need to compute the size anymore
+  167 |   size_t  size = AutoConnectElementJson::getObjectSize() + JSON_OBJECT_SIZE(4);
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~         
+/home/runner/Arduino/libraries/AutoConnect/src/AutoConnectElementJsonImpl.h:224:13: warning: JSON_OBJECT_SIZE is deprecated, you don't need to compute the size anymore
+  224 |   size_t  size = AutoConnectElementJson::getObjectSize() + JSON_OBJECT_SIZE(2);
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~         
+/home/runner/Arduino/libraries/AutoConnect/src/AutoConnectElementJsonImpl.h:289:13: warning: JSON_OBJECT_SIZE is deprecated, you don't need to compute the size anymore
+  289 |   size_t  size = AutoConnectElementJson::getObjectSize() + JSON_OBJECT_SIZE(5);
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~         
+In file included from /home/runner/Arduino/libraries/AutoConnect/src/AutoConnectAux.cpp:15:
+/home/runner/Arduino/libraries/AutoConnect/src/AutoConnectElementJsonImpl.h:363:13: warning: JSON_OBJECT_SIZE is deprecated, you don't need to compute the size anymore
+  363 |   size_t  size = AutoConnectElementJson::getObjectSize() + JSON_OBJECT_SIZE(3) +  JSON_ARRAY_SIZE(_values.size());
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/Arduino/libraries/AutoConnect/src/AutoConnectElementJsonImpl.h:363:13: warning: JSON_ARRAY_SIZE is deprecated, you don't need to compute the size anymore
+  363 |   size_t  size = AutoConnectElementJson::getObjectSize() + JSON_OBJECT_SIZE(3) +  JSON_ARRAY_SIZE(_values.size());
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/Arduino/libraries/AutoConnect/src/AutoConnectElementJsonImpl.h:437:13: warning: JSON_OBJECT_SIZE is deprecated, you don't need to compute the size anymore
+  437 |   size_t  size = AutoConnectElementJson::getObjectSize() + JSON_OBJECT_SIZE(5);
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~         
+/home/runner/Arduino/libraries/AutoConnect/src/AutoConnectElementJsonImpl.h:516:13: warning: JSON_OBJECT_SIZE is deprecated, you don't need to compute the size anymore
+  516 |   size_t  size = AutoConnectElementJson::getObjectSize() + JSON_OBJECT_SIZE(2) + JSON_ARRAY_SIZE(_options.size());
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/Arduino/libraries/AutoConnect/src/AutoConnectElementJsonImpl.h:516:13: warning: JSON_ARRAY_SIZE is deprecated, you don't need to compute the size anymore
+  516 |   size_t  size = AutoConnectElementJson::getObjectSize() + JSON_OBJECT_SIZE(2) + JSON_ARRAY_SIZE(_options.size());
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/Arduino/libraries/AutoConnect/src/AutoConnectElementJsonImpl.h:631:13: warning: JSON_OBJECT_SIZE is deprecated, you don't need to compute the size anymore
+  631 |   size_t  size = AutoConnectElementJson::getObjectSize() + JSON_OBJECT_SIZE(2);
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~         
+/home/runner/Arduino/libraries/AutoConnect/src/AutoConnectAux.cpp:1187:13: warning: JSON_OBJECT_SIZE is deprecated, you don't need to compute the size anymore
+ 1187 |     bufferSize += JSON_OBJECT_SIZE(4);
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~                                                  
+/home/runner/Arduino/libraries/AutoConnect/src/AutoConnectAux.cpp:1189:13: warning: JSON_ARRAY_SIZE is deprecated, you don't need to compute the size anymore
+ 1189 |     bufferSize += JSON_ARRAY_SIZE(_addonElm.size());
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                                   
+/home/runner/Arduino/libraries/AutoConnect/src/AutoConnectAux.cpp:1192:13: warning: JSON_ARRAY_SIZE is deprecated, you don't need to compute the size anymore
+ 1192 |     bufferSize += JSON_ARRAY_SIZE(amount);
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   
