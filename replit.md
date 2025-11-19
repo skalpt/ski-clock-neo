@@ -22,14 +22,7 @@ The project consists of two main components:
     *   **Deployment**: Fully automatic CI/CD via GitHub Actions builds firmware for various board variants, generates timestamp-based versions (`year.month.day.buildnum`), and uploads binaries and configuration to the dashboard.
     *   **System Design Choices**: Emphasizes automated versioning, secure communication, and graceful fallback for optional services like Object Storage. Secrets are managed securely in GitHub and Replit, with GitHub Actions injecting configuration into the dashboard.
 
-## Build Optimizations
-
-### Aggressive Size Optimization (All Boards)
-All board variants use aggressive compiler optimizations to minimize firmware size:
-- **Link Time Optimization (LTO)**: Enabled with `-flto` flag for aggressive code size reduction
-- **Size Optimization**: Uses `-Os` compiler flag to prioritize code size over speed
-- **C++ RTTI/Exceptions Disabled**: Uses `-fno-rtti -fno-exceptions` to remove unused C++ features
-- **Dead Code Elimination**: Uses `-Wl,--gc-sections` linker flag to remove unused functions
+## Build Configuration
 
 ### Optimized Partition Schemes
 Since the project doesn't use SPIFFS, all boards use minimal SPIFFS partitions to maximize app space:
@@ -38,11 +31,11 @@ Since the project doesn't use SPIFFS, all boards use minimal SPIFFS partitions t
 - **ESP-01**: `1M` partition (1MB chip, no OTA possible)
 
 ### Debug Logging System
-To save ~10-20KB of flash space, all `Serial.print` statements are gated behind a `DEBUG_LOGGING` flag:
-- **Default**: Debug logging is **disabled** in production builds (saves flash space)
-- **Enable**: Uncomment `#define DEBUG_LOGGING` in `firmware/ski-clock-neo/debug.h` to enable Serial output
-- **Macros**: All code uses `DEBUG_PRINT()` and `DEBUG_PRINTLN()` instead of `Serial.print()`
-- **Benefits**: When disabled, all debug strings are removed from the compiled binary
+Debug logging is **enabled** by default for development and troubleshooting:
+- **Status**: `#define DEBUG_LOGGING` is enabled in `firmware/ski-clock-neo/debug.h`
+- **Macros**: All code uses `DEBUG_PRINT()` and `DEBUG_PRINTLN()` for serial output
+- **Output**: Serial messages help with WiFi connection, OTA updates, and system diagnostics
+- **To disable**: Comment out the `#define DEBUG_LOGGING` line to remove debug output
 
 ## External Dependencies
 -   **Adafruit_NeoPixel**: For controlling NeoPixel LED matrices.
@@ -53,14 +46,13 @@ To save ~10-20KB of flash space, all `Serial.print` statements are gated behind 
 -   **GitHub Actions**: CI/CD platform for automated firmware builds, versioning, and deployment to the dashboard.
 ## Recent Changes
 
+- **2025-11-19**: Removed aggressive compiler optimizations (LTO, -Os, etc.) - min_spiffs partition provides sufficient space
+- **2025-11-19**: Enabled debug logging by default for development and troubleshooting
 - **2025-11-19**: Implemented freeze-proof clock system with hardware interrupt timers for LED status
 - **2025-11-19**: Made OTA version checks non-blocking with chunked HTTP reads and yield() calls
 - **2025-11-19**: LED now uses hw_timer_t (ESP32) and Timer1 (ESP8266) for true interrupt-driven operation
 - **2025-11-19**: Optimized partition schemes - ESP32 boards use min_spiffs (1.9MB app), ESP8266 boards use 4M1M (enables OTA)
 - **2025-11-19**: Fixed ESP8266 boards - changed from 4M3M (no OTA) to 4M1M (OTA enabled)
-
-- **2025-11-19**: Applied aggressive size optimizations (LTO, -Os, -fno-rtti, -fno-exceptions) to all 6 board variants
-- **2025-11-19**: Implemented debug logging system to reduce flash usage (saves ~10-20KB when disabled)
 - **2025-11-19**: Fixed ESP32-S3 inconsistent GPIO register types (bank 0 direct uint32_t, bank 1 with .val accessor)
 - **2025-11-19**: ESP32-C3 LED_PIN overridden to GPIO8 (board-specific requirement)
 - **2025-11-19**: Separated ESP32-C3/S3 preprocessor directives (C3 has no out1 registers, S3 needs dual banks)

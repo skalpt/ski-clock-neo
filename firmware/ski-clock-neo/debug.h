@@ -1,8 +1,8 @@
 #ifndef DEBUG_H
 #define DEBUG_H
 
-// Uncomment to enable debug logging (adds ~10-20KB to firmware size)
-// #define DEBUG_LOGGING
+// Debug logging enabled for development
+#define DEBUG_LOGGING
 
 #ifdef DEBUG_LOGGING
   #define DEBUG_BEGIN(baud) Serial.begin(baud)
