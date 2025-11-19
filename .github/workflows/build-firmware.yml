@@ -36,50 +36,42 @@ jobs:
         run: |
           arduino-cli compile --fqbn esp32:esp32:esp32 \
             --build-property "build.partitions=min_spiffs" \
-            --build-property "compiler.cpp.extra_flags=-DGITHUB_REPO_OWNER=\"${{ secrets.GITHUB_REPO_OWNER }}\" -DGITHUB_REPO_NAME=\"${{ secrets.GITHUB_REPO_NAME }}\"" \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\"" \
             --output-dir build/esp32 \
-            .
+            firmware/
           cp build/esp32/ski-clock-neo.ino.bin build/ski-clock-neo-esp32.bin
           
       - name: Build for ESP8266
         run: |
           arduino-cli compile --fqbn esp8266:esp8266:nodemcuv2 \
             --build-property "build.flash_size=4M3M" \
-            --build-property "compiler.cpp.extra_flags=-DGITHUB_REPO_OWNER=\"${{ secrets.GITHUB_REPO_OWNER }}\" -DGITHUB_REPO_NAME=\"${{ secrets.GITHUB_REPO_NAME }}\"" \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\"" \
             --output-dir build/esp8266 \
-            .
+            firmware/
           cp build/esp8266/ski-clock-neo.ino.bin build/ski-clock-neo-esp8266.bin
           
       - name: Get version from tag
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
         
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            build/ski-clock-neo-esp32.bin
-            build/ski-clock-neo-esp8266.bin
-          body: |
-            ## Ski Clock Neo Firmware ${{ steps.get_version.outputs.VERSION }}
+      - name: Upload ESP32 firmware to server
+        run: |
+          curl -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/upload" \
+            -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
+            -F "file=@build/ski-clock-neo-esp32.bin" \
+            -F "version=${{ steps.get_version.outputs.VERSION }}" \
+            -F "platform=esp32"
             
-            ### Installation
-            Download the appropriate firmware for your board:
-            - **ESP32**: `ski-clock-neo-esp32.bin`
-            - **ESP8266**: `ski-clock-neo-esp8266.bin`
-            
-            ### OTA Update
-            Devices with OTA enabled will automatically detect and install this update.
-            
-            ### Manual Installation
-            Use Arduino IDE or esptool.py to flash the firmware to your device.
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload ESP8266 firmware to server
+        run: |
+          curl -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/upload" \
+            -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
+            -F "file=@build/ski-clock-neo-esp8266.bin" \
+            -F "version=${{ steps.get_version.outputs.VERSION }}" \
+            -F "platform=esp8266"
           
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: firmware-binaries
+          name: firmware-binaries-${{ steps.get_version.outputs.VERSION }}
           path: build/*.bin
