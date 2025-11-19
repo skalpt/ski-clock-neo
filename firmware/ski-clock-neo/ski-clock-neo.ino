@@ -4,7 +4,11 @@
 #include "wifi_config.h"
 
 // -------------------- Firmware version -------------------
+// Version is injected at build time via compiler flags
+// Fallback to default if not injected (for local development)
+#ifndef FIRMWARE_VERSION
 #define FIRMWARE_VERSION "v1.0.0"
+#endif
 
 // GitHub repo configuration comes from Replit secrets (injected at build time)
 // No need to hardcode these values here anymore

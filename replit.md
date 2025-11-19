@@ -138,6 +138,8 @@ Must be configured in GitHub repo (Settings → Secrets → Actions):
 - ✅ Enables future device monitoring features
 
 ## Recent Changes
+- **2025-11-19**: Fixed ESP8266 Update API (getErrorString vs errorString)
+- **2025-11-19**: Fixed FIRMWARE_VERSION redefinition warning (now uses #ifndef guard)
 - **2025-11-19**: Fixed wifi_config.h to use AutoConnectCredential.entries() instead of portal.credential()
 - **2025-11-19**: Pinned ESP32 Core to v2.0.14 for AutoConnect compatibility (v3.x not supported)
 - **2025-11-19**: Restructured firmware to Arduino-standard folder layout (firmware/ski-clock-neo/ski-clock-neo.ino)

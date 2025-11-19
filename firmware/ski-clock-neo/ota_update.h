@@ -380,7 +380,7 @@ bool performOTAUpdate(String version) {
     }
   } else {
     Serial.print("Update error: ");
-    Serial.println(Update.errorString());
+    Serial.println(Update.getErrorString());
   }
   
   http.end();
