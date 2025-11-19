@@ -17,7 +17,10 @@ This is an Arduino project for a ski clock display using WS2812 NeoPixel LED mat
 - Currently displays counting digits 0-9 in red
 
 ## Project Structure
-- `ski-clock-neo.ino` - Main Arduino sketch with LED control and font rendering
+- `ski-clock-neo.ino` - Main Arduino sketch with LED control and display logic
+- `font_5x7.h` - Font data definitions (glyphs, widths, constants)
+- `scale_smooth.h` - 2x scaling with diagonal smoothing algorithm
+- `info.sh` - Information script for Replit environment
 
 ## Libraries Required
 - Adafruit_NeoPixel
@@ -38,5 +41,12 @@ Since this is Arduino hardware code, you can use this Replit to:
 
 To actually run this code, you'll need to use Arduino IDE or PlatformIO on a computer connected to Arduino hardware.
 
+## Code Organization
+The code has been refactored for better maintainability:
+- **Modular structure**: Font data and smoothing algorithm extracted to separate headers
+- **Memory efficient**: Uses static buffer instead of stack allocation for 2x scaling (~140 bytes saved per glyph render)
+- **Extended character support**: Now recognizes actual degree symbol (0xB0) in addition to '*' placeholder
+
 ## Recent Changes
+- 2025-11-19: Refactored code - extracted font data to font_5x7.h, smoothing to scale_smooth.h, improved memory efficiency, added degree symbol support
 - 2025-11-19: Initial import from GitHub

@@ -23,6 +23,16 @@ The sketch currently:
 - Updates every 2 seconds
 - Displays in red color
 - Centers text on the 16x16 matrix
+- Uses 2x scaled font with diagonal smoothing for better appearance
+
+## Code Structure
+
+The project is organized into modular components:
+- **ski-clock-neo.ino**: Main application logic and display control
+- **font_5x7.h**: Font definitions for all displayable characters
+- **scale_smooth.h**: Diagonal smoothing algorithm for 2x scaling
+
+This modular approach improves code maintainability and reduces memory usage.
 
 ## Running This Code
 
