@@ -48,10 +48,13 @@ jobs:
             "DOWNLOAD_API_KEY": "${{ secrets.DOWNLOAD_API_KEY }}"
           }
           EOF
-          curl -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/config" \
+          echo "Uploading configuration to dashboard server..."
+          curl --fail --show-error -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/config" \
             -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
             -H "Content-Type: application/json" \
-            -d @config.json
+            -d @config.json \
+            -w "\n"
+          echo "✓ Configuration uploaded successfully"
           rm config.json
           
       - name: Build for ESP32
@@ -73,19 +76,25 @@ jobs:
         
       - name: Upload ESP32 firmware to server
         run: |
-          curl -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/upload" \
+          echo "Uploading ESP32 firmware (version ${{ steps.get_version.outputs.VERSION }})..."
+          curl --fail --show-error -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/upload" \
             -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
             -F "file=@build/ski-clock-neo-esp32.bin" \
             -F "version=${{ steps.get_version.outputs.VERSION }}" \
-            -F "platform=esp32"
+            -F "platform=esp32" \
+            -w "\n"
+          echo "✓ ESP32 firmware uploaded successfully"
             
       - name: Upload ESP8266 firmware to server
         run: |
-          curl -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/upload" \
+          echo "Uploading ESP8266 firmware (version ${{ steps.get_version.outputs.VERSION }})..."
+          curl --fail --show-error -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/upload" \
             -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
             -F "file=@build/ski-clock-neo-esp8266.bin" \
             -F "version=${{ steps.get_version.outputs.VERSION }}" \
-            -F "platform=esp8266"
+            -F "platform=esp8266" \
+            -w "\n"
+          echo "✓ ESP8266 firmware uploaded successfully"
           
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
