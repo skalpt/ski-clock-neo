@@ -211,6 +211,7 @@ Must be configured in GitHub repo (Settings → Secrets → Actions):
 
 ## Recent Changes
 
+- **2025-11-19**: Fixed ESP32-S3 inconsistent GPIO register types (bank 0 direct uint32_t, bank 1 with .val accessor)
 - **2025-11-19**: ESP32-C3 LED_PIN overridden to GPIO8 (board-specific requirement)
 - **2025-11-19**: Separated ESP32-C3/S3 preprocessor directives (C3 has no out1 registers, S3 needs dual banks)
 - **2025-11-19**: Fixed ESP32-C3/S3 fast GPIO with dual GPIO bank support (0-31, 32-48) for ~10-20 MHz toggle speed

@@ -1,0 +1,52 @@
+Run arduino-cli compile --fqbn esp32:esp32:esp32s3 \
+  
+In file included from /home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/ski-clock-neo.ino:6:
+/home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/led_indicator.h: In function 'void ledOn()':
+/home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/led_indicator.h:58:21: error: request for member 'val' in 'GPIO.gpio_dev_s::out_w1tc', which is of non-class type 'volatile uint32_t' {aka 'volatile unsigned int'}
+       GPIO.out_w1tc.val = (1UL << (pin)); \
+                     ^~~
+/home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/led_indicator.h:58:21: note: in definition of macro 'FAST_PIN_LOW'
+       GPIO.out_w1tc.val = (1UL << (pin)); \
+                     ^~~
+/home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/led_indicator.h:50:21: error: request for member 'val' in 'GPIO.gpio_dev_s::out_w1ts', which is of non-class type 'volatile uint32_t' {aka 'volatile unsigned int'}
+       GPIO.out_w1ts.val = (1UL << (pin)); \
+                     ^~~
+/home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/led_indicator.h:50:21: note: in definition of macro 'FAST_PIN_HIGH'
+       GPIO.out_w1ts.val = (1UL << (pin)); \
+                     ^~~
+/home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/led_indicator.h: In function 'void ledOff()':
+/home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/led_indicator.h:50:21: error: request for member 'val' in 'GPIO.gpio_dev_s::out_w1ts', which is of non-class type 'volatile uint32_t' {aka 'volatile unsigned int'}
+       GPIO.out_w1ts.val = (1UL << (pin)); \
+                     ^~~
+/home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/led_indicator.h:50:21: note: in definition of macro 'FAST_PIN_HIGH'
+       GPIO.out_w1ts.val = (1UL << (pin)); \
+                     ^~~
+/home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/led_indicator.h:58:21: error: request for member 'val' in 'GPIO.gpio_dev_s::out_w1tc', which is of non-class type 'volatile uint32_t' {aka 'volatile unsigned int'}
+       GPIO.out_w1tc.val = (1UL << (pin)); \
+                     ^~~
+/home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/led_indicator.h:58:21: note: in definition of macro 'FAST_PIN_LOW'
+       GPIO.out_w1tc.val = (1UL << (pin)); \
+                     ^~~
+Error during build: exit status 1
+Used library      Version Path                                                                                   
+Adafruit NeoPixel 1.15.2  /home/runner/Arduino/libraries/Adafruit_NeoPixel                                       
+Ticker            2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Ticker          
+WiFi              2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFi            
+WebServer         2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WebServer       
+AutoConnect       1.4.2   /home/runner/Arduino/libraries/AutoConnect                                             
+DNSServer         2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/DNSServer       
+EEPROM            2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/EEPROM          
+PageBuilder       1.5.6   /home/runner/Arduino/libraries/PageBuilder                                             
+FS                2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/FS              
+SPIFFS            2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPIFFS          
+SD                2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SD              
+SPI               2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPI             
+Preferences       2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Preferences     
+ArduinoJson       7.4.2   /home/runner/Arduino/libraries/ArduinoJson                                             
+HTTPClient        2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPClient      
+WiFiClientSecure  2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFiClientSecure
+HTTPUpdate        2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPUpdate      
+Update            2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Update          
+Used platform Version Path                                                        
+esp32:esp32   2.0.14  /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14
+Error: Process completed with exit code 1.

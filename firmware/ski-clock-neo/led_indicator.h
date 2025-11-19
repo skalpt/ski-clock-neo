@@ -44,10 +44,11 @@ enum LedPattern {
   #define FAST_PIN_LOW(pin)  GPIO.out_w1tc.val = (1UL << (pin))
 #elif defined(CONFIG_IDF_TARGET_ESP32S3)
   // ESP32-S3 has 48 GPIOs (needs dual GPIO banks for pins 0-31 and 32-48)
+  // Bank 0: direct uint32_t (no .val), Bank 1: struct with .val
   #include <soc/gpio_reg.h>
   #define FAST_PIN_HIGH(pin) do { \
     if ((pin) < 32) { \
-      GPIO.out_w1ts.val = (1UL << (pin)); \
+      GPIO.out_w1ts = (1UL << (pin)); \
     } else { \
       GPIO.out1_w1ts.val = (1UL << ((pin) - 32)); \
     } \
@@ -55,7 +56,7 @@ enum LedPattern {
   
   #define FAST_PIN_LOW(pin) do { \
     if ((pin) < 32) { \
-      GPIO.out_w1tc.val = (1UL << (pin)); \
+      GPIO.out_w1tc = (1UL << (pin)); \
     } else { \
       GPIO.out1_w1tc.val = (1UL << ((pin) - 32)); \
     } \
