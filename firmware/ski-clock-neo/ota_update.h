@@ -147,7 +147,7 @@ long parseVersion(String version) {
   }
 }
 
-// Check update server for latest version
+// Check update server for latest version (non-blocking with chunked reads)
 String getLatestVersion() {
   HTTPClient http;
   
@@ -159,69 +159,102 @@ String getLatestVersion() {
   // Determine if we need HTTPS or HTTP
   bool isHttps = apiUrl.startsWith("https://");
   
+  WiFiClient* clientPtr = nullptr;
+  
   if (isHttps) {
-    WiFiClientSecure client;
-    client.setInsecure();  // For custom servers, cert validation is optional
-    
-    if (http.begin(client, apiUrl)) {
-      http.addHeader("User-Agent", "SkiClockNeo-OTA");
-      
-      int httpCode = http.GET();
-      
-      if (httpCode == HTTP_CODE_OK) {
-        String payload = http.getString();
-        
-        // Simple JSON parsing to extract "version"
-        int versionIndex = payload.indexOf("\"version\"");
-        if (versionIndex > 0) {
-          int colonIndex = payload.indexOf(":", versionIndex);
-          int quoteStart = payload.indexOf("\"", colonIndex + 1);
-          int quoteEnd = payload.indexOf("\"", quoteStart + 1);
-          
-          if (quoteStart > 0 && quoteEnd > quoteStart) {
-            String version = payload.substring(quoteStart + 1, quoteEnd);
-            http.end();
-            return version;
-          }
-        }
-      } else {
-        DEBUG_PRINT("Update server error: ");
-        DEBUG_PRINTLN(httpCode);
-      }
-      
-      http.end();
-    }
+    WiFiClientSecure* secureClient = new WiFiClientSecure();
+    secureClient->setInsecure();  // For custom servers, cert validation is optional
+    clientPtr = secureClient;
   } else {
-    // Plain HTTP
-    WiFiClient client;
+    clientPtr = new WiFiClient();
+  }
+  
+  if (!http.begin(*clientPtr, apiUrl)) {
+    DEBUG_PRINTLN("Failed to begin HTTP connection");
+    delete clientPtr;
+    return "";
+  }
+  
+  http.addHeader("User-Agent", "SkiClockNeo-OTA");
+  
+  int httpCode = http.GET();
+  
+  if (httpCode != HTTP_CODE_OK) {
+    DEBUG_PRINT("Update server error: ");
+    DEBUG_PRINTLN(httpCode);
+    http.end();
+    delete clientPtr;
+    return "";
+  }
+  
+  // Get content length
+  int contentLength = http.getSize();
+  DEBUG_PRINT("Response size: ");
+  DEBUG_PRINTLN(contentLength);
+  
+  // Read response in chunks with yield() to keep system responsive
+  String payload = "";
+  WiFiClient* stream = http.getStreamPtr();
+  
+  unsigned long startTime = millis();
+  const unsigned long TIMEOUT_MS = 10000;  // 10 second timeout
+  const int CHUNK_SIZE = 32;  // Read 32 bytes at a time
+  
+  while (http.connected() && (contentLength > 0 || contentLength == -1)) {
+    // Check timeout
+    if (millis() - startTime > TIMEOUT_MS) {
+      DEBUG_PRINTLN("OTA version check timeout");
+      break;
+    }
     
-    if (http.begin(client, apiUrl)) {
-      http.addHeader("User-Agent", "SkiClockNeo-OTA");
+    // Get available data size
+    size_t available = stream->available();
+    
+    if (available) {
+      // Read up to CHUNK_SIZE bytes
+      int readSize = (available > CHUNK_SIZE) ? CHUNK_SIZE : available;
+      char buffer[CHUNK_SIZE + 1];
+      int bytesRead = stream->readBytes(buffer, readSize);
       
-      int httpCode = http.GET();
-      
-      if (httpCode == HTTP_CODE_OK) {
-        String payload = http.getString();
+      if (bytesRead > 0) {
+        buffer[bytesRead] = '\0';
+        payload += String(buffer);
         
-        // Simple JSON parsing to extract "version"
-        int versionIndex = payload.indexOf("\"version\"");
-        if (versionIndex > 0) {
-          int colonIndex = payload.indexOf(":", versionIndex);
-          int quoteStart = payload.indexOf("\"", colonIndex + 1);
-          int quoteEnd = payload.indexOf("\"", quoteStart + 1);
-          
-          if (quoteStart > 0 && quoteEnd > quoteStart) {
-            String version = payload.substring(quoteStart + 1, quoteEnd);
-            http.end();
-            return version;
-          }
+        if (contentLength > 0) {
+          contentLength -= bytesRead;
         }
-      } else {
-        DEBUG_PRINT("Update server error: ");
-        DEBUG_PRINTLN(httpCode);
+        
+        // Yield to system to allow tickers/WiFi to run
+        yield();
       }
-      
-      http.end();
+    } else {
+      // No data available, yield and wait a bit
+      yield();
+      delay(1);
+    }
+    
+    // Stop if we've received enough data (version response is small, ~100 bytes max)
+    if (payload.length() > 200) {
+      break;
+    }
+  }
+  
+  DEBUG_PRINT("Received payload: ");
+  DEBUG_PRINTLN(payload);
+  
+  http.end();
+  delete clientPtr;
+  
+  // Simple JSON parsing to extract "version"
+  int versionIndex = payload.indexOf("\"version\"");
+  if (versionIndex > 0) {
+    int colonIndex = payload.indexOf(":", versionIndex);
+    int quoteStart = payload.indexOf("\"", colonIndex + 1);
+    int quoteEnd = payload.indexOf("\"", quoteStart + 1);
+    
+    if (quoteStart > 0 && quoteEnd > quoteStart) {
+      String version = payload.substring(quoteStart + 1, quoteEnd);
+      return version;
     }
   }
   

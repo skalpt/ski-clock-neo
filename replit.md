@@ -13,9 +13,9 @@ Ski Clock Neo integrates Arduino firmware for NeoPixel LED matrix displays with 
 The project consists of two main components:
 
 1.  **Firmware**: Embedded C++ for ESP32/ESP8266 microcontrollers driving a 16x16 NeoPixel LED matrix.
-    *   **Features**: Custom 5x7 pixel font with diagonal smoothing, multi-panel support, board-agnostic LED status indicator with fast port manipulation, advanced WiFi management via `AutoConnect` (multi-network credentials, captive portal, background reconnection), and secure OTA updates.
-    *   **OTA Implementation**: Utilizes a custom update server, API key authentication, configurable server URL, HTTPS with certificate validation, and ticker-based scheduling for non-blocking update checks.
-    *   **Timing**: Employs software tickers for LED indicators, NeoPixel updates, and OTA checks to ensure non-blocking operation.
+    *   **Features**: Custom 5x7 pixel font with diagonal smoothing, multi-panel support, freeze-proof LED status indicator with hardware interrupt timers, advanced WiFi management via `AutoConnect` (multi-network credentials, captive portal, background reconnection), and secure non-blocking OTA updates.
+    *   **OTA Implementation**: Utilizes a custom update server, API key authentication, configurable server URL, HTTPS with certificate validation, and non-blocking chunked HTTP reads with yield() calls to prevent UI freezing during version checks.
+    *   **Timing**: Hardware interrupt timers (hw_timer_t for ESP32, Timer1 for ESP8266) for LED indicators ensure guaranteed execution even during blocking operations. Software tickers handle NeoPixel updates and OTA scheduling.
 
 2.  **Dashboard Server**: A Python Flask application for firmware distribution and device management.
     *   **Features**: API-based firmware distribution supporting multiple platforms (ESP32, ESP32-C3, ESP32-S3, ESP-12F, ESP-01, Wemos D1 Mini), upload/download endpoints with API key authentication, platform aliasing (e.g., ESP8266 to ESP-12F), SHA256 checksums, and status monitoring.
@@ -53,7 +53,10 @@ To save ~10-20KB of flash space, all `Serial.print` statements are gated behind 
 -   **GitHub Actions**: CI/CD platform for automated firmware builds, versioning, and deployment to the dashboard.
 ## Recent Changes
 
-- **2025-11-19**: Optimized partition schemes - ESP32 boards use minimal_spiffs (1.9MB app), ESP8266 boards use 4M1M (enables OTA)
+- **2025-11-19**: Implemented freeze-proof clock system with hardware interrupt timers for LED status
+- **2025-11-19**: Made OTA version checks non-blocking with chunked HTTP reads and yield() calls
+- **2025-11-19**: LED now uses hw_timer_t (ESP32) and Timer1 (ESP8266) for true interrupt-driven operation
+- **2025-11-19**: Optimized partition schemes - ESP32 boards use min_spiffs (1.9MB app), ESP8266 boards use 4M1M (enables OTA)
 - **2025-11-19**: Fixed ESP8266 boards - changed from 4M3M (no OTA) to 4M1M (OTA enabled)
 
 - **2025-11-19**: Applied aggressive size optimizations (LTO, -Os, -fno-rtti, -fno-exceptions) to all 6 board variants

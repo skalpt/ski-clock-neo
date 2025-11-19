@@ -1,7 +1,6 @@
 #ifndef LED_INDICATOR_H
 #define LED_INDICATOR_H
 
-#include <Ticker.h>
 #include "debug.h"
 
 // LED patterns for WiFi status indication
@@ -74,7 +73,7 @@ enum LedPattern {
 #endif
 
 // Helper functions to handle LED on/off with inverted logic
-inline void ledOn() {
+inline void IRAM_ATTR ledOn() {
   if (LED_GPIO_ON == LOW) {
     FAST_PIN_LOW(LED_PIN);
   } else {
@@ -82,7 +81,7 @@ inline void ledOn() {
   }
 }
 
-inline void ledOff() {
+inline void IRAM_ATTR ledOff() {
   if (LED_GPIO_ON == LOW) {
     FAST_PIN_HIGH(LED_PIN);
   } else {
@@ -90,25 +89,30 @@ inline void ledOff() {
   }
 }
 
-// Ticker for LED updates (interrupt-driven for responsiveness)
-Ticker ledTicker;
+// Hardware timer for LED updates
+#if defined(ESP32)
+  hw_timer_t *ledTimer = NULL;
+  portMUX_TYPE ledTimerMux = portMUX_INITIALIZER_UNLOCKED;
+#elif defined(ESP8266)
+  // ESP8266 uses Timer1 (hardware timer)
+  #include <Ticker.h>  // Still needed for timer1_* functions
+  extern "C" {
+    #include "user_interface.h"
+  }
+#endif
 
 // Current pattern and state (volatile for interrupt safety)
 volatile LedPattern currentPattern = LED_OFF;
 volatile uint8_t flashCount = 0;
 volatile bool ledState = false;
 
-// Initialize LED system
-void setupLED() {
-  pinMode(LED_PIN, OUTPUT);
-  ledOff();
-  DEBUG_PRINT("LED indicator initialized on GPIO");
-  DEBUG_PRINTLN(LED_PIN);
-}
-
-// LED update callback - called by interrupt ticker
-// Uses fast port manipulation for safety in interrupt context
-void ledTimerCallback() {
+// LED update callback - called by hardware interrupt timer
+// IRAM_ATTR ensures function is in RAM for ESP32/ESP8266 interrupt execution
+void IRAM_ATTR ledTimerCallback() {
+#if defined(ESP32)
+  portENTER_CRITICAL_ISR(&ledTimerMux);
+#endif
+  
   switch (currentPattern) {
     case LED_QUICK_FLASH:
       // Quick flashing (100ms on/off) for setup
@@ -163,6 +167,45 @@ void ledTimerCallback() {
       ledOff();
       break;
   }
+  
+#if defined(ESP32)
+  portEXIT_CRITICAL_ISR(&ledTimerMux);
+#endif
+}
+
+// ESP8266 Timer1 ISR wrapper
+#if defined(ESP8266)
+void ICACHE_RAM_ATTR onTimer1ISR() {
+  ledTimerCallback();
+  timer1_write(500000);  // Reset timer for next interrupt (100ms at 5MHz = 500,000 ticks)
+}
+#endif
+
+// Initialize LED system
+void setupLED() {
+  pinMode(LED_PIN, OUTPUT);
+  ledOff();
+  DEBUG_PRINT("LED indicator initialized on GPIO");
+  DEBUG_PRINTLN(LED_PIN);
+  
+  // Initialize hardware timer
+#if defined(ESP32)
+  // ESP32: Use hardware timer 0, divider 80 (1MHz tick rate)
+  ledTimer = timerBegin(0, 80, true);  // Timer 0, divider 80, count up
+  timerAttachInterrupt(ledTimer, &ledTimerCallback, true);  // Attach ISR, edge triggered
+  timerAlarmWrite(ledTimer, 100000, true);  // 100ms interval (100,000 microseconds), auto-reload
+  // Don't enable yet - will enable when pattern is set
+  DEBUG_PRINTLN("ESP32 hardware timer initialized (100ms interval)");
+  
+#elif defined(ESP8266)
+  // ESP8266: Use Timer1 (hardware timer)
+  timer1_isr_init();
+  timer1_attachInterrupt(onTimer1ISR);
+  timer1_enable(TIM_DIV16, TIM_EDGE, TIM_LOOP);  // 80MHz / 16 = 5MHz, edge, loop mode
+  timer1_write(500000);  // 500,000 ticks = 100ms at 5MHz
+  // Timer1 starts automatically
+  DEBUG_PRINTLN("ESP8266 Timer1 initialized (100ms interval)");
+#endif
 }
 
 // Set LED pattern
@@ -171,30 +214,47 @@ void setLedPattern(LedPattern pattern) {
     return;  // No change needed
   }
   
+#if defined(ESP32)
   // Stop current timer
-  ledTicker.detach();
+  timerAlarmDisable(ledTimer);
   
-  // Reset state
+  // Reset state (use critical section for volatile variables)
+  portENTER_CRITICAL(&ledTimerMux);
   flashCount = 0;
   ledState = false;
+  currentPattern = pattern;
+  portEXIT_CRITICAL(&ledTimerMux);
+  
   ledOff();
   
   // Start new pattern
-  currentPattern = pattern;
-  
   switch (pattern) {
     case LED_QUICK_FLASH:
     case LED_ONE_FLASH:
     case LED_THREE_FLASH:
-      // 100ms interval for all patterns (interrupt-driven ticker)
-      ledTicker.attach_ms(100, ledTimerCallback);
+      // Enable hardware timer for all active patterns
+      timerAlarmEnable(ledTimer);
       break;
       
     case LED_OFF:
     default:
-      // Ticker already detached, LED already off
+      // Timer already disabled, LED already off
       break;
   }
+  
+#elif defined(ESP8266)
+  // ESP8266: Timer1 is always running, just update the pattern
+  // Use noInterrupts/interrupts for critical section
+  noInterrupts();
+  flashCount = 0;
+  ledState = false;
+  currentPattern = pattern;
+  interrupts();
+  
+  ledOff();
+  
+  // Timer1 keeps running regardless of pattern (LED_OFF just turns it off in ISR)
+#endif
 }
 
 // Update LED pattern based on WiFi status (call from loop)
