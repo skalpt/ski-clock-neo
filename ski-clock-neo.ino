@@ -1,31 +1,31 @@
-#include <Adafruit_NeoPixel.h>
 #include "font_5x7.h"
 #include "neopixel_render.h"
 
 // -------------------- Pin definitions --------------------
-#define PIN_MATRIX_ROW1  4   // WS2812 data for top row
+#define PIN_MATRIX_ROW1                  4     // WS2812 data for top row
 
-// -------------------- Display layout ----------------------
-const uint8_t ROW_WIDTH   = 16;   // 1 x 16
-const uint8_t ROW_HEIGHT  = 16;
+// -------------------- Display layout ---------------------
+const uint8_t ROW_WIDTH                = 16;   // 1 panel x 16 pixels wide
+const uint8_t ROW_HEIGHT               = 16;   // All panels 16 pixels high
+
+// ----------- Display brightness & refresh rate -----------
+const uint8_t BRIGHTNESS               = 1;    // 0-255
+const unsigned long UPDATE_INTERVAL_MS = 2000; // 2 second refresh rate
+
+// ----------------- Declare display rows ------------------
 const uint16_t NUM_LEDS_PER_ROW = (uint16_t)ROW_WIDTH * ROW_HEIGHT;
-
-const uint8_t BRIGHTNESS  = 1;   // 0-255, adjust for your power budget
-const unsigned long UPDATE_INTERVAL_MS = 2000;
-
-// -------------------- NeoPixel objects --------------------
 Adafruit_NeoPixel row1(NUM_LEDS_PER_ROW, PIN_MATRIX_ROW1, NEO_GRB + NEO_KHZ800);
 
-// -------------------- Setup & loop -------------------------
+// --------------------- Setup & loop ----------------------
 unsigned long lastUpdateMs = 0;
 int curNum = 0;
 
 void setup() {
-  // Serial optional
+  // Initialise serial
   Serial.begin(115200);
   Serial.println("Booted.");
 
-  // NeoPixels
+  // Initialise NeoPixels
   row1.begin();
   row1.setBrightness(BRIGHTNESS);
   row1.show();
