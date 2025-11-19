@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_file, Response
+from flask import Flask, request, jsonify, send_file, Response, render_template
 import os
 import hashlib
 import json
@@ -7,8 +7,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional, Any
 from object_storage import ObjectStorageService, ObjectNotFoundError, ObjectStorageError
+from mqtt_subscriber import start_mqtt_subscriber, get_device_status
 
 app = Flask(__name__)
+
+# Start MQTT subscriber in background thread
+mqtt_client = start_mqtt_subscriber()
 
 # Object Storage paths
 VERSIONS_OBJECT_PATH = "versions.json"
@@ -118,6 +122,10 @@ LATEST_VERSIONS: Dict[str, Optional[Dict[str, Any]]] = load_versions()
 
 @app.route('/')
 def index():
+    return render_template('index.html')
+
+@app.route('/api')
+def api_index():
     return jsonify({
         'service': 'Ski Clock Firmware Server',
         'status': 'running',
@@ -457,6 +465,15 @@ def status():
             'count': len(list(FIRMWARES_DIR.glob('*.bin')))
         },
         'config_source': 'file' if CONFIG_FILE.exists() else 'environment'
+    })
+
+@app.route('/api/devices')
+def devices():
+    device_list = get_device_status()
+    return jsonify({
+        'devices': device_list,
+        'count': len(device_list),
+        'mqtt_enabled': mqtt_client is not None
     })
 
 if __name__ == '__main__':

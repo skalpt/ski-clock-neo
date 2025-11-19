@@ -17,6 +17,7 @@
 // No need to hardcode these values here anymore
 
 #include "ota_update.h"
+#include "mqtt_client.h"
 
 // -------------------- Pin definitions --------------------
 #define PIN_MATRIX_ROW1                  4     // WS2812 data for top row
@@ -100,6 +101,9 @@ void setup() {
   row1.show();
   DEBUG_PRINTLN("NeoPixels initialised.");
   
+  // Initialize MQTT system for heartbeat monitoring
+  setupMQTT();
+  
   // Initialize OTA system (schedules first check in 30s, then hourly)
   setupOTA(30);
   
@@ -153,6 +157,9 @@ void loop() {
   // Update LED pattern based on WiFi status (interrupt ticker handles actual flashing)
   updateLedStatus();
   
+  // Handle MQTT heartbeat and version update subscriptions
+  loopMQTT(FIRMWARE_VERSION);
+  
   // Handle OTA update retry logic only (checks are triggered by tickers)
   updateOTA();
   
@@ -161,4 +168,5 @@ void loop() {
   // - ESP8266: Software ticker (shares CPU with network)
   // LED flashing: Hardware interrupt timer (all platforms) - guaranteed execution
   // OTA checks: Software ticker (initial: one-shot, recurring: attach after first check)
+  // MQTT heartbeat: 60-second publish cycle with non-blocking reconnection
 }
