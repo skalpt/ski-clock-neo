@@ -118,7 +118,7 @@ def save_versions():
         except Exception as e:
             print(f"Error saving versions file: {e}")
 
-LATEST_VERSIONS: Dict[str, Optional[Dict[str, Any]]] = load_versions()
+LATEST_VERSIONS = load_versions()
 
 @app.route('/')
 def index():
