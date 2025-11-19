@@ -44,10 +44,12 @@ ski-clock-neo/
 - Custom 5x7 pixel font with 2x diagonal smoothing
 - Multi-panel support with serpentine wiring
 - **LED Status Indicator** (built-in LED):
-  - Quick flash during setup (WiFi connecting)
+  - Uses LED_BUILTIN constant (board-agnostic)
+  - Handles ESP32/ESP8266 inverted pins automatically (HIGH=off, LOW=on)
+  - Quick flash during setup (interrupt-driven ticker)
   - 1 flash + 2s pause when WiFi connected
   - 3 flashes + 2s pause when WiFi disconnected
-  - Ticker-based non-blocking updates
+  - Direct port manipulation for fast GPIO in interrupt context
 - **Advanced WiFi** (AutoConnect library):
   - Multiple network credentials with auto-fallback
   - Always-available captive portal (non-blocking)
@@ -57,13 +59,13 @@ ski-clock-neo/
   - Custom update server (not GitHub-dependent)
   - API key authentication
   - Configurable server URL for easy migration
-  - Ticker-based scheduling (1h interval, initial check at 30s)
+  - Software ticker-based scheduling (initial check at 30s, then hourly self-scheduling)
   - Dual-timer retry logic (1h success, 5m failure)
   - HTTPS support with cert validation
 - **Ticker-Based Timing**:
-  - All periodic tasks use Ticker library
-  - ISR callbacks only set flags (no heavy work in ISR)
-  - Heavy operations run in main loop when flags checked
+  - LED indicator: Interrupt-driven ticker with fast port manipulation (GPOS/GPOC for ESP8266, GPIO.out_w1ts/out_w1tc for ESP32)
+  - NeoPixel updates: Software ticker calls updateNeoPixels() directly (2s interval)
+  - OTA checks: Software ticker with self-scheduling (30s initial, 1h recurring)
   - No blocking delays in setup() or loop()
 
 ## Dashboard Server Features
@@ -179,11 +181,12 @@ Must be configured in GitHub repo (Settings → Secrets → Actions):
 
 ## Recent Changes
 - **2025-11-19**: **PRODUCTION-READY**: Multi-platform OTA firmware system with 6 board variants
-- **2025-11-19**: Added LED status indicators for WiFi debugging (quick flash, 1-flash, 3-flash patterns)
-- **2025-11-19**: Converted all timing to Ticker-based non-blocking architecture
-- **2025-11-19**: Removed blocking delay(30000) from setup() - captive portal now responsive immediately
+- **2025-11-19**: Implemented interrupt-driven LED indicators with fast port manipulation and LED_BUILTIN constant
+- **2025-11-19**: Fixed ESP32/ESP8266 inverted LED pin logic (HIGH=off, LOW=on)
+- **2025-11-19**: Converted to software ticker architecture for NeoPixels and OTA (no more flags in loop)
+- **2025-11-19**: OTA checks now self-scheduling via software ticker (30s initial, 1h recurring)
+- **2025-11-19**: Removed all blocking delays from setup() and loop() - captive portal responsive immediately
 - **2025-11-19**: Increased NeoPixel brightness from 1 to 32 for better visibility
-- **2025-11-19**: Implemented ISR-safe flag pattern for all Ticker callbacks
 - **2025-11-19**: Migrated firmware storage to Replit Object Storage for persistence across deployments
 - **2025-11-19**: Added graceful fallback to local filesystem when Object Storage not configured
 - **2025-11-19**: Created object_storage.py module with replit-object-storage library

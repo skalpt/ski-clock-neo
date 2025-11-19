@@ -76,9 +76,6 @@ void setup() {
   Serial.print("WiFi status: ");
   Serial.println(getWiFiStatus());
 
-  // Initialise OTA updates
-  setupOTA();
-
   // Initialise NeoPixels
   row1.begin();
   row1.setBrightness(BRIGHTNESS);
