@@ -72,6 +72,11 @@ nLRbwHOoq7hHwg==
 WiFiClientSecure wifiSecureClient;
 PubSubClient mqttClient(wifiSecureClient);
 
+// ESP8266 BearSSL certificate trust anchor (must persist beyond setupMQTT())
+#if defined(ESP8266)
+  static BearSSL::X509List serverTrustAnchor(ROOT_CA_CERT);
+#endif
+
 // Heartbeat state
 unsigned long lastHeartbeat = 0;
 const unsigned long HEARTBEAT_INTERVAL = 60000;  // 60 seconds
@@ -134,9 +139,8 @@ void setupMQTT() {
   #if defined(ESP32)
     wifiSecureClient.setCACert(ROOT_CA_CERT);
   #elif defined(ESP8266)
-    // ESP8266: Use BearSSL X.509 certificate list
-    BearSSL::X509List serverCert(ROOT_CA_CERT);
-    wifiSecureClient.setTrustAnchors(&serverCert);
+    // ESP8266: Use static BearSSL X.509 certificate list (must persist)
+    wifiSecureClient.setTrustAnchors(&serverTrustAnchor);
   #endif
   
   // Configure MQTT client

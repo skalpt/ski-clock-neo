@@ -13,14 +13,16 @@ Ski Clock Neo integrates Arduino firmware for NeoPixel LED matrix displays with 
 The project consists of two main components:
 
 1.  **Firmware**: Embedded C++ for ESP32/ESP8266 microcontrollers driving a 16x16 NeoPixel LED matrix.
-    *   **Features**: Custom 5x7 pixel font with diagonal smoothing, multi-panel support, freeze-proof LED status indicator with hardware interrupt timers, advanced WiFi management via `AutoConnect` (multi-network credentials, captive portal, background reconnection), and secure non-blocking OTA updates.
+    *   **Features**: Custom 5x7 pixel font with diagonal smoothing, multi-panel support, freeze-proof LED status indicator with hardware interrupt timers, advanced WiFi management via `AutoConnect` (multi-network credentials, captive portal, background reconnection), secure non-blocking OTA updates, and real-time MQTT heartbeat monitoring.
     *   **OTA Implementation**: Utilizes a custom update server, API key authentication, configurable server URL, HTTPS with certificate validation, and non-blocking chunked HTTP reads with yield() calls to prevent UI freezing during version checks.
-    *   **Timing**: Hardware interrupt timers (hw_timer_t for ESP32, Timer1 for ESP8266) for LED indicators ensure guaranteed execution even during blocking operations. NeoPixel updates use FreeRTOS tasks on ESP32 (high priority on C3, Core 1 on dual-core) for smooth rendering during network operations; ESP8266 uses software tickers. OTA checks use software tickers.
+    *   **MQTT Monitoring**: Publishes device heartbeats every 60 seconds to HiveMQ Cloud broker (device ID, board type, firmware version, uptime, WiFi RSSI, free heap). Subscribes to version update notifications for instant OTA trigger. Uses TLS/SSL with Let's Encrypt R3 certificate validation. Non-blocking reconnection with 5-second retry interval.
+    *   **Timing**: Hardware interrupt timers (hw_timer_t for ESP32, Timer1 for ESP8266) for LED indicators ensure guaranteed execution even during blocking operations. NeoPixel updates use FreeRTOS tasks on ESP32 (high priority on C3, Core 1 on dual-core) for smooth rendering during network operations; ESP8266 uses software tickers. OTA checks use software tickers. MQTT publishes at 60-second intervals with automatic reconnection.
 
 2.  **Dashboard Server**: A Python Flask application for firmware distribution and device management.
-    *   **Features**: API-based firmware distribution supporting multiple platforms (ESP32, ESP32-C3, ESP32-S3, ESP-12F, ESP-01, Wemos D1 Mini), upload/download endpoints with API key authentication, platform aliasing (e.g., ESP8266 to ESP-12F), SHA256 checksums, and status monitoring.
-    *   **Deployment**: VM deployment (always-on) ensures consistent state across requests. Fully automatic CI/CD via GitHub Actions builds firmware for various board variants, generates timestamp-based versions (`year.month.day.buildnum`), and uploads binaries and configuration to the dashboard.
-    *   **System Design Choices**: Emphasizes automated versioning, secure communication, and graceful fallback for optional services like Object Storage. Secrets are managed securely in GitHub and Replit, with GitHub Actions injecting configuration into the dashboard. VM deployment prevents multi-instance state synchronization issues.
+    *   **Features**: API-based firmware distribution supporting multiple platforms (ESP32, ESP32-C3, ESP32-S3, ESP-12F, ESP-01, Wemos D1 Mini), upload/download endpoints with API key authentication, platform aliasing (e.g., ESP8266 to ESP-12F), SHA256 checksums, real-time device monitoring via MQTT, and interactive web dashboard.
+    *   **MQTT Integration**: Background MQTT subscriber (paho-mqtt) connects to HiveMQ Cloud via TLS (port 8883), subscribes to heartbeat messages from all devices, stores device status in memory, and exposes live device data via REST API. Web UI auto-refreshes every 10 seconds to display connected devices, uptime, WiFi signal strength, and firmware versions.
+    *   **Deployment**: VM deployment (always-on) ensures consistent state across requests and maintains persistent MQTT connections. Fully automatic CI/CD via GitHub Actions builds firmware for various board variants, generates timestamp-based versions (`year.month.day.buildnum`), injects MQTT credentials, and uploads binaries and configuration to the dashboard.
+    *   **System Design Choices**: Emphasizes automated versioning, secure communication, and graceful fallback for optional services like Object Storage. Secrets are managed securely in GitHub and Replit, with GitHub Actions injecting configuration (including MQTT credentials) into the dashboard. VM deployment prevents multi-instance state synchronization issues and ensures MQTT connections remain active.
 
 ## Build Configuration
 
@@ -38,14 +40,28 @@ Debug logging is **enabled** by default for development and troubleshooting:
 - **To disable**: Comment out the `#define DEBUG_LOGGING` line to remove debug output
 
 ## External Dependencies
--   **Adafruit_NeoPixel**: For controlling NeoPixel LED matrices.
--   **AutoConnect**: Arduino library for advanced WiFi management and captive portal.
--   **ESP32 Arduino Core 2.0.14**: Specific version required for AutoConnect compatibility.
--   **ESP8266 WiFi libraries**: Built-in for ESP8266 devices.
--   **Replit Object Storage** (Optional): For persistent storage of firmware binaries and version metadata, with graceful fallback to local filesystem.
--   **GitHub Actions**: CI/CD platform for automated firmware builds, versioning, and deployment to the dashboard.
+-   **Firmware Libraries**:
+    -   **Adafruit_NeoPixel**: For controlling NeoPixel LED matrices.
+    -   **AutoConnect**: Arduino library for advanced WiFi management and captive portal.
+    -   **PubSubClient**: MQTT client library for ESP32/ESP8266 with TLS support.
+    -   **ESP32 Arduino Core 2.0.14**: Specific version required for AutoConnect compatibility.
+    -   **ESP8266 WiFi libraries**: Built-in for ESP8266 devices.
+-   **Dashboard Dependencies**:
+    -   **Flask**: Web framework for REST API and UI serving.
+    -   **paho-mqtt**: Python MQTT client for subscribing to device heartbeats.
+    -   **Replit Object Storage** (Optional): For persistent storage of firmware binaries and version metadata, with graceful fallback to local filesystem.
+-   **Cloud Services**:
+    -   **HiveMQ Cloud Serverless**: MQTT broker for real-time device monitoring (free tier: 100 devices, 10GB/month). Uses TLS (port 8883) with Let's Encrypt certificates.
+    -   **GitHub Actions**: CI/CD platform for automated firmware builds, versioning, and deployment to the dashboard.
 ## Recent Changes
 
+- **2025-11-19**: Implemented MQTT heartbeat monitoring system with HiveMQ Cloud integration
+- **2025-11-19**: Added real-time device status dashboard with auto-refresh UI (10-second intervals)
+- **2025-11-19**: Created mqtt_client.h for firmware with TLS certificate validation (Let's Encrypt R3)
+- **2025-11-19**: Implemented paho-mqtt subscriber in dashboard with background thread for heartbeat processing
+- **2025-11-19**: Added /api/devices endpoint to expose live device status from MQTT messages
+- **2025-11-19**: Injected MQTT credentials (MQTT_HOST, MQTT_USERNAME, MQTT_PASSWORD) into firmware builds via GitHub Actions
+- **2025-11-19**: Device heartbeats include: device ID, board type, version, uptime, RSSI, free heap memory
 - **2025-11-19**: Converted NeoPixel updates to FreeRTOS tasks on ESP32 (Core 1 for dual-core, high priority for C3) to prevent freezing during OTA checks
 - **2025-11-19**: Configured retainPortal to keep captive portal AP accessible after WiFi connection
 - **2025-11-19**: Enabled USB CDC On Boot for ESP32-C3/S3 builds to fix Serial output
