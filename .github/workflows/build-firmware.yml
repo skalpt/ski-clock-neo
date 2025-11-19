@@ -71,7 +71,10 @@ jobs:
         run: |
           arduino-cli compile --fqbn esp32:esp32:esp32c3 \
             --build-property "build.partitions=min_spiffs" \
-            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DBOARD_ESP32C3" \
+            --build-property "compiler.c.extra_flags=-Os -flto" \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DBOARD_ESP32C3 -Os -fno-rtti -fno-exceptions -flto" \
+            --build-property "compiler.c.elf.extra_flags=-Wl,--gc-sections -flto" \
+            --build-property "compiler.cpp.elf.extra_flags=-Wl,--gc-sections -flto" \
             --output-dir build/esp32c3 \
             firmware/ski-clock-neo
           cp build/esp32c3/ski-clock-neo.ino.bin build/ski-clock-neo-esp32c3.bin

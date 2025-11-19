@@ -18,6 +18,7 @@
 #include <WiFiClientSecure.h>
 #include <Ticker.h>
 #include "certificates.h"
+#include "debug.h"
 
 // OTA Ticker (software-driven for non-blocking operation)
 Ticker otaTicker;
@@ -152,8 +153,8 @@ String getLatestVersion() {
   
   String apiUrl = String(UPDATE_SERVER_URL) + "/api/version?platform=" + getPlatform();
   
-  Serial.print("Checking for updates at: ");
-  Serial.println(apiUrl);
+  DEBUG_PRINT("Checking for updates at: ");
+  DEBUG_PRINTLN(apiUrl);
   
   // Determine if we need HTTPS or HTTP
   bool isHttps = apiUrl.startsWith("https://");
@@ -184,8 +185,8 @@ String getLatestVersion() {
           }
         }
       } else {
-        Serial.print("Update server error: ");
-        Serial.println(httpCode);
+        DEBUG_PRINT("Update server error: ");
+        DEBUG_PRINTLN(httpCode);
       }
       
       http.end();
@@ -216,8 +217,8 @@ String getLatestVersion() {
           }
         }
       } else {
-        Serial.print("Update server error: ");
-        Serial.println(httpCode);
+        DEBUG_PRINT("Update server error: ");
+        DEBUG_PRINTLN(httpCode);
       }
       
       http.end();
@@ -230,22 +231,22 @@ String getLatestVersion() {
 // Perform OTA update from custom server
 bool performOTAUpdate(String version) {
   if (!WiFi.isConnected()) {
-    Serial.println("OTA: WiFi not connected");
+    DEBUG_PRINTLN("OTA: WiFi not connected");
     return false;
   }
   
   String binaryUrl = String(UPDATE_SERVER_URL) + "/api/firmware/" + getPlatform();
   
-  Serial.println("===========================================");
-  Serial.println("OTA UPDATE STARTING");
-  Serial.println("===========================================");
-  Serial.print("Current version: ");
-  Serial.println(FIRMWARE_VERSION);
-  Serial.print("New version: ");
-  Serial.println(version);
-  Serial.print("Download URL: ");
-  Serial.println(binaryUrl);
-  Serial.println("===========================================");
+  DEBUG_PRINTLN("===========================================");
+  DEBUG_PRINTLN("OTA UPDATE STARTING");
+  DEBUG_PRINTLN("===========================================");
+  DEBUG_PRINT("Current version: ");
+  DEBUG_PRINTLN(FIRMWARE_VERSION);
+  DEBUG_PRINT("New version: ");
+  DEBUG_PRINTLN(version);
+  DEBUG_PRINT("Download URL: ");
+  DEBUG_PRINTLN(binaryUrl);
+  DEBUG_PRINTLN("===========================================");
   
   otaUpdateInProgress = true;
   
@@ -259,7 +260,7 @@ bool performOTAUpdate(String version) {
     client.setInsecure();  // Skip cert validation for custom servers
     
     if (!http.begin(client, binaryUrl)) {
-      Serial.println("Failed to begin HTTP connection");
+      DEBUG_PRINTLN("Failed to begin HTTP connection");
       otaUpdateInProgress = false;
       return false;
     }
@@ -267,7 +268,7 @@ bool performOTAUpdate(String version) {
     WiFiClient client;
     
     if (!http.begin(client, binaryUrl)) {
-      Serial.println("Failed to begin HTTP connection");
+      DEBUG_PRINTLN("Failed to begin HTTP connection");
       otaUpdateInProgress = false;
       return false;
     }
@@ -276,23 +277,23 @@ bool performOTAUpdate(String version) {
   http.addHeader("X-API-Key", DOWNLOAD_API_KEY);
   http.addHeader("User-Agent", "SkiClockNeo-OTA");
   
-  Serial.println("Starting ESP32 OTA download...");
+  DEBUG_PRINTLN("Starting ESP32 OTA download...");
   int httpCode = http.GET();
   
   if (httpCode != HTTP_CODE_OK) {
-    Serial.print("HTTP GET failed: ");
-    Serial.println(httpCode);
+    DEBUG_PRINT("HTTP GET failed: ");
+    DEBUG_PRINTLN(httpCode);
     http.end();
     otaUpdateInProgress = false;
     return false;
   }
   
   int contentLength = http.getSize();
-  Serial.print("Firmware size: ");
-  Serial.println(contentLength);
+  DEBUG_PRINT("Firmware size: ");
+  DEBUG_PRINTLN(contentLength);
   
   if (contentLength <= 0) {
-    Serial.println("Invalid content length");
+    DEBUG_PRINTLN("Invalid content length");
     http.end();
     otaUpdateInProgress = false;
     return false;
@@ -300,7 +301,7 @@ bool performOTAUpdate(String version) {
   
   bool canBegin = Update.begin(contentLength);
   if (!canBegin) {
-    Serial.println("Not enough space for OTA");
+    DEBUG_PRINTLN("Not enough space for OTA");
     http.end();
     otaUpdateInProgress = false;
     return false;
@@ -310,27 +311,27 @@ bool performOTAUpdate(String version) {
   size_t written = Update.writeStream(*stream);
   
   if (written == contentLength) {
-    Serial.println("Firmware written successfully");
+    DEBUG_PRINTLN("Firmware written successfully");
   } else {
-    Serial.print("Written only ");
-    Serial.print(written);
-    Serial.print(" / ");
-    Serial.println(contentLength);
+    DEBUG_PRINT("Written only ");
+    DEBUG_PRINT(written);
+    DEBUG_PRINT(" / ");
+    DEBUG_PRINTLN(contentLength);
   }
   
   if (Update.end()) {
     if (Update.isFinished()) {
-      Serial.println("OTA Update successful! Rebooting...");
+      DEBUG_PRINTLN("OTA Update successful! Rebooting...");
       http.end();
       delay(2000);
       ESP.restart();
       return true;
     } else {
-      Serial.println("Update not finished");
+      DEBUG_PRINTLN("Update not finished");
     }
   } else {
-    Serial.print("Update error: ");
-    Serial.println(Update.errorString());
+    DEBUG_PRINT("Update error: ");
+    DEBUG_PRINTLN(Update.errorString());
   }
   
   http.end();
@@ -347,7 +348,7 @@ bool performOTAUpdate(String version) {
     client.setInsecure();  // Skip cert validation for custom servers
     
     if (!http.begin(client, binaryUrl)) {
-      Serial.println("Failed to begin HTTP connection");
+      DEBUG_PRINTLN("Failed to begin HTTP connection");
       otaUpdateInProgress = false;
       return false;
     }
@@ -355,7 +356,7 @@ bool performOTAUpdate(String version) {
     WiFiClient client;
     
     if (!http.begin(client, binaryUrl)) {
-      Serial.println("Failed to begin HTTP connection");
+      DEBUG_PRINTLN("Failed to begin HTTP connection");
       otaUpdateInProgress = false;
       return false;
     }
@@ -364,23 +365,23 @@ bool performOTAUpdate(String version) {
   http.addHeader("X-API-Key", DOWNLOAD_API_KEY);
   http.addHeader("User-Agent", "SkiClockNeo-OTA");
   
-  Serial.println("Starting ESP8266 OTA download...");
+  DEBUG_PRINTLN("Starting ESP8266 OTA download...");
   int httpCode = http.GET();
   
   if (httpCode != HTTP_CODE_OK) {
-    Serial.print("HTTP GET failed: ");
-    Serial.println(httpCode);
+    DEBUG_PRINT("HTTP GET failed: ");
+    DEBUG_PRINTLN(httpCode);
     http.end();
     otaUpdateInProgress = false;
     return false;
   }
   
   int contentLength = http.getSize();
-  Serial.print("Firmware size: ");
-  Serial.println(contentLength);
+  DEBUG_PRINT("Firmware size: ");
+  DEBUG_PRINTLN(contentLength);
   
   if (contentLength <= 0) {
-    Serial.println("Invalid content length");
+    DEBUG_PRINTLN("Invalid content length");
     http.end();
     otaUpdateInProgress = false;
     return false;
@@ -388,7 +389,7 @@ bool performOTAUpdate(String version) {
   
   bool canBegin = Update.begin(contentLength);
   if (!canBegin) {
-    Serial.println("Not enough space for OTA");
+    DEBUG_PRINTLN("Not enough space for OTA");
     http.end();
     otaUpdateInProgress = false;
     return false;
@@ -398,27 +399,27 @@ bool performOTAUpdate(String version) {
   size_t written = Update.writeStream(*stream);
   
   if (written == contentLength) {
-    Serial.println("Firmware written successfully");
+    DEBUG_PRINTLN("Firmware written successfully");
   } else {
-    Serial.print("Written only ");
-    Serial.print(written);
-    Serial.print(" / ");
-    Serial.println(contentLength);
+    DEBUG_PRINT("Written only ");
+    DEBUG_PRINT(written);
+    DEBUG_PRINT(" / ");
+    DEBUG_PRINTLN(contentLength);
   }
   
   if (Update.end()) {
     if (Update.isFinished()) {
-      Serial.println("OTA Update successful! Rebooting...");
+      DEBUG_PRINTLN("OTA Update successful! Rebooting...");
       http.end();
       delay(2000);
       ESP.restart();
       return true;
     } else {
-      Serial.println("Update not finished");
+      DEBUG_PRINTLN("Update not finished");
     }
   } else {
-    Serial.print("Update error: ");
-    Serial.println(Update.getErrorString());
+    DEBUG_PRINT("Update error: ");
+    DEBUG_PRINTLN(Update.getErrorString());
   }
   
   http.end();
@@ -460,33 +461,33 @@ void checkForOTAUpdate(bool force = false) {
   
   // Skip if WiFi not connected
   if (!WiFi.isConnected()) {
-    Serial.println("OTA: Skipping check - WiFi not connected");
+    DEBUG_PRINTLN("OTA: Skipping check - WiFi not connected");
     return;
   }
   
-  Serial.println("Checking for firmware updates...");
+  DEBUG_PRINTLN("Checking for firmware updates...");
   
   String latestVersion = getLatestVersion();
   
   if (latestVersion.length() == 0) {
-    Serial.println("OTA: Could not retrieve latest version - will retry in 5 minutes");
+    DEBUG_PRINTLN("OTA: Could not retrieve latest version - will retry in 5 minutes");
     return;
   }
   
-  Serial.print("Latest version: ");
-  Serial.println(latestVersion);
+  DEBUG_PRINT("Latest version: ");
+  DEBUG_PRINTLN(latestVersion);
   
   // Compare versions
   long currentVer = parseVersion(FIRMWARE_VERSION);
   long latestVer = parseVersion(latestVersion);
   
-  Serial.print("Current version code: ");
-  Serial.println(currentVer);
-  Serial.print("Latest version code: ");
-  Serial.println(latestVer);
+  DEBUG_PRINT("Current version code: ");
+  DEBUG_PRINTLN(currentVer);
+  DEBUG_PRINT("Latest version code: ");
+  DEBUG_PRINTLN(latestVer);
   
   if (latestVer > currentVer) {
-    Serial.println("New version available! Starting OTA update...");
+    DEBUG_PRINTLN("New version available! Starting OTA update...");
     bool updateSuccess = performOTAUpdate(latestVersion);
     
     // Only update success timestamp if download/install succeeded
@@ -495,7 +496,7 @@ void checkForOTAUpdate(bool force = false) {
       lastOTACheckMs = nowMs;
     }
   } else {
-    Serial.println("Firmware is up to date");
+    DEBUG_PRINTLN("Firmware is up to date");
     // Update success timestamp - no new version available
     lastOTACheckMs = nowMs;
   }
@@ -503,20 +504,20 @@ void checkForOTAUpdate(bool force = false) {
 
 // Initialize OTA updates
 void setupOTA() {
-  Serial.println("OTA Update initialized");
-  Serial.print("Current firmware version: ");
-  Serial.println(FIRMWARE_VERSION);
-  Serial.print("Update server: ");
-  Serial.println(UPDATE_SERVER_URL);
-  Serial.print("Check interval: ");
-  Serial.print(OTA_CHECK_INTERVAL_MS / 1000);
-  Serial.println(" seconds");
+  DEBUG_PRINTLN("OTA Update initialized");
+  DEBUG_PRINT("Current firmware version: ");
+  DEBUG_PRINTLN(FIRMWARE_VERSION);
+  DEBUG_PRINT("Update server: ");
+  DEBUG_PRINTLN(UPDATE_SERVER_URL);
+  DEBUG_PRINT("Check interval: ");
+  DEBUG_PRINT(OTA_CHECK_INTERVAL_MS / 1000);
+  DEBUG_PRINTLN(" seconds");
   
 #if defined(ESP32)
   // Print current partition info
   const esp_partition_t *running = esp_ota_get_running_partition();
-  Serial.print("Running partition: ");
-  Serial.println(running->label);
+  DEBUG_PRINT("Running partition: ");
+  DEBUG_PRINTLN(running->label);
 #endif
 }
 
@@ -527,19 +528,19 @@ void updateOTA() {
 
 // Force an immediate update check
 void forceOTACheck() {
-  Serial.println("Forcing OTA update check...");
+  DEBUG_PRINTLN("Forcing OTA update check...");
   checkForOTAUpdate(true);
   
   // Schedule next check in 1 hour (software ticker)
   otaTicker.once(3600, forceOTACheck);
-  Serial.println("Next OTA check scheduled in 1 hour");
+  DEBUG_PRINTLN("Next OTA check scheduled in 1 hour");
 }
 
 // Initialize OTA system with initial check delay
 void setupOTA(int initialDelaySeconds) {
-  Serial.print("OTA system initialized. First check in ");
-  Serial.print(initialDelaySeconds);
-  Serial.println(" seconds");
+  DEBUG_PRINT("OTA system initialized. First check in ");
+  DEBUG_PRINT(initialDelaySeconds);
+  DEBUG_PRINTLN(" seconds");
   
   // Schedule initial OTA check using one-shot ticker
   otaTicker.once(initialDelaySeconds, forceOTACheck);

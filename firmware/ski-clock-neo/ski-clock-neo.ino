@@ -1,5 +1,6 @@
 #include <Adafruit_NeoPixel.h>
 #include <Ticker.h>
+#include "debug.h"
 #include "font_5x7.h"
 #include "neopixel_render.h"
 #include "wifi_config.h"
@@ -45,8 +46,8 @@ void updateNeoPixels() {
   curNum++;
   if (curNum == 10) curNum = 0;
   
-  Serial.print("Drawing digit: ");
-  Serial.println(curNum);
+  DEBUG_PRINT("Drawing digit: ");
+  DEBUG_PRINTLN(curNum);
   
   snprintf(numStr, sizeof(numStr), "%d", curNum);
 
@@ -58,40 +59,40 @@ void updateNeoPixels() {
 }
 
 void setup() {
-  // Initialise serial
-  Serial.begin(115200);
-  Serial.println("\n\n===========================================");
-  Serial.println("Ski Clock Neo - Starting Up");
-  Serial.println("===========================================");
-  Serial.print("Firmware version: ");
-  Serial.println(FIRMWARE_VERSION);
+  // Initialise serial (only if debug logging enabled)
+  DEBUG_BEGIN(115200);
+  DEBUG_PRINTLN("\n\n===========================================");
+  DEBUG_PRINTLN("Ski Clock Neo - Starting Up");
+  DEBUG_PRINTLN("===========================================");
+  DEBUG_PRINT("Firmware version: ");
+  DEBUG_PRINTLN(FIRMWARE_VERSION);
 
   // Initialize LED indicator and start quick flash immediately
   setupLED();
   setLedPattern(LED_QUICK_FLASH);  // Interrupt-driven ticker starts now
 
   // Initialise WiFi (with configuration portal if needed)
-  Serial.println("Starting WiFi setup...");
+  DEBUG_PRINTLN("Starting WiFi setup...");
   setupWiFi();
-  Serial.print("WiFi status: ");
-  Serial.println(getWiFiStatus());
+  DEBUG_PRINT("WiFi status: ");
+  DEBUG_PRINTLN(getWiFiStatus());
 
   // Initialise NeoPixels
   row1.begin();
   row1.setBrightness(BRIGHTNESS);
   row1.show();
-  Serial.println("NeoPixels initialised.");
+  DEBUG_PRINTLN("NeoPixels initialised.");
   
   // Initialize OTA system (schedules first check in 30s, then hourly)
   setupOTA(30);
   
   // Start NeoPixel refresh ticker (2 second interval, software-driven)
   neopixelTicker.attach_ms(UPDATE_INTERVAL_MS, updateNeoPixels);
-  Serial.println("NeoPixel ticker started (2 second interval)");
+  DEBUG_PRINTLN("NeoPixel ticker started (2 second interval)");
   
-  Serial.println("===========================================");
-  Serial.println("Setup complete - entering main loop");
-  Serial.println("===========================================\n");
+  DEBUG_PRINTLN("===========================================");
+  DEBUG_PRINTLN("Setup complete - entering main loop");
+  DEBUG_PRINTLN("===========================================\n");
 }
 
 void loop() {

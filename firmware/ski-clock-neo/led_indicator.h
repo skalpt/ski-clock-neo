@@ -2,6 +2,7 @@
 #define LED_INDICATOR_H
 
 #include <Ticker.h>
+#include "debug.h"
 
 // LED patterns for WiFi status indication
 enum LedPattern {
@@ -101,8 +102,8 @@ volatile bool ledState = false;
 void setupLED() {
   pinMode(LED_PIN, OUTPUT);
   ledOff();
-  Serial.print("LED indicator initialized on GPIO");
-  Serial.println(LED_PIN);
+  DEBUG_PRINT("LED indicator initialized on GPIO");
+  DEBUG_PRINTLN(LED_PIN);
 }
 
 // LED update callback - called by interrupt ticker

@@ -13,6 +13,7 @@
 
 #include <AutoConnect.h>
 #include <AutoConnectCredential.h>
+#include "debug.h"
 
 // Configuration constants
 const char* AP_SSID = "SkiClock-Setup";
@@ -45,7 +46,7 @@ body {
 
 // Initialize AutoConnect with robust configuration
 void setupWiFi() {
-  Serial.println("Initializing WiFi with AutoConnect...");
+  DEBUG_PRINTLN("Initializing WiFi with AutoConnect...");
   
   // Configure AutoConnect behavior
   config.apid = AP_SSID;
@@ -85,21 +86,21 @@ void setupWiFi() {
   // - Show captive portal if no networks available or connection fails
   // - Keep portal running in background even after connection
   if (portal.begin()) {
-    Serial.println("WiFi connected successfully!");
-    Serial.print("IP address: ");
-    Serial.println(WiFi.localIP());
-    Serial.print("SSID: ");
-    Serial.println(WiFi.SSID());
+    DEBUG_PRINTLN("WiFi connected successfully!");
+    DEBUG_PRINT("IP address: ");
+    DEBUG_PRINTLN(WiFi.localIP());
+    DEBUG_PRINT("SSID: ");
+    DEBUG_PRINTLN(WiFi.SSID());
   } else {
-    Serial.println("WiFi connection failed - portal active");
+    DEBUG_PRINTLN("WiFi connection failed - portal active");
   }
   
-  Serial.println("AutoConnect portal is running");
-  Serial.print("Portal SSID: ");
-  Serial.println(AP_SSID);
-  Serial.print("Portal Password: ");
-  Serial.println(AP_PASSWORD);
-  Serial.println("Portal remains accessible even when connected to WiFi");
+  DEBUG_PRINTLN("AutoConnect portal is running");
+  DEBUG_PRINT("Portal SSID: ");
+  DEBUG_PRINTLN(AP_SSID);
+  DEBUG_PRINT("Portal Password: ");
+  DEBUG_PRINTLN(AP_PASSWORD);
+  DEBUG_PRINTLN("Portal remains accessible even when connected to WiFi");
 }
 
 // Update WiFi - call this in loop()
@@ -139,7 +140,7 @@ int getStoredNetworkCount() {
 // Force disconnect and show portal (for manual network switching)
 void openConfigPortal() {
   WiFi.disconnect();
-  Serial.println("Portal opened for manual configuration");
+  DEBUG_PRINTLN("Portal opened for manual configuration");
 }
 
 #endif
