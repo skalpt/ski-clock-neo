@@ -1,4 +1,6 @@
 #include <Adafruit_NeoPixel.h>
+#include "font_5x7.h"
+#include "scale_smooth.h"
 
 // -------------------- Pin definitions --------------------
 #define PIN_MATRIX_ROW1  4   // WS2812 data for top row
@@ -14,204 +16,6 @@ const unsigned long UPDATE_INTERVAL_MS = 2000;
 // -------------------- NeoPixel objects --------------------
 Adafruit_NeoPixel row1(NUM_LEDS_PER_ROW, PIN_MATRIX_ROW1, NEO_GRB + NEO_KHZ800);
 
-// -------------------- Simple 5x7 font ---------------------
-// Glyphs for: '0'-'9', '-', '.', '°', 'C',':'
-// Each glyph: 7 rows, 5 columns (bit 0 = leftmost pixel)
-//
-// 1 = pixel on, 0 = off
-//
-enum GlyphIndex {
-  GLYPH_0 = 0,
-  GLYPH_1,
-  GLYPH_2,
-  GLYPH_3,
-  GLYPH_4,
-  GLYPH_5,
-  GLYPH_6,
-  GLYPH_7,
-  GLYPH_8,
-  GLYPH_9,
-  GLYPH_MINUS,
-  GLYPH_DOT,
-  GLYPH_DEGREE,
-  GLYPH_C,
-  GLYPH_COLON
-};
-
-const uint8_t FONT_5x7[][7] PROGMEM = {
-  // '0'
-  {
-    B01110,
-    B10001,
-    B10011,
-    B10101,
-    B11001,
-    B10001,
-    B01110
-  },
-  // '1'
-  {
-    B00100,
-    B01100,
-    B00100,
-    B00100,
-    B00100,
-    B00100,
-    B01110
-  },
-  // '2'
-  {
-    B01110,
-    B10001,
-    B00001,
-    B00010,
-    B00100,
-    B01000,
-    B11111
-  },
-  // '3'
-  {
-    B01110,
-    B10001,
-    B00001,
-    B00110,
-    B00001,
-    B10001,
-    B01110
-  },
-  // '4'
-  {
-    B00010,
-    B00110,
-    B01010,
-    B10010,
-    B11111,
-    B00010,
-    B00010
-  },
-  // '5'
-  {
-    B11111,
-    B10000,
-    B11110,
-    B00001,
-    B00001,
-    B10001,
-    B01110
-  },
-  // '6'
-  {
-    B00110,
-    B01000,
-    B10000,
-    B11110,
-    B10001,
-    B10001,
-    B01110
-  },
-  // '7'
-  {
-    B11111,
-    B00001,
-    B00010,
-    B00100,
-    B01000,
-    B01000,
-    B01000
-  },
-  // '8'
-  {
-    B01110,
-    B10001,
-    B10001,
-    B01110,
-    B10001,
-    B10001,
-    B01110
-  },
-  // '9'
-  {
-    B01110,
-    B10001,
-    B10001,
-    B01111,
-    B00001,
-    B00010,
-    B01100
-  },
-  // '-'
-  {
-    B00,
-    B00,
-    B00,
-    B11,
-    B00,
-    B00,
-    B00
-  },
-  // '.'
-  {
-    B0,
-    B0,
-    B0,
-    B0,
-    B0,
-    B0,
-    B1
-  },
-  // '°'
-  {
-    B010,
-    B101,
-    B010,
-    B000,
-    B000,
-    B000,
-    B000
-  },
-  // 'C'
-  {
-    B01110,
-    B10001,
-    B10000,
-    B10000,
-    B10000,
-    B10001,
-    B01110
-  },
-  // ':'
-  {
-    B0,
-    B1,
-    B1,
-    B0,
-    B1,
-    B1,
-    B0
-  }
-};
-
-const uint8_t FONT_WIDTH_TABLE[] = {
-  5, // 0
-  5, // 1
-  5, // 2
-  5, // 3
-  5, // 4
-  5, // 5
-  5, // 6
-  5, // 7
-  5, // 8
-  5, // 9
-  2, // '-' 
-  1, // '.'
-  3, // '°'
-  5, // 'C'
-  1  // ':'
-};
-const uint8_t FONT_HEIGHT = 7;
-const uint8_t CHAR_SPACING = 1;
-const bool SPACING_SCALES = false;
-
 // -------------------- Utility: char -> glyph index ----------
 int charToGlyph(char c) {
   if (c >= '0' && c <= '9') {
@@ -223,7 +27,8 @@ int charToGlyph(char c) {
   if (c == '.') {
     return GLYPH_DOT;
   }
-  if (c == '*') {
+  if (c == '*' || (uint8_t)c == 0xB0) {
+    // Support both '*' placeholder and actual degree symbol (extended ASCII 0xB0)
     return GLYPH_DEGREE;
   }
   if (c == 'C' || c == 'c') {
@@ -284,83 +89,22 @@ void drawGlyph(Adafruit_NeoPixel &strip,
   const uint8_t w0 = FONT_WIDTH_TABLE[glyphIndex];
   const uint8_t h0 = FONT_HEIGHT;
 
-  // Only intercept scale == 2
+  // Special handling for scale == 2 with diagonal smoothing
   if (scale == 2)
   {
     const uint8_t W = w0 * 2;
     const uint8_t H = h0 * 2;
 
-    uint8_t out[H][W];
-    memset(out, 0, sizeof(out));
+    // Use static buffer to reduce stack pressure (reused across calls)
+    static uint8_t glyphBuffer[14][20];  // Max: 7*2 rows, 5*2*2 cols
 
-    // Step 1: build the normal 2× scaled bitmap
-    for (uint8_t r = 0; r < h0; r++) {
-      uint8_t bits = pgm_read_byte(&FONT_5x7[glyphIndex][r]);
-      for (uint8_t c = 0; c < w0; c++) {
-        bool on = bits & (1 << (w0 - 1 - c));
-        if (!on) continue;
+    // Apply 2x scaling with diagonal smoothing
+    applySmoothScale2x(&FONT_5x7[glyphIndex][0], w0, h0, glyphBuffer);
 
-        out[r*2    ][c*2    ] = 1;
-        out[r*2    ][c*2 + 1] = 1;
-        out[r*2 + 1][c*2    ] = 1;
-        out[r*2 + 1][c*2 + 1] = 1;
-      }
-    }
-
-    // Step 2: Check original 2×2 cells for diagonal patterns
-    for (uint8_t r = 0; r + 1 < h0; r++) {
-      uint8_t bits0 = pgm_read_byte(&FONT_5x7[glyphIndex][r]);
-      uint8_t bits1 = pgm_read_byte(&FONT_5x7[glyphIndex][r+1]);
-
-      for (uint8_t c = 0; c + 1 < w0; c++) {
-
-        uint8_t a = (bits0 & (1 << (w0 - 1 - c)))     ? 1 : 0;     // row r, col c
-        uint8_t b = (bits0 & (1 << (w0 - 1 - (c+1)))) ? 1 : 0;     // row r, col c+1
-        uint8_t d = (bits1 & (1 << (w0 - 1 - c)))     ? 1 : 0;     // row r+1, col c
-        uint8_t e = (bits1 & (1 << (w0 - 1 - (c+1)))) ? 1 : 0;     // row r+1, col c+1
-
-        // Pattern A: 0 1 / 1 0
-        if (a==0 && b==1 && d==1 && e==0)
-        {
-          uint8_t R = r * 2;
-          uint8_t C = c * 2;
-
-          uint8_t patch[4][4] = {
-            {0,0,1,1},
-            {0,1,1,1},
-            {1,1,1,0},
-            {1,1,0,0}
-          };
-
-          for (uint8_t rr=0; rr<4; rr++)
-            for (uint8_t cc=0; cc<4; cc++)
-              if (patch[rr][cc]) out[R+rr][C+cc] = 1;
-        }
-
-        // Pattern B: 1 0 / 0 1
-        if (a==1 && b==0 && d==0 && e==1)
-        {
-          uint8_t R = r * 2;
-          uint8_t C = c * 2;
-
-          uint8_t patch[4][4] = {
-            {1,1,0,0},
-            {1,1,1,0},
-            {0,1,1,1},
-            {0,0,1,1}
-          };
-
-          for (uint8_t rr=0; rr<4; rr++)
-            for (uint8_t cc=0; cc<4; cc++)
-              if (patch[rr][cc]) out[R+rr][C+cc] = 1;
-        }
-      }
-    }
-
-    // Step 3: Draw result
+    // Draw the smoothed result to the display
     for (uint8_t r = 0; r < H; r++)
       for (uint8_t c = 0; c < W; c++)
-        if (out[r][c])
+        if (glyphBuffer[r][c])
           setPixelRow(strip, x0 + c, y0 + r, color);
 
     return;
