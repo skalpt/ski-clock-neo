@@ -118,6 +118,7 @@ jobs:
       # -------------------------------------------------------
 
       - name: Upload all firmware binaries
+        if: success()  # Only upload to server if all builds succeeded
         run: |
           for file in build/*.bin; do
             PLATFORM=$(basename "$file" .bin | sed 's/ski-clock-neo-//')
@@ -139,6 +140,7 @@ jobs:
       # -------------------------------------------------------
 
       - name: Upload build artifacts
+        if: always()  # Always upload artifacts, even if builds failed (for emergency recovery)
         uses: actions/upload-artifact@v4
         with:
           name: firmware-binaries-${{ steps.get_version.outputs.VERSION }}
