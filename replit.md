@@ -56,11 +56,12 @@ ski-clock-neo/
 
 ## Dashboard Server Features
 - **API-based firmware distribution**
-- **Version management** per platform (ESP32/ESP8266)
-- **Upload endpoint** for GitHub Actions integration
-- **Download endpoint** with API key authentication
+- **Multi-platform version management**: ESP32, ESP32-C3, ESP32-S3, ESP-12F, ESP-01, Wemos D1 Mini, ESP8266 (legacy)
+- **Upload endpoint** with canonical platform validation (rejects aliased uploads)
+- **Download endpoint** with API key authentication and platform aliasing
+- **Backward compatibility** for legacy ESP8266 devices (auto-mapped to ESP-12F firmware)
 - **SHA256 checksums** for integrity verification
-- **Status monitoring** for stored firmwares
+- **Status monitoring** showing all platforms including legacy alias
 
 ## Secrets Configuration
 
@@ -96,13 +97,15 @@ Must be configured in GitHub repo (Settings → Secrets → Actions):
 2. **GitHub Actions** (automatic):
    - Generates timestamp version (e.g., `2025.11.19.1`)
    - Creates config.json with all three secrets
-   - Uploads config to dashboard server
-   - Compiles firmware for ESP32 and ESP8266
-   - Injects UPDATE_SERVER_URL and DOWNLOAD_API_KEY at build time
-   - Uploads binaries to dashboard server with version metadata
+   - Uploads config to dashboard server (with error checking)
+   - Compiles firmware for 6 board variants (ESP32/C3/S3, ESP-12F, ESP-01, D1 Mini)
+   - Injects UPDATE_SERVER_URL, DOWNLOAD_API_KEY, and BOARD_* defines at build time
+   - Uploads binaries to dashboard server with canonical platform names
+   - Mirrors ESP-12F firmware to esp8266 entry for legacy compatibility
    - Saves artifacts for manual download
-3. **Dashboard** → Stores config and firmware, serves to devices
-4. **Devices** → Check hourly, download, and install updates automatically
+   - **Build fails immediately** if config or firmware upload fails
+3. **Dashboard** → Stores config and firmware, serves to devices with platform aliasing
+4. **Devices** → Check hourly, download board-specific (or aliased) firmware, install updates automatically
 
 ## Libraries Required
 - **Adafruit_NeoPixel** - LED matrix control
@@ -140,11 +143,15 @@ Must be configured in GitHub repo (Settings → Secrets → Actions):
 - ✅ Enables future device monitoring features
 
 ## Recent Changes
-- **2025-11-19**: Added multi-platform support (6 boards: ESP32/C3/S3, ESP12F, ESP-01, D1 Mini) with automatic board detection
-- **2025-11-19**: Added backward compatibility for legacy ESP8266 devices (maps to ESP12F firmware)
-- **2025-11-19**: Added error checking to GitHub Actions workflow - build now fails immediately if firmware upload fails
+- **2025-11-19**: **PRODUCTION-READY**: Multi-platform OTA firmware system with 6 board variants
+- **2025-11-19**: Added upload validation - rejects aliased platform uploads (esp8266), requires canonical names
+- **2025-11-19**: Fixed GitHub Actions config upload to use --fail (build fails on config rejection)
+- **2025-11-19**: Made esp8266 a first-class platform with firmware mapping to esp12f for backward compatibility
+- **2025-11-19**: Added multi-platform support (6 boards: ESP32/C3/S3, ESP12F, ESP-01, D1 Mini) with compile-time board detection
+- **2025-11-19**: Added backward compatibility for legacy ESP8266 devices (automatically mapped to ESP12F firmware)
+- **2025-11-19**: Added error checking to GitHub Actions workflow - build fails immediately if any upload fails
 - **2025-11-19**: Fixed ESP8266 flash size configuration (use FQBN eesz=4M3M instead of build property)
-- **2025-11-19**: Fixed ESP8266 Update API (getErrorString vs errorString)
+- **2025-11-19**: Fixed ESP8266 Update API compatibility (getErrorString vs errorString)
 - **2025-11-19**: Fixed FIRMWARE_VERSION redefinition warning (now uses #ifndef guard)
 - **2025-11-19**: Fixed wifi_config.h to use AutoConnectCredential.entries() instead of portal.credential()
 - **2025-11-19**: Pinned ESP32 Core to v2.0.14 for AutoConnect compatibility (v3.x not supported)
