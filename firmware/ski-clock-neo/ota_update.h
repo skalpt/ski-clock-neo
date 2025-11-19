@@ -199,11 +199,18 @@ String getLatestVersion() {
   unsigned long startTime = millis();
   const unsigned long TIMEOUT_MS = 10000;  // 10 second timeout
   const int CHUNK_SIZE = 32;  // Read 32 bytes at a time
+  const int MAX_RESPONSE_SIZE = 1024;  // Max 1KB for version response
   
   while (http.connected() && (contentLength > 0 || contentLength == -1)) {
     // Check timeout
     if (millis() - startTime > TIMEOUT_MS) {
       DEBUG_PRINTLN("OTA version check timeout");
+      break;
+    }
+    
+    // Safety check: prevent unbounded memory growth
+    if (payload.length() >= MAX_RESPONSE_SIZE) {
+      DEBUG_PRINTLN("OTA version response too large, truncating");
       break;
     }
     
@@ -231,11 +238,6 @@ String getLatestVersion() {
       // No data available, yield and wait a bit
       yield();
       delay(1);
-    }
-    
-    // Stop if we've received enough data (version response is small, ~100 bytes max)
-    if (payload.length() > 200) {
-      break;
     }
   }
   
