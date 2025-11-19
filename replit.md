@@ -20,7 +20,12 @@ This is an Arduino project for a ski clock display using WS2812 NeoPixel LED mat
   - Background auto-reconnection on temporary dropouts
   - Tries all stored networks on boot until one succeeds
   - Beautiful mobile-responsive configuration interface
-- OTA update ready
+- **OTA Firmware Updates** (GitHub Releases):
+  - Automatic firmware updates from GitHub releases
+  - Secure HTTPS downloads with certificate validation
+  - Version checking (only updates when newer version available)
+  - Periodic update checks (every 1 hour by default)
+  - GitHub Actions CI/CD for automated builds on version tags
 - Currently displays counting digits 0-9 in red
 
 ## Project Structure
@@ -28,6 +33,9 @@ This is an Arduino project for a ski clock display using WS2812 NeoPixel LED mat
 - `font_5x7.h` - Font data definitions (glyphs, widths, constants)
 - `neopixel_render.h` - All NeoPixel rendering functions (character mapping, scaling, drawing)
 - `wifi_config.h` - WiFi management, captive portal, and web configuration interface
+- `ota_update.h` - OTA firmware update system with GitHub integration
+- `certificates.h` - Root CA certificates for HTTPS validation
+- `.github/workflows/build-firmware.yml` - GitHub Actions CI/CD for automated firmware builds
 - `info.sh` - Information script for Replit environment
 
 ## Libraries Required
@@ -62,11 +70,24 @@ This code needs to be uploaded to an ESP32 or ESP8266 board using the Arduino ID
 - **Auto-Reconnect**: Temporary WiFi dropouts are handled gracefully with background retry
 - **Network Roaming**: Device automatically connects to the strongest available stored network
 
+### OTA Updates Setup
+1. **Update configuration** in `ski-clock-neo.ino`:
+   - Change `GITHUB_REPO_OWNER` to your GitHub username
+   - Change `GITHUB_REPO_NAME` if your repository name differs
+2. **Create a new release** on GitHub:
+   - Push code with a version tag: `git tag v1.0.0 && git push origin v1.0.0`
+   - GitHub Actions automatically builds firmware for ESP32 and ESP8266
+   - Binaries are attached to the release
+3. **Automatic updates**:
+   - Device checks for updates every hour
+   - Downloads and installs new firmware automatically
+   - Reboots with new version
+
 ### Normal Operation
 - The display cycles through digits 0-9 every 2 seconds
 - All WiFi credentials are stored permanently
 - Portal accessible anytime for network management
-- Ready for OTA updates
+- OTA updates check hourly for new firmware
 
 ## Development in Replit
 Since this is Arduino hardware code, you can use this Replit to:
@@ -85,6 +106,7 @@ The code has been refactored for excellent maintainability:
 - **Extended character support**: Recognizes actual degree symbol (0xB0) in addition to '*' placeholder
 
 ## Recent Changes
+- 2025-11-19: Added OTA firmware update system with GitHub Releases integration, automatic version checking, HTTPS security, and GitHub Actions CI/CD
 - 2025-11-19: Replaced custom WiFi with AutoConnect library for robust multi-network management, always-available portal, and auto-reconnection
 - 2025-11-19: Added WiFi support with captive portal configuration interface, persistent credential storage, preparation for OTA updates
 - 2025-11-19: Refactored code - extracted font data to font_5x7.h, all rendering to neopixel_render.h, improved memory efficiency, added degree symbol support

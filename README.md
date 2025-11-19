@@ -28,12 +28,17 @@ The sketch currently:
   - Auto-fallback between saved networks
   - Portal always available for network switching
   - Background auto-reconnect on dropouts
+- **OTA Firmware Updates** (GitHub Releases):
+  - Automatic firmware updates from GitHub releases
+  - Secure HTTPS downloads with certificate validation
+  - Checks for updates every hour
+  - Version-aware (only updates when newer)
+  - GitHub Actions CI/CD for automated builds
 - Cycles through digits 0-9 
 - Updates every 2 seconds
 - Displays in red color
 - Centers text on the 16x16 matrix
 - Uses 2x scaled font with diagonal smoothing for better appearance
-- Ready for OTA (Over-The-Air) updates
 
 ## Code Structure
 
@@ -42,6 +47,9 @@ The project is cleanly organized into modular components:
 - **font_5x7.h**: Font definitions for all displayable characters (0-9, :, -, ., °, C)
 - **neopixel_render.h**: All NeoPixel rendering functions including character mapping, coordinate transformation, glyph drawing, and 2x diagonal smoothing
 - **wifi_config.h**: WiFi management, captive portal web server, credential storage, and network utilities
+- **ota_update.h**: OTA firmware update system with GitHub API integration, version checking, and secure HTTPS downloads
+- **certificates.h**: Root CA certificates for validating HTTPS connections
+- **.github/workflows/build-firmware.yml**: GitHub Actions workflow for automated firmware compilation and release creation
 
 This clean separation makes the code highly maintainable and easy to understand at a glance.
 
@@ -67,6 +75,42 @@ To add or switch networks:
 2. Portal opens automatically (or go to 192.168.4.1)
 3. Add new networks or remove old ones
 4. Device saves all changes automatically
+
+## OTA Firmware Updates
+
+The project includes automatic firmware updates from GitHub Releases.
+
+### Setup Instructions
+
+1. **Update Configuration** in `ski-clock-neo.ino`:
+   ```cpp
+   #define GITHUB_REPO_OWNER "your-username"  // Change to your GitHub username
+   #define GITHUB_REPO_NAME "ski-clock-neo"    // Change if different
+   ```
+
+2. **Create a Release on GitHub**:
+   ```bash
+   # Tag your code with a version number
+   git tag v1.0.0
+   git push origin v1.0.0
+   ```
+   
+3. **GitHub Actions builds automatically**:
+   - Compiles firmware for ESP32 and ESP8266
+   - Creates a GitHub release with binaries attached
+   - Devices automatically detect and install updates
+
+### How It Works
+
+- Device checks for updates every hour (configurable)
+- Downloads new firmware via HTTPS from GitHub Releases
+- Only updates when a newer version is available
+- Secure certificate validation with GitHub's root CA
+- Automatic reboot after successful update
+
+### Manual OTA Check
+
+Force an immediate update check by calling `forceOTACheck()` in your code or via serial command.
 
 ## Running This Code
 

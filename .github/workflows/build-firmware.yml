@@ -1,0 +1,83 @@
+name: Build and Release Firmware
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Triggers on version tags like v1.0.0, v2.1.3, etc.
+  workflow_dispatch:  # Allows manual triggering from GitHub UI
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Arduino CLI
+        uses: arduino/setup-arduino-cli@v1
+        
+      - name: Install ESP32 platform
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32
+          
+      - name: Install ESP8266 platform
+        run: |
+          arduino-cli core update-index --additional-urls http://arduino.esp8266.com/stable/package_esp8266com_index.json
+          arduino-cli core install esp8266:esp8266 --additional-urls http://arduino.esp8266.com/stable/package_esp8266com_index.json
+          
+      - name: Install required libraries
+        run: |
+          arduino-cli lib install "Adafruit NeoPixel"
+          arduino-cli lib install "AutoConnect"
+          
+      - name: Build for ESP32
+        run: |
+          arduino-cli compile --fqbn esp32:esp32:esp32 \
+            --build-property "build.partitions=min_spiffs" \
+            --output-dir build/esp32 \
+            .
+          cp build/esp32/ski-clock-neo.ino.bin build/ski-clock-neo-esp32.bin
+          
+      - name: Build for ESP8266
+        run: |
+          arduino-cli compile --fqbn esp8266:esp8266:nodemcuv2 \
+            --build-property "build.flash_size=4M3M" \
+            --output-dir build/esp8266 \
+            .
+          cp build/esp8266/ski-clock-neo.ino.bin build/ski-clock-neo-esp8266.bin
+          
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            build/ski-clock-neo-esp32.bin
+            build/ski-clock-neo-esp8266.bin
+          body: |
+            ## Ski Clock Neo Firmware ${{ steps.get_version.outputs.VERSION }}
+            
+            ### Installation
+            Download the appropriate firmware for your board:
+            - **ESP32**: `ski-clock-neo-esp32.bin`
+            - **ESP8266**: `ski-clock-neo-esp8266.bin`
+            
+            ### OTA Update
+            Devices with OTA enabled will automatically detect and install this update.
+            
+            ### Manual Installation
+            Use Arduino IDE or esptool.py to flash the firmware to your device.
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-binaries
+          path: build/*.bin

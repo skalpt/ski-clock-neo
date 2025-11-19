@@ -3,6 +3,15 @@
 #include "neopixel_render.h"
 #include "wifi_config.h"
 
+// -------------------- Firmware version -------------------
+#define FIRMWARE_VERSION "v1.0.0"
+
+// -------------------- GitHub configuration ---------------
+#define GITHUB_REPO_OWNER "your-username"     // CHANGE THIS to your GitHub username
+#define GITHUB_REPO_NAME "ski-clock-neo"      // CHANGE THIS if your repo has a different name
+
+#include "ota_update.h"
+
 // -------------------- Pin definitions --------------------
 #define PIN_MATRIX_ROW1                  4     // WS2812 data for top row
 
@@ -26,22 +35,34 @@ void setup() {
   // Initialise serial
   Serial.begin(115200);
   Serial.println("Booted.");
+  Serial.print("Firmware version: ");
+  Serial.println(FIRMWARE_VERSION);
 
   // Initialise WiFi (with configuration portal if needed)
   setupWiFi();
   Serial.print("WiFi status: ");
   Serial.println(getWiFiStatus());
 
+  // Initialise OTA updates
+  setupOTA();
+
   // Initialise NeoPixels
   row1.begin();
   row1.setBrightness(BRIGHTNESS);
   row1.show();
   Serial.println("NeoPixels initialised.");
+  
+  // Perform initial OTA check after 30 seconds
+  delay(30000);
+  forceOTACheck();
 }
 
 void loop() {
   // Handle WiFi tasks (config portal or reconnection)
   updateWiFi();
+  
+  // Handle OTA update checks (non-blocking, checks once per hour by default)
+  updateOTA();
 
   unsigned long nowMs = millis();
   if (nowMs - lastUpdateMs < UPDATE_INTERVAL_MS) {
