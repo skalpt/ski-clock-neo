@@ -99,7 +99,7 @@ jobs:
 
       - name: Build for ESP-01 (1M)
         run: |
-          arduino-cli compile --fqbn esp8266:esp8266:esp01:eesz=1M \
+          arduino-cli compile --fqbn esp8266:esp8266:generic:eesz=1M \
             --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DBOARD_ESP01" \
             --output-dir build/esp01 \
             firmware/ski-clock-neo

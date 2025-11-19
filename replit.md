@@ -144,6 +144,9 @@ Must be configured in GitHub repo (Settings → Secrets → Actions):
 
 ## Recent Changes
 - **2025-11-19**: **PRODUCTION-READY**: Multi-platform OTA firmware system with 6 board variants
+- **2025-11-19**: Fixed GitHub Actions to pin ESP32 core to v2.0.14 (AutoConnect compatibility)
+- **2025-11-19**: Fixed ESP-01 FQBN to use generic board with 1M flash (esp8266:esp8266:generic:eesz=1M)
+- **2025-11-19**: Added secrets to both GitHub and Replit for proper API authentication
 - **2025-11-19**: Added upload validation - rejects aliased platform uploads (esp8266), requires canonical names
 - **2025-11-19**: Fixed GitHub Actions config upload to use --fail (build fails on config rejection)
 - **2025-11-19**: Made esp8266 a first-class platform with firmware mapping to esp12f for backward compatibility
