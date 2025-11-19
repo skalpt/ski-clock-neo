@@ -138,6 +138,7 @@ Must be configured in GitHub repo (Settings → Secrets → Actions):
 - ✅ Enables future device monitoring features
 
 ## Recent Changes
+- **2025-11-19**: Added error checking to GitHub Actions workflow - build now fails immediately if firmware upload fails
 - **2025-11-19**: Fixed ESP8266 flash size configuration (use FQBN eesz=4M3M instead of build property)
 - **2025-11-19**: Fixed ESP8266 Update API (getErrorString vs errorString)
 - **2025-11-19**: Fixed FIRMWARE_VERSION redefinition warning (now uses #ifndef guard)
