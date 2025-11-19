@@ -288,20 +288,26 @@ bool performOTAUpdate(String version) {
   HTTPClient http;
   bool isHttps = binaryUrl.startsWith("https://");
   
+  // Create client pointer that stays alive for entire download
+  WiFiClient* clientPtr = nullptr;
+  
   if (isHttps) {
-    WiFiClientSecure client;
-    client.setInsecure();  // Skip cert validation for custom servers
+    WiFiClientSecure* secureClient = new WiFiClientSecure();
+    secureClient->setInsecure();  // Skip cert validation for custom servers
+    clientPtr = secureClient;
     
-    if (!http.begin(client, binaryUrl)) {
+    if (!http.begin(*clientPtr, binaryUrl)) {
       DEBUG_PRINTLN("Failed to begin HTTP connection");
+      delete clientPtr;
       otaUpdateInProgress = false;
       return false;
     }
   } else {
-    WiFiClient client;
+    clientPtr = new WiFiClient();
     
-    if (!http.begin(client, binaryUrl)) {
+    if (!http.begin(*clientPtr, binaryUrl)) {
       DEBUG_PRINTLN("Failed to begin HTTP connection");
+      delete clientPtr;
       otaUpdateInProgress = false;
       return false;
     }
@@ -317,6 +323,7 @@ bool performOTAUpdate(String version) {
     DEBUG_PRINT("HTTP GET failed: ");
     DEBUG_PRINTLN(httpCode);
     http.end();
+    delete clientPtr;
     otaUpdateInProgress = false;
     return false;
   }
@@ -328,6 +335,7 @@ bool performOTAUpdate(String version) {
   if (contentLength <= 0) {
     DEBUG_PRINTLN("Invalid content length");
     http.end();
+    delete clientPtr;
     otaUpdateInProgress = false;
     return false;
   }
@@ -336,6 +344,7 @@ bool performOTAUpdate(String version) {
   if (!canBegin) {
     DEBUG_PRINTLN("Not enough space for OTA");
     http.end();
+    delete clientPtr;
     otaUpdateInProgress = false;
     return false;
   }
@@ -356,6 +365,7 @@ bool performOTAUpdate(String version) {
     if (Update.isFinished()) {
       DEBUG_PRINTLN("OTA Update successful! Rebooting...");
       http.end();
+      delete clientPtr;
       delay(2000);
       ESP.restart();
       return true;
@@ -368,6 +378,7 @@ bool performOTAUpdate(String version) {
   }
   
   http.end();
+  delete clientPtr;
   otaUpdateInProgress = false;
   return false;
   
@@ -376,20 +387,26 @@ bool performOTAUpdate(String version) {
   HTTPClient http;
   bool isHttps = binaryUrl.startsWith("https://");
   
+  // Create client pointer that stays alive for entire download
+  WiFiClient* clientPtr = nullptr;
+  
   if (isHttps) {
-    WiFiClientSecure client;
-    client.setInsecure();  // Skip cert validation for custom servers
+    WiFiClientSecure* secureClient = new WiFiClientSecure();
+    secureClient->setInsecure();  // Skip cert validation for custom servers
+    clientPtr = secureClient;
     
-    if (!http.begin(client, binaryUrl)) {
+    if (!http.begin(*clientPtr, binaryUrl)) {
       DEBUG_PRINTLN("Failed to begin HTTP connection");
+      delete clientPtr;
       otaUpdateInProgress = false;
       return false;
     }
   } else {
-    WiFiClient client;
+    clientPtr = new WiFiClient();
     
-    if (!http.begin(client, binaryUrl)) {
+    if (!http.begin(*clientPtr, binaryUrl)) {
       DEBUG_PRINTLN("Failed to begin HTTP connection");
+      delete clientPtr;
       otaUpdateInProgress = false;
       return false;
     }
@@ -405,6 +422,7 @@ bool performOTAUpdate(String version) {
     DEBUG_PRINT("HTTP GET failed: ");
     DEBUG_PRINTLN(httpCode);
     http.end();
+    delete clientPtr;
     otaUpdateInProgress = false;
     return false;
   }
@@ -416,6 +434,7 @@ bool performOTAUpdate(String version) {
   if (contentLength <= 0) {
     DEBUG_PRINTLN("Invalid content length");
     http.end();
+    delete clientPtr;
     otaUpdateInProgress = false;
     return false;
   }
@@ -424,6 +443,7 @@ bool performOTAUpdate(String version) {
   if (!canBegin) {
     DEBUG_PRINTLN("Not enough space for OTA");
     http.end();
+    delete clientPtr;
     otaUpdateInProgress = false;
     return false;
   }
@@ -444,6 +464,7 @@ bool performOTAUpdate(String version) {
     if (Update.isFinished()) {
       DEBUG_PRINTLN("OTA Update successful! Rebooting...");
       http.end();
+      delete clientPtr;
       delay(2000);
       ESP.restart();
       return true;
@@ -456,6 +477,7 @@ bool performOTAUpdate(String version) {
   }
   
   http.end();
+  delete clientPtr;
   otaUpdateInProgress = false;
   return false;
 #endif

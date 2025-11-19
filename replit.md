@@ -46,6 +46,7 @@ Debug logging is **enabled** by default for development and troubleshooting:
 -   **GitHub Actions**: CI/CD platform for automated firmware builds, versioning, and deployment to the dashboard.
 ## Recent Changes
 
+- **2025-11-19**: Fixed OTA download WiFiClient scope bug causing "connection lost" errors during firmware downloads
 - **2025-11-19**: Switched deployment from autoscale to VM to fix multi-worker state synchronization issues
 - **2025-11-19**: Removed aggressive compiler optimizations (LTO, -Os, etc.) - min_spiffs partition provides sufficient space
 - **2025-11-19**: Enabled debug logging by default for development and troubleshooting
