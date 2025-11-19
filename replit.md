@@ -144,6 +144,9 @@ Must be configured in GitHub repo (Settings → Secrets → Actions):
 
 ## Recent Changes
 - **2025-11-19**: **PRODUCTION-READY**: Multi-platform OTA firmware system with 6 board variants
+- **2025-11-19**: Migrated firmware storage to Replit Object Storage for persistence across deployments
+- **2025-11-19**: Added graceful fallback to local filesystem when Object Storage not configured
+- **2025-11-19**: Created object_storage.py module for Google Cloud Storage integration
 - **2025-11-19**: Fixed GitHub Actions to pin ESP32 core to v2.0.14 (AutoConnect compatibility)
 - **2025-11-19**: Fixed ESP-01 FQBN to use generic board with 1M flash (esp8266:esp8266:generic:eesz=1M)
 - **2025-11-19**: Added secrets to both GitHub and Replit for proper API authentication

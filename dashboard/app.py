@@ -1,16 +1,22 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, Response
 import os
 import hashlib
 import json
+import io
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional, Any
+from object_storage import ObjectStorageService, ObjectNotFoundError, ObjectStorageError
 
 app = Flask(__name__)
 
+# Object Storage paths
+VERSIONS_OBJECT_PATH = "versions.json"
+FIRMWARES_PREFIX = "firmwares/"
+
+# Fallback local paths (used during development if Object Storage not available)
 FIRMWARES_DIR = Path(__file__).parent / 'firmwares'
 FIRMWARES_DIR.mkdir(exist_ok=True)
-
 CONFIG_FILE = Path(__file__).parent / 'config.json'
 VERSIONS_FILE = Path(__file__).parent / 'versions.json'
 
@@ -53,28 +59,61 @@ PLATFORM_FIRMWARE_MAPPING = {
     'esp8266': 'esp12f',  # Legacy ESP8266 devices get ESP-12F firmware
 }
 
-# Load firmware versions from disk (persists across restarts)
+# Check if Object Storage is available
+def is_object_storage_available():
+    try:
+        storage = ObjectStorageService()
+        storage.get_bucket_name()
+        return True
+    except ObjectStorageError:
+        return False
+
+# Load firmware versions (try Object Storage first, fall back to local file)
 def load_versions():
+    # Try Object Storage first
+    try:
+        storage = ObjectStorageService()
+        bucket_name = storage.get_bucket_name()
+        object_path = f"/{bucket_name}/{VERSIONS_OBJECT_PATH}"
+        
+        if storage.exists(object_path):
+            versions_json = storage.download_as_string(object_path)
+            saved_versions = json.loads(versions_json)
+            print(f"✓ Loaded {len([v for v in saved_versions.values() if v])} firmware versions from Object Storage")
+            return saved_versions
+    except (ObjectStorageError, ObjectNotFoundError) as e:
+        print(f"Object Storage not available for versions, trying local fallback: {e}")
+    
+    # Fall back to local file system
     if VERSIONS_FILE.exists():
         try:
             with open(VERSIONS_FILE, 'r') as f:
                 saved_versions = json.load(f)
-                print(f"Loaded {len([v for v in saved_versions.values() if v])} firmware versions from disk")
+                print(f"Loaded {len([v for v in saved_versions.values() if v])} firmware versions from local file")
                 return saved_versions
         except Exception as e:
-            print(f"Warning: Could not load versions file: {e}")
+            print(f"Warning: Could not load local versions file: {e}")
     
     # Initialize with None for all platforms
     return {platform: None for platform in SUPPORTED_PLATFORMS}
 
-# Save firmware versions to disk
+# Save firmware versions (to Object Storage if available, otherwise local file)
 def save_versions():
     try:
-        with open(VERSIONS_FILE, 'w') as f:
-            json.dump(LATEST_VERSIONS, f, indent=2)
-        print(f"Saved firmware versions to {VERSIONS_FILE}")
-    except Exception as e:
-        print(f"Error saving versions file: {e}")
+        storage = ObjectStorageService()
+        bucket_name = storage.get_bucket_name()
+        
+        versions_json = json.dumps(LATEST_VERSIONS, indent=2)
+        storage.upload_string(versions_json, VERSIONS_OBJECT_PATH)
+        print(f"✓ Saved firmware versions to Object Storage")
+    except ObjectStorageError as e:
+        print(f"Object Storage not available, saving to local file: {e}")
+        try:
+            with open(VERSIONS_FILE, 'w') as f:
+                json.dump(LATEST_VERSIONS, f, indent=2)
+            print(f"Saved firmware versions to local file: {VERSIONS_FILE}")
+        except Exception as e:
+            print(f"Error saving versions file: {e}")
 
 LATEST_VERSIONS: Dict[str, Optional[Dict[str, Any]]] = load_versions()
 
@@ -156,17 +195,65 @@ def download_firmware(platform):
     if not version_info:
         return jsonify({'error': 'No firmware available'}), 404
     
-    firmware_path = FIRMWARES_DIR / version_info['filename']
+    # Check where the firmware is stored
+    storage_location = version_info.get('storage', 'local')
     
-    if not firmware_path.exists():
-        return jsonify({'error': 'Firmware file not found'}), 404
-    
-    return send_file(
-        firmware_path,
-        mimetype='application/octet-stream',
-        as_attachment=True,
-        download_name=version_info['filename']
-    )
+    if storage_location == 'object_storage':
+        # Download from Object Storage using stored full path
+        object_path = None  # Initialize to avoid UnboundLocalError
+        try:
+            storage = ObjectStorageService()
+            
+            # Use the full object_path if available (includes bucket)
+            object_path = version_info.get('object_path')
+            if not object_path:
+                # Fallback: reconstruct from object_name and current bucket
+                bucket_name = storage.get_bucket_name()
+                object_path = f"/{bucket_name}/{version_info.get('object_name', FIRMWARES_PREFIX + version_info['filename'])}"
+            
+            # Download as bytes and stream to client
+            firmware_data = storage.download_as_bytes(object_path)
+            
+            return Response(
+                firmware_data,
+                mimetype='application/octet-stream',
+                headers={
+                    'Content-Disposition': f'attachment; filename="{version_info["filename"]}"',
+                    'Content-Length': str(len(firmware_data))
+                }
+            )
+        except (ObjectStorageError, ObjectNotFoundError) as e:
+            error_msg = f"Error downloading from Object Storage"
+            if object_path:
+                error_msg += f" ({object_path})"
+            print(f"{error_msg}: {e}")
+            # Try local filesystem as last resort
+            print(f"Attempting local filesystem fallback...")
+            firmware_path = FIRMWARES_DIR / version_info['filename']
+            if firmware_path.exists():
+                print(f"✓ Found firmware in local fallback")
+                return send_file(
+                    firmware_path,
+                    mimetype='application/octet-stream',
+                    as_attachment=True,
+                    download_name=version_info['filename']
+                )
+            return jsonify({'error': 'Firmware file not found in storage or local fallback'}), 404
+    else:
+        # Download from local filesystem
+        firmware_path = FIRMWARES_DIR / version_info.get('local_path', version_info['filename'])
+        if not Path(firmware_path).is_absolute():
+            firmware_path = FIRMWARES_DIR / firmware_path
+        
+        if not firmware_path.exists():
+            return jsonify({'error': 'Firmware file not found'}), 404
+        
+        return send_file(
+            firmware_path,
+            mimetype='application/octet-stream',
+            as_attachment=True,
+            download_name=version_info['filename']
+        )
 
 def parse_version(version_str: str) -> int:
     """
@@ -255,14 +342,41 @@ def upload_firmware():
             pass
     
     filename = f"firmware-{platform}-{version}.bin"
-    filepath = FIRMWARES_DIR / filename
+    object_name = f"{FIRMWARES_PREFIX}{filename}"
     
-    file.save(filepath)
+    # Read file data
+    file_data = file.read()
+    file_size = len(file_data)
+    file_hash = hashlib.sha256(file_data).hexdigest()
     
-    file_size = filepath.stat().st_size
+    # Initialize variables to avoid UnboundLocalError
+    object_path = None
+    filepath = None
     
-    with open(filepath, 'rb') as f:
-        file_hash = hashlib.sha256(f.read()).hexdigest()
+    # Try to save to Object Storage, fall back to local filesystem
+    try:
+        storage = ObjectStorageService()
+        bucket_name = storage.get_bucket_name()
+        
+        # Save to temp file then upload (Object Storage requires file path)
+        temp_path = FIRMWARES_DIR / filename
+        with open(temp_path, 'wb') as f:
+            f.write(file_data)
+        
+        object_path = storage.upload_file(temp_path, object_name)
+        print(f"✓ Uploaded firmware to Object Storage: {object_path}")
+        
+        # Clean up temp file after successful upload
+        temp_path.unlink()
+        
+        storage_location = "object_storage"
+    except ObjectStorageError as e:
+        print(f"Object Storage not available, saving to local filesystem: {e}")
+        # Fall back to local filesystem
+        filepath = FIRMWARES_DIR / filename
+        with open(filepath, 'wb') as f:
+            f.write(file_data)
+        storage_location = "local"
     
     version_info = {
         'version': version,
@@ -270,8 +384,16 @@ def upload_firmware():
         'size': file_size,
         'sha256': file_hash,
         'uploaded_at': datetime.utcnow().isoformat(),
-        'download_url': f'/api/firmware/{platform}'
+        'download_url': f'/api/firmware/{platform}',
+        'storage': storage_location
     }
+    
+    # Store full object path for Object Storage downloads (includes bucket)
+    if storage_location == 'object_storage' and object_path:
+        version_info['object_path'] = object_path
+        version_info['object_name'] = object_name
+    elif filepath:
+        version_info['local_path'] = str(filepath)
     
     LATEST_VERSIONS[platform] = version_info
     
