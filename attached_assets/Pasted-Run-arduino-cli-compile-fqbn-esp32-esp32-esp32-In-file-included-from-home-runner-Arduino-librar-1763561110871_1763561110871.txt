@@ -1,0 +1,75 @@
+Run arduino-cli compile --fqbn esp32:esp32:esp32 \
+In file included from /home/runner/Arduino/libraries/AutoConnect/src/AutoConnectCore.hpp:31,
+                 from /home/runner/Arduino/libraries/AutoConnect/src/AutoConnectCoreImpl.hpp:13,
+                 from /home/runner/Arduino/libraries/AutoConnect/src/AutoConnectExt.hpp:15,
+                 from /home/runner/Arduino/libraries/AutoConnect/src/AutoConnectExtImpl.hpp:13,
+                 from /home/runner/Arduino/libraries/AutoConnect/src/AutoConnect.h:15,
+                 from /home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/wifi_config.h:14,
+                 from /home/runner/work/ski-clock-neo/ski-clock-neo/firmware/ski-clock-neo/ski-clock-neo.ino:4:
+/home/runner/Arduino/libraries/PageBuilder/src/PageBuilder.h:301:80: error: 'decltype' cannot resolve address of overloaded function
+  301 |     std::is_lvalue_reference<TypeOfArgument<decltype(&RequestHandler::canHandle)>::arg<1>::type>::value,
+      |                                                                                ^
+/home/runner/Arduino/libraries/PageBuilder/src/PageBuilder.h:301:81: error: template argument 1 is invalid
+  301 |     std::is_lvalue_reference<TypeOfArgument<decltype(&RequestHandler::canHandle)>::arg<1>::type>::value,
+      |                                                                                 ^
+/home/runner/Arduino/libraries/PageBuilder/src/PageBuilder.h:301:89: error: template argument 1 is invalid
+  301 |     std::is_lvalue_reference<TypeOfArgument<decltype(&RequestHandler::canHandle)>::arg<1>::type>::value,
+      |                                                                                         ^
+/home/runner/Arduino/libraries/PageBuilder/src/PageBuilder.h:301:96: error: wrong number of template arguments (1, should be 3)
+  301 |     std::is_lvalue_reference<TypeOfArgument<decltype(&RequestHandler::canHandle)>::arg<1>::type>::value,
+      |                                                                                                ^
+In file included from /home/runner/.arduino15/packages/esp32/tools/esp-x32/2507/xtensa-esp-elf/include/c++/14.2.0/bits/stl_pair.h:60,
+                 from /home/runner/.arduino15/packages/esp32/tools/esp-x32/2507/xtensa-esp-elf/include/c++/14.2.0/bits/stl_algobase.h:64,
+                 from /home/runner/.arduino15/packages/esp32/tools/esp-x32/2507/xtensa-esp-elf/include/c++/14.2.0/bits/specfun.h:43,
+                 from /home/runner/.arduino15/packages/esp32/tools/esp-x32/2507/xtensa-esp-elf/include/c++/14.2.0/cmath:3898,
+                 from /home/runner/.arduino15/packages/esp32/tools/esp-x32/2507/xtensa-esp-elf/include/c++/14.2.0/math.h:36,
+                 from /home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/cores/esp32/esp32-hal.h:30,
+                 from /home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/cores/esp32/Arduino.h:44,
+                 from /tmp/arduino/sketches/A112E18D136C6DC1ED5764BF8E0E7FBE/sketch/ski-clock-neo.ino.cpp:1:
+/home/runner/.arduino15/packages/esp32/tools/esp-x32/2507/xtensa-esp-elf/include/c++/14.2.0/type_traits:2319:12: note: provided for 'template<bool _Cond, class _Iftrue, class _Iffalse> struct std::conditional'
+ 2319 |     struct conditional
+      |            ^~~~~~~~~~~
+/home/runner/Arduino/libraries/PageBuilder/src/PageBuilder.h:338:53: error: 'PageBuilderUtil::URI_TYPE_SIGNATURE' has not been declared
+  338 |   virtual bool  canHandle(HTTPMethod requestMethod, PageBuilderUtil::URI_TYPE_SIGNATURE requestUri) override;
+      |                                                     ^~~~~~~~~~~~~~~
+/home/runner/Arduino/libraries/PageBuilder/src/PageBuilder.h:339:27: error: 'PageBuilderUtil::URI_TYPE_SIGNATURE' has not been declared
+  339 |   virtual bool  canUpload(PageBuilderUtil::URI_TYPE_SIGNATURE uri) override;
+      |                           ^~~~~~~~~~~~~~~
+/home/runner/Arduino/libraries/PageBuilder/src/PageBuilder.h:343:61: error: 'PageBuilderUtil::URI_TYPE_SIGNATURE' has not been declared
+  343 |   bool  handle(WebServer& server, HTTPMethod requestMethod, PageBuilderUtil::URI_TYPE_SIGNATURE requestUri) override;
+      |                                                             ^~~~~~~~~~~~~~~
+/home/runner/Arduino/libraries/PageBuilder/src/PageBuilder.h:350:43: error: 'PageBuilderUtil::URI_TYPE_SIGNATURE' has not been declared
+  350 |   virtual void  upload(WebServer& server, PageBuilderUtil::URI_TYPE_SIGNATURE requestUri, HTTPUpload& upload) override;
+      |       ~~~~~~~~~~~~^~
+/home/runner/Arduino/libraries/AutoConnect/src/AutoConnectPageImpl.hpp:1001:43: error: 'spi_flash_get_chip_size' was not declared in this scope
+ 1001 |   return (uint32_t)spi_flash_get_chip_size();
+      |                    ~~~~~~~~~~~~~~~~~~~~~~~^~
+
+Error during build: exit status 1
+
+Used library        Version Path                                                                                     
+Adafruit NeoPixel   1.15.2  /home/runner/Arduino/libraries/Adafruit_NeoPixel                                         
+WiFi                3.3.3   /home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/WiFi               
+Networking          3.3.3   /home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/Network            
+WebServer           3.3.3   /home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/WebServer          
+FS                  3.3.3   /home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/FS                 
+AutoConnect         1.4.2   /home/runner/Arduino/libraries/AutoConnect                                               
+DNSServer           3.3.3   /home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/DNSServer          
+ESP32 Async UDP     3.3.3   /home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/AsyncUDP           
+EEPROM              3.3.3   /home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/EEPROM             
+PageBuilder         1.5.6   /home/runner/Arduino/libraries/PageBuilder                                               
+SPIFFS              3.3.3   /home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/SPIFFS             
+SD                  3.3.3   /home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/SD                 
+SPI                 3.3.3   /home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/SPI                
+Preferences         3.3.3   /home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/Preferences        
+Ticker              3.3.3   /home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/Ticker             
+ArduinoJson         7.4.2   /home/runner/Arduino/libraries/ArduinoJson                                               
+HTTPClient          3.3.3   /home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/HTTPClient         
+NetworkClientSecure 3.3.3   /home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/NetworkClientSecure
+HTTPUpdate          3.3.3   /home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/HTTPUpdate         
+Update              3.3.3   /home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/Update             
+Hash                3.3.3   /home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3/libraries/Hash               
+
+Used platform Version Path                                                       
+esp32:esp32   3.3.3   /home/runner/.arduino15/packages/esp32/hardware/esp32/3.3.3
+Error: Process completed with exit code 1.
