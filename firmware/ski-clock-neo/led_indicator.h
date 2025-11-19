@@ -40,6 +40,23 @@ enum LedPattern {
   #define FAST_PIN_LOW(pin)  digitalWrite(pin, LOW)
 #endif
 
+// Helper functions to handle LED on/off with inverted logic
+inline void ledOn() {
+  if (LED_ON == LOW) {
+    FAST_PIN_LOW(LED_PIN);
+  } else {
+    FAST_PIN_HIGH(LED_PIN);
+  }
+}
+
+inline void ledOff() {
+  if (LED_ON == LOW) {
+    FAST_PIN_HIGH(LED_PIN);
+  } else {
+    FAST_PIN_LOW(LED_PIN);
+  }
+}
+
 // Ticker for LED updates (interrupt-driven for responsiveness)
 Ticker ledTicker;
 
@@ -51,11 +68,7 @@ volatile bool ledState = false;
 // Initialize LED system
 void setupLED() {
   pinMode(LED_PIN, OUTPUT);
-  if (LED_ON == LOW) {
-    FAST_PIN_HIGH(LED_PIN);  // Start with LED off (inverted logic)
-  } else {
-    FAST_PIN_LOW(LED_PIN);
-  }
+  ledOff();
   Serial.println("LED indicator initialized");
 }
 
@@ -67,23 +80,19 @@ void ledTimerCallback() {
       // Quick flashing (100ms on/off) for setup
       ledState = !ledState;
       if (ledState) {
-        if (LED_ON == LOW) FAST_PIN_LOW(LED_PIN);
-        else FAST_PIN_HIGH(LED_PIN);
+        ledOn();
       } else {
-        if (LED_ON == LOW) FAST_PIN_HIGH(LED_PIN);
-        else FAST_PIN_LOW(LED_PIN);
+        ledOff();
       }
       break;
       
     case LED_ONE_FLASH:
       // 1 quick flash followed by 2 second pause
       if (flashCount == 0) {
-        if (LED_ON == LOW) FAST_PIN_LOW(LED_PIN);
-        else FAST_PIN_HIGH(LED_PIN);
+        ledOn();
         flashCount = 1;
       } else if (flashCount == 1) {
-        if (LED_ON == LOW) FAST_PIN_HIGH(LED_PIN);
-        else FAST_PIN_LOW(LED_PIN);
+        ledOff();
         flashCount = 2;
       } else {
         // Pause - do nothing
@@ -100,17 +109,14 @@ void ledTimerCallback() {
         // Flash 3 times (on/off/on/off/on/off)
         ledState = (flashCount % 2 == 0);
         if (ledState) {
-          if (LED_ON == LOW) FAST_PIN_LOW(LED_PIN);
-          else FAST_PIN_HIGH(LED_PIN);
+          ledOn();
         } else {
-          if (LED_ON == LOW) FAST_PIN_HIGH(LED_PIN);
-          else FAST_PIN_LOW(LED_PIN);
+          ledOff();
         }
         flashCount++;
       } else {
         // Pause
-        if (LED_ON == LOW) FAST_PIN_HIGH(LED_PIN);
-        else FAST_PIN_LOW(LED_PIN);
+        ledOff();
         flashCount++;
         if (flashCount >= 26) {  // 6 + 20 = 26 (2 second pause)
           flashCount = 0;
@@ -120,8 +126,7 @@ void ledTimerCallback() {
       
     case LED_OFF:
     default:
-      if (LED_ON == LOW) FAST_PIN_HIGH(LED_PIN);
-      else FAST_PIN_LOW(LED_PIN);
+      ledOff();
       break;
   }
 }
@@ -138,11 +143,7 @@ void setLedPattern(LedPattern pattern) {
   // Reset state
   flashCount = 0;
   ledState = false;
-  if (LED_ON == LOW) {
-    FAST_PIN_HIGH(LED_PIN);  // LED off (inverted)
-  } else {
-    FAST_PIN_LOW(LED_PIN);
-  }
+  ledOff();
   
   // Start new pattern
   currentPattern = pattern;
