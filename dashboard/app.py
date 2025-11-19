@@ -73,6 +73,17 @@ def download_firmware(platform):
         download_name=version_info['filename']
     )
 
+def parse_version(version_str: str) -> int:
+    if version_str.startswith('v') or version_str.startswith('V'):
+        version_str = version_str[1:]
+    
+    parts = version_str.split('.')
+    major = int(parts[0]) if len(parts) > 0 else 0
+    minor = int(parts[1]) if len(parts) > 1 else 0
+    patch = int(parts[2]) if len(parts) > 2 else 0
+    
+    return major * 1000000 + minor * 1000 + patch
+
 @app.route('/api/upload', methods=['POST'])
 def upload_firmware():
     api_key = request.headers.get('X-API-Key')
@@ -95,6 +106,30 @@ def upload_firmware():
     
     if not file.filename or not file.filename.endswith('.bin'):
         return jsonify({'error': 'File must be a .bin file'}), 400
+    
+    try:
+        new_version_code = parse_version(version)
+    except (ValueError, IndexError):
+        return jsonify({'error': 'Invalid version format. Use vX.Y.Z'}), 400
+    
+    current_version_info = LATEST_VERSIONS.get(platform)
+    if current_version_info:
+        try:
+            current_version_code = parse_version(current_version_info['version'])
+            if new_version_code < current_version_code:
+                return jsonify({
+                    'error': 'Version downgrade not allowed',
+                    'current_version': current_version_info['version'],
+                    'attempted_version': version
+                }), 400
+            elif new_version_code == current_version_code:
+                return jsonify({
+                    'error': 'Version already exists',
+                    'current_version': current_version_info['version'],
+                    'message': 'Use a newer version number to update'
+                }), 409
+        except (ValueError, IndexError):
+            pass
     
     filename = f"firmware-{platform}-{version}.bin"
     filepath = FIRMWARES_DIR / filename

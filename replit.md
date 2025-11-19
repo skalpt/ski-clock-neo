@@ -1,114 +1,171 @@
-# Ski Clock Neo - Arduino NeoPixel Project
+# Ski Clock Neo - Project Documentation
 
 ## Overview
-This is an Arduino project for a ski clock display using WS2812 NeoPixel LED matrices. The code displays numbers on a 16x16 LED matrix with custom font rendering.
+This project combines Arduino firmware for NeoPixel LED matrix displays with a custom firmware update server. The firmware runs on ESP32/ESP8266 hardware, while the dashboard server is hosted on Replit (easily migrated to self-hosted infrastructure).
 
-**Important**: This is embedded hardware code that requires physical Arduino hardware and cannot run directly in the Replit environment.
+**Architecture**: 
+- **Firmware** (embedded C++ for ESP32/ESP8266) - Displays content on 16x16 NeoPixel matrix
+- **Dashboard Server** (Python Flask) - Distributes firmware updates and monitors devices
+
+## Project Structure
+
+```
+ski-clock-neo/
+├── firmware/               # Arduino firmware code
+│   ├── ski-clock-neo.ino   # Main sketch
+│   ├── font_5x7.h          # Font definitions
+│   ├── neopixel_render.h   # LED rendering functions
+│   ├── wifi_config.h       # WiFi management (AutoConnect)
+│   ├── ota_update.h        # OTA update system
+│   ├── certificates.h      # HTTPS root CA certificates
+│   └── info.sh             # Information script
+├── dashboard/              # Flask update server
+│   ├── app.py              # Main Flask application
+│   ├── requirements.txt    # Python dependencies
+│   ├── firmwares/          # Uploaded firmware binaries (gitignored)
+│   └── .gitignore          # Dashboard-specific gitignore
+├── .github/
+│   └── workflows/
+│       └── build-firmware.yml  # CI/CD for firmware builds
+├── README.md               # User-facing documentation
+└── replit.md               # This file - internal project notes
+```
 
 ## Hardware Requirements
-- **ESP32 or ESP8266** board (for WiFi support)
+- **ESP32 or ESP8266** board with WiFi
 - WS2812 NeoPixel LED matrix (16x16)
 - Data pin connected to pin 4
 
-## Features
-- Custom 5x7 pixel font for digits 0-9 and special characters (-,., °, C, :)
-- 2x scaling with diagonal smoothing for better appearance
-- Serpentine wiring support for LED matrices
-- **Advanced WiFi Management** (powered by AutoConnect):
-  - Multiple network credential storage with automatic fallback
-  - Captive portal always available (even when connected) for network switching
-  - Background auto-reconnection on temporary dropouts
-  - Tries all stored networks on boot until one succeeds
-  - Beautiful mobile-responsive configuration interface
-- **OTA Firmware Updates** (GitHub Releases):
-  - Automatic firmware updates from GitHub releases
-  - Secure HTTPS downloads with certificate validation
-  - Version checking (only updates when newer version available)
-  - Periodic update checks (every 1 hour by default)
-  - GitHub Actions CI/CD for automated builds on version tags
-- Currently displays counting digits 0-9 in red
+## Firmware Features
+- Custom 5x7 pixel font with 2x diagonal smoothing
+- Multi-panel support with serpentine wiring
+- **Advanced WiFi** (AutoConnect library):
+  - Multiple network credentials with auto-fallback
+  - Always-available captive portal
+  - Background auto-reconnection
+- **Secure OTA Updates**:
+  - Custom update server (not GitHub-dependent)
+  - API key authentication
+  - Configurable server URL for easy migration
+  - Dual-timer retry logic (1h success, 5m failure)
+  - HTTPS support with cert validation
 
-## Project Structure
-- `ski-clock-neo.ino` - Main sketch (constants, setup, loop)
-- `font_5x7.h` - Font data definitions (glyphs, widths, constants)
-- `neopixel_render.h` - All NeoPixel rendering functions (character mapping, scaling, drawing)
-- `wifi_config.h` - WiFi management, captive portal, and web configuration interface
-- `ota_update.h` - OTA firmware update system with GitHub integration
-- `certificates.h` - Root CA certificates for HTTPS validation
-- `.github/workflows/build-firmware.yml` - GitHub Actions CI/CD for automated firmware builds
-- `info.sh` - Information script for Replit environment
+## Dashboard Server Features
+- **API-based firmware distribution**
+- **Version management** per platform (ESP32/ESP8266)
+- **Upload endpoint** for GitHub Actions integration
+- **Download endpoint** with API key authentication
+- **SHA256 checksums** for integrity verification
+- **Status monitoring** for stored firmwares
+
+## Secrets Configuration
+
+### Replit Secrets (✅ Configured)
+- `UPDATE_SERVER_URL` - Dashboard server URL (your Replit deployment)
+- `UPLOAD_API_KEY` - Used by GitHub Actions to upload binaries
+- `DOWNLOAD_API_KEY` - Embedded in firmware for downloads
+
+### GitHub Repository Secrets (⚠️ User must add)
+Add the same three secrets to GitHub repo (Settings → Secrets → Actions):
+- `UPDATE_SERVER_URL`
+- `UPLOAD_API_KEY`
+- `DOWNLOAD_API_KEY`
+
+## Deployment Flow
+
+1. **Code Changes** → Push to GitHub
+2. **Tag Version** → `git tag v1.0.0 && git push origin v1.0.0`
+3. **GitHub Actions**:
+   - Compiles firmware for ESP32 and ESP8266
+   - Injects UPDATE_SERVER_URL and DOWNLOAD_API_KEY at build time
+   - Uploads binaries to dashboard server via UPLOAD_API_KEY
+   - Saves artifacts for manual download
+4. **Dashboard** → Stores firmware and serves to devices
+5. **Devices** → Check hourly, download, and install updates
 
 ## Libraries Required
 - **Adafruit_NeoPixel** - LED matrix control
-- **AutoConnect** - Robust WiFi management with captive portal
-  - Install via Arduino IDE Library Manager: Search "AutoConnect"
-  - Or PlatformIO: `hieromon/AutoConnect@^1.4.2`
-- ESP32/ESP8266 WiFi libraries (built-in with board package)
+- **AutoConnect** - WiFi management (install via Library Manager)
+- ESP32/ESP8266 WiFi libraries (built-in)
 
-## How to Use
-This code needs to be uploaded to an ESP32 or ESP8266 board using the Arduino IDE or PlatformIO:
+## WiFi Configuration
+- **First boot**: Device creates `SkiClock-Setup` AP (password: `configure`)
+- **Captive portal**: Opens automatically for network selection
+- **Multi-network**: Stores multiple credentials, tries in order
+- **Always accessible**: Portal remains available even when connected
 
-### First Time Setup
-1. Install the Adafruit_NeoPixel library
-2. Select ESP32 or ESP8266 board in Arduino IDE
-3. Connect your NeoPixel matrix to pin 4
-4. Upload the sketch to your board
+## OTA Update System
 
-### WiFi Configuration
-1. On first boot (or if no WiFi is configured), the device creates an access point:
-   - **SSID:** `SkiClock-Setup`
-   - **Password:** `configure`
-2. Connect to this network with your phone/computer
-3. A captive portal will open automatically
-4. Select your WiFi network and enter the password
-5. The device will save credentials and connect
+### Version Checking
+- Devices check every 1 hour when successful
+- Retry every 5 minutes on failure
+- Version comparison: `v1.2.3` → `1002003` (major*1000000 + minor*1000 + patch)
+- Only updates when newer version available
 
-### Advanced WiFi Features
-- **Multiple Network Support**: Add multiple WiFi networks - the device automatically tries them in order
-- **Always Accessible Portal**: The configuration portal remains available even when connected
-  - Connect to `SkiClock-Setup` at any time to switch networks or add new ones
-- **Auto-Reconnect**: Temporary WiFi dropouts are handled gracefully with background retry
-- **Network Roaming**: Device automatically connects to the strongest available stored network
+### Security
+- **Private repo**: Firmware binaries never exposed publicly
+- **API key auth**: Devices authenticate with DOWNLOAD_API_KEY
+- **HTTPS optional**: Supports both HTTP and HTTPS
+- **Configurable endpoint**: Easy migration to self-hosted server
 
-### OTA Updates Setup
-1. **GitHub repository secrets are configured**:
-   - `GITHUB_REPO_OWNER` and `GITHUB_REPO_NAME` are stored in Replit secrets
-   - These are automatically injected during GitHub Actions builds
-   - Also add these same secrets to your GitHub repository (Settings → Secrets → Actions)
-2. **Create a new release** on GitHub:
-   - Push code with a version tag: `git tag v1.0.0 && git push origin v1.0.0`
-   - GitHub Actions automatically builds firmware for ESP32 and ESP8266
-   - Binaries are attached to the release
-3. **Automatic updates**:
-   - Device checks for updates every hour
-   - Downloads and installs new firmware automatically
-   - Reboots with new version
-
-### Normal Operation
-- The display cycles through digits 0-9 every 2 seconds
-- All WiFi credentials are stored permanently
-- Portal accessible anytime for network management
-- OTA updates check hourly for new firmware
-
-## Development in Replit
-Since this is Arduino hardware code, you can use this Replit to:
-- View and edit the code
-- Share the code with others
-- Version control your changes
-- Add documentation
-
-To actually run this code, you'll need to use Arduino IDE or PlatformIO on a computer connected to Arduino hardware.
-
-## Code Organization
-The code has been refactored for excellent maintainability:
-- **Clean separation**: Main .ino contains only constants, setup(), and loop()
-- **Modular headers**: Font data in `font_5x7.h`, all rendering in `neopixel_render.h`
-- **Memory efficient**: Uses static buffer instead of stack allocation for 2x scaling (~140 bytes saved per glyph render)
-- **Extended character support**: Recognizes actual degree symbol (0xB0) in addition to '*' placeholder
+### Architecture Decision: Custom Server vs GitHub
+**Chose custom server** instead of GitHub Releases because:
+- ✅ Repository stays private (no public releases needed)
+- ✅ No GitHub PAT tokens in firmware (security)
+- ✅ Full control over distribution and monitoring
+- ✅ Easy migration to self-hosted infrastructure
+- ✅ Enables future device monitoring features
 
 ## Recent Changes
-- 2025-11-19: Added OTA firmware update system with GitHub Releases integration, automatic version checking, HTTPS security, and GitHub Actions CI/CD
-- 2025-11-19: Replaced custom WiFi with AutoConnect library for robust multi-network management, always-available portal, and auto-reconnection
-- 2025-11-19: Added WiFi support with captive portal configuration interface, persistent credential storage, preparation for OTA updates
-- 2025-11-19: Refactored code - extracted font data to font_5x7.h, all rendering to neopixel_render.h, improved memory efficiency, added degree symbol support
-- 2025-11-19: Initial import from GitHub
+- **2025-11-19**: Implemented custom firmware update server with Flask dashboard
+- **2025-11-19**: Restructured project into firmware/ and dashboard/ directories  
+- **2025-11-19**: Migrated from GitHub Releases to custom server for OTA updates
+- **2025-11-19**: Added API key authentication for upload and download endpoints
+- **2025-11-19**: Made UPDATE_SERVER_URL configurable (injected at build time)
+- **2025-11-19**: Updated GitHub Actions to upload binaries to dashboard server
+- **2025-11-19**: Migrated GITHUB_REPO_* from hardcoded to secrets-based config
+- **2025-11-19**: Added OTA firmware update system with GitHub Releases integration
+- **2025-11-19**: Replaced custom WiFi with AutoConnect library
+- **2025-11-19**: Refactored code into modular headers
+- **2025-11-19**: Initial import from GitHub
+
+## Development Notes
+
+### Testing Dashboard Locally
+```bash
+cd dashboard
+python app.py
+```
+Access at `http://localhost:5000`
+
+### Manual Firmware Upload
+```bash
+curl -X POST "$UPDATE_SERVER_URL/api/upload" \
+  -H "X-API-Key: $UPLOAD_API_KEY" \
+  -F "file=@firmware-esp32-v1.0.0.bin" \
+  -F "version=v1.0.0" \
+  -F "platform=esp32"
+```
+
+### Check Server Status
+```bash
+curl "$UPDATE_SERVER_URL/api/status"
+```
+
+### Workflow Configuration
+- **Dashboard Server**: Runs on port 5000 (required for Replit webview)
+- **Output type**: `webview` (accessible via Replit preview)
+- **Command**: `cd dashboard && python app.py`
+
+## Future Enhancements
+- Device monitoring dashboard (track deployed devices)
+- Update rollback capabilities
+- Staged rollouts (percentage-based deployment)
+- Device health metrics and telemetry
+- Web UI for firmware management
+
+## User Preferences
+- Target platform: ESP32/ESP8266 (not standard Arduino)
+- Multi-panel support is intentional (not a bug)
+- Private repository (no public releases)
+- Configurable server URL for future migration

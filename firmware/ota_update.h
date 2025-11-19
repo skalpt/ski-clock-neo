@@ -19,19 +19,20 @@
 #include "certificates.h"
 
 // Update server configuration
-// These are injected at build time from Replit secrets via GitHub Actions
-// Fallback values are provided for local development only
+// These MUST be injected at build time from GitHub Actions
+// If these are not defined, the build will fail with an error
 #ifndef UPDATE_SERVER_URL
-  #define UPDATE_SERVER_URL "http://localhost:5000"  // Fallback - will be replaced by GitHub Actions
+  #error "UPDATE_SERVER_URL must be defined at compile time via -DUPDATE_SERVER_URL=\"...\""
 #endif
 
 #ifndef DOWNLOAD_API_KEY
-  #define DOWNLOAD_API_KEY "dev-download-key"  // Fallback - will be replaced by GitHub Actions
+  #error "DOWNLOAD_API_KEY must be defined at compile time via -DDOWNLOAD_API_KEY=\"...\""
 #endif
 
-// Firmware version - this should match your GitHub release tag
+// Firmware version - must match your GitHub release tag
+// This MUST be injected at build time from GitHub Actions
 #ifndef FIRMWARE_VERSION
-  #define FIRMWARE_VERSION "v1.0.0"
+  #error "FIRMWARE_VERSION must be defined at compile time via -DFIRMWARE_VERSION=\"...\""
 #endif
 
 // OTA update check interval (default: 1 hour)
