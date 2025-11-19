@@ -46,6 +46,7 @@ Debug logging is **enabled** by default for development and troubleshooting:
 -   **GitHub Actions**: CI/CD platform for automated firmware builds, versioning, and deployment to the dashboard.
 ## Recent Changes
 
+- **2025-11-19**: Added AC_COEXIST to keep captive portal AP running alongside WiFi connection
 - **2025-11-19**: Enabled USB CDC On Boot for ESP32-C3/S3 builds to fix Serial output
 - **2025-11-19**: Fixed getLatestVersion() buffer size limit (200→1024 bytes) to handle full JSON responses
 - **2025-11-19**: Fixed OTA download WiFiClient scope bug causing "connection lost" errors during firmware downloads

@@ -56,25 +56,28 @@ void setupWiFi() {
   
   // KEY FEATURES for your requirements:
   
-  // 1. Keep portal available even after WiFi connection (for network switching)
+  // 1. Keep Access Point running alongside WiFi connection
+  config.apBehavior = AC_COEXIST;  // Run AP and STA concurrently
+  
+  // 2. Keep portal web interface available even after WiFi connection
   config.retainPortal = true;
   
-  // 2. Automatically reconnect when connection drops
+  // 3. Automatically reconnect when connection drops
   config.autoReconnect = true;
   
-  // 3. Auto-save credentials for multiple networks
+  // 4. Auto-save credentials for multiple networks
   config.autoSave = AC_SAVECREDENTIAL_AUTO;
   
-  // 4. Set reconnect interval for background retry (5 seconds)
+  // 5. Set reconnect interval for background retry (5 seconds)
   config.reconnectInterval = 5;
   
-  // 5. Configure portal timeout (0 = never timeout)
+  // 6. Configure portal timeout (0 = never timeout)
   config.portalTimeout = 0;  // Portal always available
   
-  // 6. Try to connect to known networks on boot
+  // 7. Try to connect to known networks on boot
   config.autoRise = true;
   
-  // 7. Minimum RSSI to connect (signal strength threshold)
+  // 8. Minimum RSSI to connect (signal strength threshold)
   config.minRSSI = -80;
   
   // Apply configuration
