@@ -51,11 +51,45 @@ bool otaUpdateInProgress = false;
 #endif
 
 // Get the platform identifier for this device
+// This must match the platform names used in GitHub Actions workflow
 String getPlatform() {
 #if defined(ESP32)
-  return "esp32";
+  // Detect ESP32 variant using Arduino board defines
+  // These must be explicitly set via -DBOARD_VARIANT in GitHub Actions
+  #if defined(BOARD_ESP32S3)
+    return "esp32s3";
+  #elif defined(BOARD_ESP32C3)
+    return "esp32c3";
+  #elif defined(BOARD_ESP32)
+    return "esp32";
+  #else
+    // Fallback: try CONFIG_IDF_TARGET if available (ESP-IDF native defines)
+    #if defined(CONFIG_IDF_TARGET_ESP32S3)
+      return "esp32s3";
+    #elif defined(CONFIG_IDF_TARGET_ESP32C3)
+      return "esp32c3";
+    #else
+      return "esp32";  // Default to esp32 if variant unknown
+    #endif
+  #endif
 #elif defined(ESP8266)
-  return "esp8266";
+  // Detect ESP8266 board variant using Arduino board defines
+  #if defined(BOARD_WEMOS_D1MINI)
+    return "d1mini";
+  #elif defined(BOARD_ESP01)
+    return "esp01";
+  #elif defined(BOARD_ESP12F)
+    return "esp12f";
+  #else
+    // Fallback: try standard Arduino ESP8266 defines
+    #if defined(ARDUINO_ESP8266_WEMOS_D1MINI)
+      return "d1mini";
+    #elif defined(ARDUINO_ESP8266_ESP01)
+      return "esp01";
+    #else
+      return "esp12f";  // Default to esp12f for unknown ESP8266 variants
+    #endif
+  #endif
 #else
   return "unknown";
 #endif

@@ -35,9 +35,25 @@ config = load_config()
 UPLOAD_API_KEY = config.get('UPLOAD_API_KEY')
 DOWNLOAD_API_KEY = config.get('DOWNLOAD_API_KEY')
 
+# Supported platforms (must match firmware board detection and GitHub Actions)
+SUPPORTED_PLATFORMS = [
+    'esp32',      # ESP32 (original)
+    'esp32c3',    # ESP32-C3
+    'esp32s3',    # ESP32-S3
+    'esp12f',     # ESP-12F (ESP8266)
+    'esp01',      # ESP-01 (ESP8266)
+    'd1mini',     # Wemos D1 Mini (ESP8266)
+    'esp8266'     # Legacy ESP8266 (backward compatibility - aliases to esp12f)
+]
+
+# Platform aliases: Map legacy platform names to specific board firmware
+# Used to serve correct firmware when legacy devices request generic platform
+PLATFORM_FIRMWARE_MAPPING = {
+    'esp8266': 'esp12f',  # Legacy ESP8266 devices get ESP-12F firmware
+}
+
 LATEST_VERSIONS: Dict[str, Optional[Dict[str, Any]]] = {
-    'esp32': None,
-    'esp8266': None
+    platform: None for platform in SUPPORTED_PLATFORMS
 }
 
 @app.route('/')
@@ -45,24 +61,50 @@ def index():
     return jsonify({
         'service': 'Ski Clock Firmware Server',
         'status': 'running',
+        'supported_platforms': SUPPORTED_PLATFORMS,
         'endpoints': {
-            'version': '/api/version?platform=esp32|esp8266',
+            'version': '/api/version?platform=<platform>',
             'download': '/api/firmware/<platform>',
-            'upload': '/api/upload (POST)'
+            'upload': '/api/upload (POST)',
+            'status': '/api/status'
         }
     })
 
 @app.route('/api/version')
 def get_version():
-    platform = request.args.get('platform', 'esp32').lower()
+    platform = request.args.get('platform', '').lower()
+    original_platform = platform  # Save for download_url consistency
+    is_aliased = False
     
-    if platform not in ['esp32', 'esp8266']:
-        return jsonify({'error': 'Invalid platform. Use esp32 or esp8266'}), 400
+    if not platform:
+        return jsonify({
+            'error': 'Missing platform parameter',
+            'supported_platforms': SUPPORTED_PLATFORMS
+        }), 400
+    
+    # Apply platform firmware mapping for backward compatibility
+    if platform in PLATFORM_FIRMWARE_MAPPING:
+        actual_platform = PLATFORM_FIRMWARE_MAPPING[platform]
+        print(f"Platform firmware mapping: {platform} → {actual_platform}")
+        is_aliased = True
+        platform = actual_platform
+    
+    if platform not in SUPPORTED_PLATFORMS:
+        return jsonify({
+            'error': f'Invalid platform: {platform}',
+            'supported_platforms': SUPPORTED_PLATFORMS
+        }), 400
     
     version_info = LATEST_VERSIONS.get(platform)
     
     if not version_info:
         return jsonify({'error': 'No firmware available for this platform'}), 404
+    
+    # Only modify download_url for aliased requests (backward compatibility)
+    if is_aliased:
+        response_info = version_info.copy()
+        response_info['download_url'] = f'/api/firmware/{original_platform}'
+        return jsonify(response_info)
     
     return jsonify(version_info)
 
@@ -75,8 +117,17 @@ def download_firmware(platform):
     
     platform = platform.lower()
     
-    if platform not in ['esp32', 'esp8266']:
-        return jsonify({'error': 'Invalid platform'}), 400
+    # Apply platform firmware mapping for backward compatibility
+    if platform in PLATFORM_FIRMWARE_MAPPING:
+        actual_platform = PLATFORM_FIRMWARE_MAPPING[platform]
+        print(f"Platform firmware mapping: {platform} → {actual_platform}")
+        platform = actual_platform
+    
+    if platform not in SUPPORTED_PLATFORMS:
+        return jsonify({
+            'error': f'Invalid platform: {platform}',
+            'supported_platforms': SUPPORTED_PLATFORMS
+        }), 400
     
     version_info = LATEST_VERSIONS.get(platform)
     
@@ -139,8 +190,20 @@ def upload_firmware():
     if not version or not platform:
         return jsonify({'error': 'Missing version or platform'}), 400
     
-    if platform not in ['esp32', 'esp8266']:
-        return jsonify({'error': 'Invalid platform'}), 400
+    # Reject uploads for aliased platforms - only accept canonical board names
+    if platform in PLATFORM_FIRMWARE_MAPPING:
+        canonical_platform = PLATFORM_FIRMWARE_MAPPING[platform]
+        return jsonify({
+            'error': f'Cannot upload for aliased platform "{platform}"',
+            'message': f'Please upload using canonical platform name: "{canonical_platform}"',
+            'canonical_platform': canonical_platform
+        }), 400
+    
+    if platform not in SUPPORTED_PLATFORMS:
+        return jsonify({
+            'error': f'Invalid platform: {platform}',
+            'supported_platforms': SUPPORTED_PLATFORMS
+        }), 400
     
     if not file.filename or not file.filename.endswith('.bin'):
         return jsonify({'error': 'File must be a .bin file'}), 400
@@ -179,7 +242,7 @@ def upload_firmware():
     with open(filepath, 'rb') as f:
         file_hash = hashlib.sha256(f.read()).hexdigest()
     
-    LATEST_VERSIONS[platform] = {
+    version_info = {
         'version': version,
         'filename': filename,
         'size': file_size,
@@ -188,10 +251,18 @@ def upload_firmware():
         'download_url': f'/api/firmware/{platform}'
     }
     
+    LATEST_VERSIONS[platform] = version_info
+    
+    # Mirror esp12f firmware to legacy esp8266 alias for monitoring visibility
+    if platform == 'esp12f':
+        LATEST_VERSIONS['esp8266'] = version_info.copy()
+        LATEST_VERSIONS['esp8266']['download_url'] = '/api/firmware/esp8266'
+        LATEST_VERSIONS['esp8266']['note'] = 'Legacy alias for ESP-12F (backward compatibility)'
+    
     return jsonify({
         'success': True,
         'message': f'Firmware uploaded successfully',
-        'version_info': LATEST_VERSIONS[platform]
+        'version_info': version_info
     }), 201
 
 @app.route('/api/config', methods=['POST'])

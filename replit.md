@@ -34,7 +34,9 @@ ski-clock-neo/
 ```
 
 ## Hardware Requirements
-- **ESP32 or ESP8266** board with WiFi
+- **Supported boards**:
+  - ESP32 (original), ESP32-C3, ESP32-S3
+  - ESP-12F, ESP-01, Wemos D1 Mini (ESP8266)
 - WS2812 NeoPixel LED matrix (16x16)
 - Data pin connected to pin 4
 
@@ -138,6 +140,8 @@ Must be configured in GitHub repo (Settings → Secrets → Actions):
 - ✅ Enables future device monitoring features
 
 ## Recent Changes
+- **2025-11-19**: Added multi-platform support (6 boards: ESP32/C3/S3, ESP12F, ESP-01, D1 Mini) with automatic board detection
+- **2025-11-19**: Added backward compatibility for legacy ESP8266 devices (maps to ESP12F firmware)
 - **2025-11-19**: Added error checking to GitHub Actions workflow - build now fails immediately if firmware upload fails
 - **2025-11-19**: Fixed ESP8266 flash size configuration (use FQBN eesz=4M3M instead of build property)
 - **2025-11-19**: Fixed ESP8266 Update API (getErrorString vs errorString)

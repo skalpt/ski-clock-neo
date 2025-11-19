@@ -9,36 +9,33 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Arduino CLI
         uses: arduino/setup-arduino-cli@v1
-        
-      - name: Install ESP32 platform
+
+      - name: Install ESP32 + ESP8266 platforms
         run: |
           arduino-cli core update-index
-          arduino-cli core install esp32:esp32@2.0.14
-          
-      - name: Install ESP8266 platform
-        run: |
+          arduino-cli core install esp32:esp32
           arduino-cli core update-index --additional-urls http://arduino.esp8266.com/stable/package_esp8266com_index.json
           arduino-cli core install esp8266:esp8266 --additional-urls http://arduino.esp8266.com/stable/package_esp8266com_index.json
-          
+
       - name: Install required libraries
         run: |
           arduino-cli lib install "Adafruit NeoPixel"
           arduino-cli lib install "AutoConnect"
-      
+
       - name: Generate timestamp version
         id: get_version
         run: |
           VERSION=$(date -u +'%Y.%-m.%-d').${{ github.run_number }}
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "Generated version: $VERSION"
-      
+
       - name: Create and upload config to dashboard
         run: |
           cat > config.json << EOF
@@ -56,46 +53,91 @@ jobs:
             -w "\n"
           echo "✓ Configuration uploaded successfully"
           rm config.json
-          
-      - name: Build for ESP32
+
+      # -------------------------------------------------------
+      # ESP32 FAMILY BUILDS
+      # -------------------------------------------------------
+
+      - name: Build for ESP32 (original)
         run: |
           arduino-cli compile --fqbn esp32:esp32:esp32 \
             --build-property "build.partitions=min_spiffs" \
-            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\"" \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DBOARD_ESP32" \
             --output-dir build/esp32 \
             firmware/ski-clock-neo
           cp build/esp32/ski-clock-neo.ino.bin build/ski-clock-neo-esp32.bin
-          
-      - name: Build for ESP8266
+
+      - name: Build for ESP32-C3
         run: |
-          arduino-cli compile --fqbn esp8266:esp8266:nodemcuv2:eesz=4M3M \
-            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\"" \
-            --output-dir build/esp8266 \
+          arduino-cli compile --fqbn esp32:esp32:esp32c3 \
+            --build-property "build.partitions=min_spiffs" \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DBOARD_ESP32C3" \
+            --output-dir build/esp32c3 \
             firmware/ski-clock-neo
-          cp build/esp8266/ski-clock-neo.ino.bin build/ski-clock-neo-esp8266.bin
-        
-      - name: Upload ESP32 firmware to server
+          cp build/esp32c3/ski-clock-neo.ino.bin build/ski-clock-neo-esp32c3.bin
+
+      - name: Build for ESP32-S3
         run: |
-          echo "Uploading ESP32 firmware (version ${{ steps.get_version.outputs.VERSION }})..."
-          curl --fail --show-error -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/upload" \
-            -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
-            -F "file=@build/ski-clock-neo-esp32.bin" \
-            -F "version=${{ steps.get_version.outputs.VERSION }}" \
-            -F "platform=esp32" \
-            -w "\n"
-          echo "✓ ESP32 firmware uploaded successfully"
-            
-      - name: Upload ESP8266 firmware to server
+          arduino-cli compile --fqbn esp32:esp32:esp32s3 \
+            --build-property "build.partitions=min_spiffs" \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DBOARD_ESP32S3" \
+            --output-dir build/esp32s3 \
+            firmware/ski-clock-neo
+          cp build/esp32s3/ski-clock-neo.ino.bin build/ski-clock-neo-esp32s3.bin
+
+      # -------------------------------------------------------
+      # ESP8266 FAMILY BUILDS
+      # -------------------------------------------------------
+
+      - name: Build for ESP-12F
         run: |
-          echo "Uploading ESP8266 firmware (version ${{ steps.get_version.outputs.VERSION }})..."
-          curl --fail --show-error -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/upload" \
-            -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
-            -F "file=@build/ski-clock-neo-esp8266.bin" \
-            -F "version=${{ steps.get_version.outputs.VERSION }}" \
-            -F "platform=esp8266" \
-            -w "\n"
-          echo "✓ ESP8266 firmware uploaded successfully"
-          
+          arduino-cli compile --fqbn esp8266:esp8266:generic:eesz=4M3M \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DBOARD_ESP12F" \
+            --output-dir build/esp12f \
+            firmware/ski-clock-neo
+          cp build/esp12f/ski-clock-neo.ino.bin build/ski-clock-neo-esp12f.bin
+
+      - name: Build for ESP-01 (1M)
+        run: |
+          arduino-cli compile --fqbn esp8266:esp8266:esp01:eesz=1M \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DBOARD_ESP01" \
+            --output-dir build/esp01 \
+            firmware/ski-clock-neo
+          cp build/esp01/ski-clock-neo.ino.bin build/ski-clock-neo-esp01.bin
+
+      - name: Build for Wemos D1 Mini
+        run: |
+          arduino-cli compile --fqbn esp8266:esp8266:d1_mini:eesz=4M3M \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DBOARD_WEMOS_D1MINI" \
+            --output-dir build/d1mini \
+            firmware/ski-clock-neo
+          cp build/d1mini/ski-clock-neo.ino.bin build/ski-clock-neo-d1mini.bin
+
+      # -------------------------------------------------------
+      # Upload Firmware to Server
+      # -------------------------------------------------------
+
+      - name: Upload all firmware binaries
+        run: |
+          for file in build/*.bin; do
+            PLATFORM=$(basename "$file" .bin | sed 's/ski-clock-neo-//')
+            echo "Uploading $file (platform=$PLATFORM version=${{ steps.get_version.outputs.VERSION }})..."
+
+            curl --fail --show-error \
+              -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/upload" \
+              -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
+              -F "file=@$file" \
+              -F "version=${{ steps.get_version.outputs.VERSION }}" \
+              -F "platform=$PLATFORM" \
+              -w "\n"
+
+            echo "✓ Upload for platform '$PLATFORM' succeeded"
+          done
+
+      # -------------------------------------------------------
+      # Upload build artifacts
+      # -------------------------------------------------------
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
