@@ -15,7 +15,7 @@ The project consists of two main components:
 1.  **Firmware**: Embedded C++ for ESP32/ESP8266 microcontrollers driving a 16x16 NeoPixel LED matrix.
     *   **Features**: Custom 5x7 pixel font with diagonal smoothing, multi-panel support, freeze-proof LED status indicator with hardware interrupt timers, advanced WiFi management via `AutoConnect` (multi-network credentials, captive portal, background reconnection), and secure non-blocking OTA updates.
     *   **OTA Implementation**: Utilizes a custom update server, API key authentication, configurable server URL, HTTPS with certificate validation, and non-blocking chunked HTTP reads with yield() calls to prevent UI freezing during version checks.
-    *   **Timing**: Hardware interrupt timers (hw_timer_t for ESP32, Timer1 for ESP8266) for LED indicators ensure guaranteed execution even during blocking operations. Software tickers handle NeoPixel updates and OTA scheduling.
+    *   **Timing**: Hardware interrupt timers (hw_timer_t for ESP32, Timer1 for ESP8266) for LED indicators ensure guaranteed execution even during blocking operations. NeoPixel updates use FreeRTOS tasks on ESP32 (high priority on C3, Core 1 on dual-core) for smooth rendering during network operations; ESP8266 uses software tickers. OTA checks use software tickers.
 
 2.  **Dashboard Server**: A Python Flask application for firmware distribution and device management.
     *   **Features**: API-based firmware distribution supporting multiple platforms (ESP32, ESP32-C3, ESP32-S3, ESP-12F, ESP-01, Wemos D1 Mini), upload/download endpoints with API key authentication, platform aliasing (e.g., ESP8266 to ESP-12F), SHA256 checksums, and status monitoring.
@@ -46,6 +46,7 @@ Debug logging is **enabled** by default for development and troubleshooting:
 -   **GitHub Actions**: CI/CD platform for automated firmware builds, versioning, and deployment to the dashboard.
 ## Recent Changes
 
+- **2025-11-19**: Converted NeoPixel updates to FreeRTOS tasks on ESP32 (Core 1 for dual-core, high priority for C3) to prevent freezing during OTA checks
 - **2025-11-19**: Added AC_COEXIST to keep captive portal AP running alongside WiFi connection
 - **2025-11-19**: Enabled USB CDC On Boot for ESP32-C3/S3 builds to fix Serial output
 - **2025-11-19**: Fixed getLatestVersion() buffer size limit (200→1024 bytes) to handle full JSON responses

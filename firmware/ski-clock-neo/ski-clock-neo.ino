@@ -34,13 +34,15 @@ const uint16_t NUM_LEDS_PER_ROW = (uint16_t)ROW_WIDTH * ROW_HEIGHT;
 Adafruit_NeoPixel row1(NUM_LEDS_PER_ROW, PIN_MATRIX_ROW1, NEO_GRB + NEO_KHZ800);
 
 // --------------------- Tickers for timing ----------------------
-Ticker neopixelTicker;  // Software ticker for NeoPixel updates
+#if defined(ESP8266)
+  Ticker neopixelTicker;  // Software ticker for NeoPixel updates (ESP8266 only)
+#endif
 // otaTicker is declared in ota_update.h
 
 // --------------------- Display state ----------------------
 int curNum = 0;
 
-// NeoPixel refresh function (called directly by software ticker)
+// NeoPixel refresh function (called by ticker or FreeRTOS task)
 void updateNeoPixels() {
   char numStr[2];
   curNum++;
@@ -57,6 +59,21 @@ void updateNeoPixels() {
   drawTextCentered(row1, numStr, 1, red, 2);
   row1.show();
 }
+
+#if defined(ESP32)
+// FreeRTOS task for NeoPixel updates (ESP32 only - preempts network operations)
+void neopixelTask(void* parameter) {
+  TickType_t xLastWakeTime = xTaskGetTickCount();
+  const TickType_t xFrequency = pdMS_TO_TICKS(UPDATE_INTERVAL_MS);
+  
+  DEBUG_PRINTLN("NeoPixel FreeRTOS task started");
+  
+  for(;;) {
+    updateNeoPixels();
+    vTaskDelayUntil(&xLastWakeTime, xFrequency);
+  }
+}
+#endif
 
 void setup() {
   // Initialise serial (only if debug logging enabled)
@@ -86,9 +103,43 @@ void setup() {
   // Initialize OTA system (schedules first check in 30s, then hourly)
   setupOTA(30);
   
-  // Start NeoPixel refresh ticker (2 second interval, software-driven)
+  // Start NeoPixel updates using platform-appropriate method
+#if defined(ESP32)
+  // ESP32: Use FreeRTOS task for guaranteed timing even during network operations
+  // Priority 2 = higher than networking (default priority 1)
+  // Stack size: 2KB should be plenty for NeoPixel updates
+  
+  #if defined(CONFIG_IDF_TARGET_ESP32C3)
+    // ESP32-C3 (single-core RISC-V): Run on Core 0 with high priority
+    xTaskCreate(
+      neopixelTask,           // Task function
+      "NeoPixel",             // Task name
+      2048,                   // Stack size (bytes)
+      NULL,                   // Task parameter
+      2,                      // Priority (2 = higher than default 1)
+      NULL                    // Task handle
+    );
+    DEBUG_PRINTLN("NeoPixel FreeRTOS task started (ESP32-C3: single-core, high priority)");
+  #else
+    // ESP32/ESP32-S3 (dual-core Xtensa): Pin to Core 1 (APP_CPU)
+    // Core 0 handles WiFi/networking, Core 1 handles display
+    xTaskCreatePinnedToCore(
+      neopixelTask,           // Task function
+      "NeoPixel",             // Task name
+      2048,                   // Stack size (bytes)
+      NULL,                   // Task parameter
+      2,                      // Priority
+      NULL,                   // Task handle
+      1                       // Core 1 (APP_CPU_NUM)
+    );
+    DEBUG_PRINTLN("NeoPixel FreeRTOS task started (dual-core: pinned to Core 1)");
+  #endif
+  
+#elif defined(ESP8266)
+  // ESP8266: Use Ticker (no FreeRTOS available)
   neopixelTicker.attach_ms(UPDATE_INTERVAL_MS, updateNeoPixels);
-  DEBUG_PRINTLN("NeoPixel ticker started (2 second interval)");
+  DEBUG_PRINTLN("NeoPixel ticker started (ESP8266 software ticker)");
+#endif
   
   DEBUG_PRINTLN("===========================================");
   DEBUG_PRINTLN("Setup complete - entering main loop");
@@ -105,7 +156,9 @@ void loop() {
   // Handle OTA update retry logic only (checks are triggered by tickers)
   updateOTA();
   
-  // NeoPixel updates handled by software ticker (calls updateNeoPixels directly)
-  // LED flashing handled by interrupt ticker (calls ledTimerCallback directly)
-  // OTA checks scheduled by software ticker (initial: one-shot, recurring: attach after first check)
+  // Platform-specific display updates:
+  // - ESP32: FreeRTOS task (high priority or Core 1) - preempts network operations
+  // - ESP8266: Software ticker (shares CPU with network)
+  // LED flashing: Hardware interrupt timer (all platforms) - guaranteed execution
+  // OTA checks: Software ticker (initial: one-shot, recurring: attach after first check)
 }
