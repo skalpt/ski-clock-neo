@@ -100,7 +100,7 @@ jobs:
 
       - name: Build for ESP-12F
         run: |
-          arduino-cli compile --fqbn esp8266:esp8266:generic:eesz=4M3M \
+          arduino-cli compile --fqbn esp8266:esp8266:generic:eesz=4M1M \
             --build-property "compiler.c.extra_flags=-Os -flto" \
             --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DBOARD_ESP12F -Os -fno-rtti -fno-exceptions -flto" \
             --build-property "compiler.c.elf.extra_flags=-Wl,--gc-sections -flto" \
@@ -122,7 +122,7 @@ jobs:
 
       - name: Build for Wemos D1 Mini
         run: |
-          arduino-cli compile --fqbn esp8266:esp8266:d1_mini:eesz=4M3M \
+          arduino-cli compile --fqbn esp8266:esp8266:d1_mini:eesz=4M1M \
             --build-property "compiler.c.extra_flags=-Os -flto" \
             --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DBOARD_WEMOS_D1MINI -Os -fno-rtti -fno-exceptions -flto" \
             --build-property "compiler.c.elf.extra_flags=-Wl,--gc-sections -flto" \

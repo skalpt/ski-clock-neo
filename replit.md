@@ -31,6 +31,12 @@ All board variants use aggressive compiler optimizations to minimize firmware si
 - **C++ RTTI/Exceptions Disabled**: Uses `-fno-rtti -fno-exceptions` to remove unused C++ features
 - **Dead Code Elimination**: Uses `-Wl,--gc-sections` linker flag to remove unused functions
 
+### Optimized Partition Schemes
+Since the project doesn't use SPIFFS, all boards use minimal SPIFFS partitions to maximize app space:
+- **ESP32/C3/S3**: `min_spiffs` partition (1.9MB app + 190KB SPIFFS)
+- **ESP-12F/D1 Mini**: `4M1M` partition (1MB app + 1MB OTA + 1MB SPIFFS)
+- **ESP-01**: `1M` partition (1MB chip, no OTA possible)
+
 ### Debug Logging System
 To save ~10-20KB of flash space, all `Serial.print` statements are gated behind a `DEBUG_LOGGING` flag:
 - **Default**: Debug logging is **disabled** in production builds (saves flash space)
@@ -46,6 +52,9 @@ To save ~10-20KB of flash space, all `Serial.print` statements are gated behind 
 -   **Replit Object Storage** (Optional): For persistent storage of firmware binaries and version metadata, with graceful fallback to local filesystem.
 -   **GitHub Actions**: CI/CD platform for automated firmware builds, versioning, and deployment to the dashboard.
 ## Recent Changes
+
+- **2025-11-19**: Optimized partition schemes - ESP32 boards use minimal_spiffs (1.9MB app), ESP8266 boards use 4M1M (enables OTA)
+- **2025-11-19**: Fixed ESP8266 boards - changed from 4M3M (no OTA) to 4M1M (OTA enabled)
 
 - **2025-11-19**: Applied aggressive size optimizations (LTO, -Os, -fno-rtti, -fno-exceptions) to all 6 board variants
 - **2025-11-19**: Implemented debug logging system to reduce flash usage (saves ~10-20KB when disabled)
