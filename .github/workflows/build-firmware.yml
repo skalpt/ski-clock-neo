@@ -62,7 +62,10 @@ jobs:
         run: |
           arduino-cli compile --fqbn esp32:esp32:esp32 \
             --build-property "build.partitions=min_spiffs" \
-            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DBOARD_ESP32" \
+            --build-property "compiler.c.extra_flags=-Os -flto" \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DBOARD_ESP32 -Os -fno-rtti -fno-exceptions -flto" \
+            --build-property "compiler.c.elf.extra_flags=-Wl,--gc-sections -flto" \
+            --build-property "compiler.cpp.elf.extra_flags=-Wl,--gc-sections -flto" \
             --output-dir build/esp32 \
             firmware/ski-clock-neo
           cp build/esp32/ski-clock-neo.ino.bin build/ski-clock-neo-esp32.bin
@@ -83,7 +86,10 @@ jobs:
         run: |
           arduino-cli compile --fqbn esp32:esp32:esp32s3 \
             --build-property "build.partitions=min_spiffs" \
-            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DBOARD_ESP32S3" \
+            --build-property "compiler.c.extra_flags=-Os -flto" \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DBOARD_ESP32S3 -Os -fno-rtti -fno-exceptions -flto" \
+            --build-property "compiler.c.elf.extra_flags=-Wl,--gc-sections -flto" \
+            --build-property "compiler.cpp.elf.extra_flags=-Wl,--gc-sections -flto" \
             --output-dir build/esp32s3 \
             firmware/ski-clock-neo
           cp build/esp32s3/ski-clock-neo.ino.bin build/ski-clock-neo-esp32s3.bin
@@ -95,7 +101,10 @@ jobs:
       - name: Build for ESP-12F
         run: |
           arduino-cli compile --fqbn esp8266:esp8266:generic:eesz=4M3M \
-            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DBOARD_ESP12F" \
+            --build-property "compiler.c.extra_flags=-Os -flto" \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DBOARD_ESP12F -Os -fno-rtti -fno-exceptions -flto" \
+            --build-property "compiler.c.elf.extra_flags=-Wl,--gc-sections -flto" \
+            --build-property "compiler.cpp.elf.extra_flags=-Wl,--gc-sections -flto" \
             --output-dir build/esp12f \
             firmware/ski-clock-neo
           cp build/esp12f/ski-clock-neo.ino.bin build/ski-clock-neo-esp12f.bin
@@ -103,7 +112,10 @@ jobs:
       - name: Build for ESP-01 (1M)
         run: |
           arduino-cli compile --fqbn esp8266:esp8266:generic:eesz=1M \
-            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DBOARD_ESP01" \
+            --build-property "compiler.c.extra_flags=-Os -flto" \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DBOARD_ESP01 -Os -fno-rtti -fno-exceptions -flto" \
+            --build-property "compiler.c.elf.extra_flags=-Wl,--gc-sections -flto" \
+            --build-property "compiler.cpp.elf.extra_flags=-Wl,--gc-sections -flto" \
             --output-dir build/esp01 \
             firmware/ski-clock-neo
           cp build/esp01/ski-clock-neo.ino.bin build/ski-clock-neo-esp01.bin
@@ -111,7 +123,10 @@ jobs:
       - name: Build for Wemos D1 Mini
         run: |
           arduino-cli compile --fqbn esp8266:esp8266:d1_mini:eesz=4M3M \
-            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DBOARD_WEMOS_D1MINI" \
+            --build-property "compiler.c.extra_flags=-Os -flto" \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DBOARD_WEMOS_D1MINI -Os -fno-rtti -fno-exceptions -flto" \
+            --build-property "compiler.c.elf.extra_flags=-Wl,--gc-sections -flto" \
+            --build-property "compiler.cpp.elf.extra_flags=-Wl,--gc-sections -flto" \
             --output-dir build/d1mini \
             firmware/ski-clock-neo
           cp build/d1mini/ski-clock-neo.ino.bin build/ski-clock-neo-d1mini.bin

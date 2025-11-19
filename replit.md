@@ -24,8 +24,8 @@ The project consists of two main components:
 
 ## Build Optimizations
 
-### ESP32-C3 Size Optimization
-The ESP32-C3 has limited flash space and requires special build optimizations:
+### Aggressive Size Optimization (All Boards)
+All board variants use aggressive compiler optimizations to minimize firmware size:
 - **Link Time Optimization (LTO)**: Enabled with `-flto` flag for aggressive code size reduction
 - **Size Optimization**: Uses `-Os` compiler flag to prioritize code size over speed
 - **C++ RTTI/Exceptions Disabled**: Uses `-fno-rtti -fno-exceptions` to remove unused C++ features
@@ -45,3 +45,23 @@ To save ~10-20KB of flash space, all `Serial.print` statements are gated behind 
 -   **ESP8266 WiFi libraries**: Built-in for ESP8266 devices.
 -   **Replit Object Storage** (Optional): For persistent storage of firmware binaries and version metadata, with graceful fallback to local filesystem.
 -   **GitHub Actions**: CI/CD platform for automated firmware builds, versioning, and deployment to the dashboard.
+## Recent Changes
+
+- **2025-11-19**: Applied aggressive size optimizations (LTO, -Os, -fno-rtti, -fno-exceptions) to all 6 board variants
+- **2025-11-19**: Implemented debug logging system to reduce flash usage (saves ~10-20KB when disabled)
+- **2025-11-19**: Fixed ESP32-S3 inconsistent GPIO register types (bank 0 direct uint32_t, bank 1 with .val accessor)
+- **2025-11-19**: ESP32-C3 LED_PIN overridden to GPIO8 (board-specific requirement)
+- **2025-11-19**: Separated ESP32-C3/S3 preprocessor directives (C3 has no out1 registers, S3 needs dual banks)
+- **2025-11-19**: Fixed ESP32-C3/S3 fast GPIO with dual GPIO bank support (0-31, 32-48) for ~10-20 MHz toggle speed
+- **2025-11-19**: ESP32-S3 high-pin support for LED_BUILTIN on GPIO48 using GPIO.out1_w1ts.val
+- **2025-11-19**: Added LED_BUILTIN fallback to GPIO2 for boards without native definition (generic ESP8266)
+- **2025-11-19**: Fixed LED GPIO macro name collision (LED_OFF enum vs LED_GPIO_OFF state)
+- **2025-11-19**: **PRODUCTION-READY**: Multi-platform OTA firmware system with 6 board variants
+- **2025-11-19**: Implemented interrupt-driven LED indicators with fast port manipulation and LED_BUILTIN constant
+- **2025-11-19**: Fixed ESP32/ESP8266 inverted LED pin logic (HIGH=off, LOW=on)
+- **2025-11-19**: Converted to software ticker architecture for NeoPixels and OTA (no more flags in loop)
+- **2025-11-19**: OTA checks now self-scheduling via software ticker (30s initial, 1h recurring)
+- **2025-11-19**: Removed all blocking delays from setup() and loop() - captive portal responsive immediately
+- **2025-11-19**: Increased NeoPixel brightness from 1 to 32 for better visibility
+- **2025-11-19**: Migrated firmware storage to Replit Object Storage for persistence across deployments
+- **2025-11-19**: Added graceful fallback to local filesystem when Object Storage not configured
