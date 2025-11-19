@@ -35,10 +35,14 @@ enum LedPattern {
   #include <esp8266_peri.h>
   #define FAST_PIN_HIGH(pin) GPOS = (1 << (pin))
   #define FAST_PIN_LOW(pin)  GPOC = (1 << (pin))
-#elif defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S3)
-  // ESP32-C3 (22 GPIOs) and ESP32-S3 (48 GPIOs) use .val accessor
+#elif defined(CONFIG_IDF_TARGET_ESP32C3)
+  // ESP32-C3 has only 22 GPIOs (bank 0 only, no out1 registers)
   #include <soc/gpio_reg.h>
-  // Handle both GPIO banks for S3 (pins 0-31 and 32-48)
+  #define FAST_PIN_HIGH(pin) GPIO.out_w1ts.val = (1UL << (pin))
+  #define FAST_PIN_LOW(pin)  GPIO.out_w1tc.val = (1UL << (pin))
+#elif defined(CONFIG_IDF_TARGET_ESP32S3)
+  // ESP32-S3 has 48 GPIOs (needs dual GPIO banks for pins 0-31 and 32-48)
+  #include <soc/gpio_reg.h>
   #define FAST_PIN_HIGH(pin) do { \
     if ((pin) < 32) { \
       GPIO.out_w1ts.val = (1UL << (pin)); \
