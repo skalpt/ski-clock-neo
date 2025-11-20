@@ -204,16 +204,18 @@ void publishHeartbeat() {
     return;
   }
   
-  // Build JSON heartbeat payload
-  char payload[256];
+  // Build JSON heartbeat payload (includes network info: SSID and IP)
+  char payload[384];
   snprintf(payload, sizeof(payload),
-    "{\"device_id\":\"%s\",\"board\":\"%s\",\"version\":\"%s\",\"uptime\":%lu,\"rssi\":%d,\"free_heap\":%u}",
+    "{\"device_id\":\"%s\",\"board\":\"%s\",\"version\":\"%s\",\"uptime\":%lu,\"rssi\":%d,\"free_heap\":%u,\"ssid\":\"%s\",\"ip\":\"%s\"}",
     getDeviceID().c_str(),
     getBoardType().c_str(),
     FIRMWARE_VERSION,
     millis() / 1000,  // uptime in seconds
     WiFi.RSSI(),
-    ESP.getFreeHeap()
+    ESP.getFreeHeap(),
+    WiFi.SSID().c_str(),
+    WiFi.localIP().toString().c_str()
   );
   
   if (mqttClient.publish(MQTT_TOPIC_HEARTBEAT, payload)) {
