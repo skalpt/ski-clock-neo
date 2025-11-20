@@ -123,6 +123,29 @@
         .stats-bar div {
             font-weight: 600;
         }
+        .signal-icon {
+            display: inline-flex;
+            align-items: flex-end;
+            gap: 2px;
+            height: 14px;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+        .signal-icon .bar {
+            width: 3px;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 1px;
+        }
+        .signal-icon .bar.active {
+            background: #4ade80;
+        }
+        .signal-icon .bar:nth-child(1) { height: 25%; }
+        .signal-icon .bar:nth-child(2) { height: 50%; }
+        .signal-icon .bar:nth-child(3) { height: 75%; }
+        .signal-icon .bar:nth-child(4) { height: 100%; }
+        .device-card.offline .signal-icon .bar.active {
+            background: rgba(255, 255, 255, 0.6);
+        }
         .stats-bar span {
             font-weight: normal;
             opacity: 0.8;
@@ -241,7 +264,7 @@
                             <div><strong>Uptime:</strong> ${formatUptime(device.uptime)}</div>
                             ${device.ssid ? `<div><strong>WiFi Network:</strong> ${device.ssid}</div>` : ''}
                             ${device.ip_address ? `<div><strong>IP Address:</strong> ${device.ip_address}</div>` : ''}
-                            <div><strong>WiFi Signal:</strong> ${device.rssi} dBm</div>
+                            <div><strong>WiFi Signal:</strong> ${getSignalStrengthIcon(device.rssi)}${device.rssi} dBm</div>
                             <div><strong>Free Memory:</strong> ${(device.free_heap / 1024).toFixed(1)} KB</div>
                             <div><strong>Last Seen:</strong> <span class="live-timestamp" data-timestamp="${device.last_seen}">${formatTimestamp(device.last_seen)}</span></div>
                             <div><strong>First Seen:</strong> ${new Date(device.first_seen).toLocaleString()}</div>
@@ -307,6 +330,27 @@
             const hours = Math.floor(seconds / 3600);
             const minutes = Math.floor((seconds % 3600) / 60);
             return `${hours}h ${minutes}m`;
+        }
+
+        function getSignalStrengthIcon(rssi) {
+            // RSSI to signal strength conversion:
+            // Excellent: > -50 dBm (4 bars)
+            // Good: -50 to -60 dBm (3 bars)
+            // Fair: -60 to -70 dBm (2 bars)
+            // Poor: < -70 dBm (1 bar)
+            let bars = 1;
+            if (rssi > -50) bars = 4;
+            else if (rssi > -60) bars = 3;
+            else if (rssi > -70) bars = 2;
+            
+            return `
+                <span class="signal-icon">
+                    <span class="bar ${bars >= 1 ? 'active' : ''}"></span>
+                    <span class="bar ${bars >= 2 ? 'active' : ''}"></span>
+                    <span class="bar ${bars >= 3 ? 'active' : ''}"></span>
+                    <span class="bar ${bars >= 4 ? 'active' : ''}"></span>
+                </span>
+            `;
         }
 
         function formatTimestamp(timestamp) {
