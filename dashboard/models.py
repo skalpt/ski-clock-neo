@@ -63,6 +63,8 @@ class Device(db.Model):
     last_uptime = db.Column(db.Integer, default=0)
     last_rssi = db.Column(db.Integer, default=0)
     last_free_heap = db.Column(db.Integer, default=0)
+    ssid = db.Column(db.String(64))
+    ip_address = db.Column(db.String(45))
     
     def __repr__(self):
         return f'<Device {self.device_id} ({self.board_type})>'
@@ -82,6 +84,8 @@ class Device(db.Model):
             'uptime': self.last_uptime,
             'rssi': self.last_rssi,
             'free_heap': self.last_free_heap,
+            'ssid': self.ssid,
+            'ip_address': self.ip_address,
             'online': is_online,
             'minutes_since_last_seen': round(minutes_since_last_seen, 1)
         }
