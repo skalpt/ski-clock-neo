@@ -81,7 +81,7 @@ void setupWiFi() {
   config.minRSSI = -80;
 
   // Disable auto-reset when the user clicks "Disconnect" in the portal menu
-  Config.autoReset = false;
+  config.autoReset = false;
   
   // Apply configuration
   portal.config(config);
