@@ -52,33 +52,36 @@ void setupWiFi() {
   config.apid = AP_SSID;
   config.psk = AP_PASSWORD;
   config.title = "⛷️ Ski Clock Setup";
-  config.homeUri = "/_ac";  // Default AutoConnect home page
+  config.homeUri = "/";  // Default AutoConnect home page
   
   // KEY FEATURES for your requirements:
   
-  // 1. Keep Access Point running alongside WiFi connection
+  // Keep Access Point running alongside WiFi connection
   // retainPortal keeps the SoftAP (and web interface) running after WiFi connects
   // NOTE: The auto-popup captive portal only works BEFORE WiFi connects
-  //       After connection, users must manually connect to AP and visit its IP (usually 192.168.4.1)
+  //       After connection, users must manually connect to the same network and visit its IP
   config.retainPortal = true;
   
-  // 2. Automatically reconnect when connection drops
+  // Automatically will try to reconnect with past established access points (BSSIDs) when the current configured SSID in ESP8266/ESP32 could not be connected
   config.autoReconnect = true;
   
-  // 3. Auto-save credentials for multiple networks
-  config.autoSave = AC_SAVECREDENTIAL_AUTO;
-  
-  // 4. Set reconnect interval for background retry (5 seconds)
+  // Set reconnect interval for background retry (5 seconds)
   config.reconnectInterval = 5;
   
-  // 5. Configure portal timeout (0 = never timeout)
+  // Configure portal timeout (0 = never timeout)
   config.portalTimeout = 0;  // Portal always available
+
+  // Set host name for mDNS (bonjour)
+  config.hostName = "ski-clock-neo";
+
+  // Configure items in the AutoConnect menu
+  config.menuItems = AC_MENUITEM_CONFIGNEW | AC_MENUITEM_OPENSSIDS | AC_MENUITEM_RESET | AC_MENUITEM_DEVINFO | AC_MENUITEM_DELETESSID;
   
-  // 6. Try to connect to known networks on boot
-  config.autoRise = true;
-  
-  // 7. Minimum RSSI to connect (signal strength threshold)
+  // Minimum RSSI to connect (signal strength threshold)
   config.minRSSI = -80;
+
+  // Disable auto-reset when the user clicks "Disconnect" in the portal menu
+  Config.autoReset = false;
   
   // Apply configuration
   portal.config(config);

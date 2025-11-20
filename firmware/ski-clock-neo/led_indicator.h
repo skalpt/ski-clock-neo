@@ -16,7 +16,7 @@ extern PubSubClient mqttClient;
 
 // LED patterns for WiFi status indication
 enum LedPattern {
-  LED_QUICK_FLASH,      // Fast blink during setup
+  LED_QUICK_FLASH,      // Fast blink (deprecated)
   LED_ONE_FLASH,        // 1 flash + pause (WiFi & MQTT connected)
   LED_TWO_FLASH,        // 2 flashes + pause (WiFi connected, MQTT disconnected)
   LED_THREE_FLASH,      // 3 flashes + pause (WiFi disconnected)
@@ -244,7 +244,7 @@ void setupLedIndicator() {
     DEBUG_PRINTLN("ESP8266 Timer1 initialized (100ms interval)");
   #endif
 
-  setLedPattern(LED_QUICK_FLASH);  // Set LED indicator to setup status
+  setLedPattern(LED_THREE_FLASH);  // Start with "disconnected" status
 }
 
 // Set LED pattern

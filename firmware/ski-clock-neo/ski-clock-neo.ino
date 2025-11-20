@@ -18,27 +18,21 @@ void setup() {
   // Initialize LED indicator and start quick flash immediately
   setupLedIndicator();
 
+  // Start NeoPixel updates using platform-appropriate method
+  setupNeoPixels();
+  
   // Initialise WiFi (with configuration portal if needed)
-  DEBUG_PRINTLN("Starting WiFi setup...");
   setupWiFi();
-  DEBUG_PRINT("WiFi status: ");
-  DEBUG_PRINTLN(getWiFiStatus());
   
   // Initialize MQTT system for heartbeat monitoring
   setupMQTT();
   
   // Initialize OTA system (schedules first check in 30s, then hourly)
   setupOTA(30);
-  
-  // Start NeoPixel updates using platform-appropriate method
-  setupNeoPixels();
-  
+    
   DEBUG_PRINTLN("===========================================");
   DEBUG_PRINTLN("Setup complete - entering main loop");
   DEBUG_PRINTLN("===========================================\n");
-
-  // Take LED indicator out of setup mode
-  enableLedStatusTicker();
 }
 
 void loop() {
