@@ -12,19 +12,20 @@
 #endif
 
 #include <PubSubClient.h>
+#include <Ticker.h>
 #include "debug.h"
 
 // MQTT broker configuration (injected at build time)
 #ifndef MQTT_HOST
-  #define MQTT_HOST "your-broker.hivemq.cloud"
+  #error "MQTT_HOST must be defined at compile time via -DMQTT_HOST=\"...\""
 #endif
 
 #ifndef MQTT_USERNAME
-  #define MQTT_USERNAME "your-username"
+  #error "MQTT_HOST must be defined at compile time via -DMQTT_USERNAME=\"...\""
 #endif
 
 #ifndef MQTT_PASSWORD
-  #define MQTT_PASSWORD "your-password"
+  #error "MQTT_PASSWORD must be defined at compile time via -DMQTT_PASSWORD=\"...\""
 #endif
 
 const uint16_t MQTT_PORT = 8883;  // TLS port for HiveMQ Cloud
@@ -37,9 +38,9 @@ const uint16_t MQTT_PORT = 8883;  // TLS port for HiveMQ Cloud
 WiFiClientSecure wifiSecureClient;
 PubSubClient mqttClient(wifiSecureClient);
 
-// Heartbeat state
-unsigned long lastHeartbeat = 0;
+// Heartbeat timing
 const unsigned long HEARTBEAT_INTERVAL = 60000;  // 60 seconds
+Ticker heartbeatTicker;  // Software ticker for heartbeat updates
 
 // Get unique device ID
 String getDeviceID() {
@@ -109,6 +110,9 @@ void setupMQTT() {
   DEBUG_PRINT(":");
   DEBUG_PRINTLN(MQTT_PORT);
   DEBUG_PRINTLN("TLS encryption enabled (no cert validation)");
+
+  // Initial connection attempt
+  connectMQTT();
 }
 
 // Connect to MQTT broker (non-blocking)
@@ -122,15 +126,19 @@ bool connectMQTT() {
     return false;
   }
   
-  DEBUG_PRINT("Connecting to MQTT broker...");
+  DEBUG_PRINTLN("Connecting to MQTT broker...");
   
   // Generate unique client ID
   String clientId = "SkiClock-" + getDeviceID();
   
   // Attempt connection
   if (mqttClient.connect(clientId.c_str(), MQTT_USERNAME, MQTT_PASSWORD)) {
-    DEBUG_PRINTLN("connected!");
-    
+    DEBUG_PRINTLN("MQTT broker connected!");
+
+    // Start heartbeat ticker and publish initial heartbeat
+    heartbeatTicker.attach_ms(HEARTBEAT_INTERVAL, publishHeartbeat);
+    publishHeartbeat();
+
     // Subscribe to version update topic
     if (mqttClient.subscribe(MQTT_TOPIC_VERSION_UPDATES)) {
       DEBUG_PRINT("Subscribed to topic: ");
@@ -141,14 +149,14 @@ bool connectMQTT() {
     
     return true;
   } else {
-    DEBUG_PRINT("failed, rc=");
+    DEBUG_PRINT("MQTT broker connection failed, rc=");
     DEBUG_PRINTLN(mqttClient.state());
     return false;
   }
 }
 
 // Publish heartbeat message
-void publishHeartbeat(const char* firmwareVersion) {
+void publishHeartbeat() {
   if (!mqttClient.connected()) {
     return;
   }
@@ -159,7 +167,7 @@ void publishHeartbeat(const char* firmwareVersion) {
     "{\"device_id\":\"%s\",\"board\":\"%s\",\"version\":\"%s\",\"uptime\":%lu,\"rssi\":%d,\"free_heap\":%u}",
     getDeviceID().c_str(),
     getBoardType().c_str(),
-    firmwareVersion,
+    FIRMWARE_VERSION,
     millis() / 1000,  // uptime in seconds
     WiFi.RSSI(),
     ESP.getFreeHeap()
@@ -174,7 +182,7 @@ void publishHeartbeat(const char* firmwareVersion) {
 }
 
 // Main MQTT loop (call frequently from main loop)
-void loopMQTT(const char* firmwareVersion) {
+void updateMQTT(const char* firmwareVersion) {
   // Maintain MQTT connection
   if (!mqttClient.connected()) {
     // Attempt reconnection every 5 seconds
@@ -187,13 +195,6 @@ void loopMQTT(const char* firmwareVersion) {
   } else {
     // Process incoming messages
     mqttClient.loop();
-    
-    // Publish heartbeat at regular intervals
-    unsigned long now = millis();
-    if (now - lastHeartbeat > HEARTBEAT_INTERVAL) {
-      lastHeartbeat = now;
-      publishHeartbeat(firmwareVersion);
-    }
   }
 }
 

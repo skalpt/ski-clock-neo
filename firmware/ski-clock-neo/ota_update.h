@@ -569,12 +569,12 @@ void setupOTA() {
   DEBUG_PRINT(OTA_CHECK_INTERVAL_MS / 1000);
   DEBUG_PRINTLN(" seconds");
   
-#if defined(ESP32)
-  // Print current partition info
-  const esp_partition_t *running = esp_ota_get_running_partition();
-  DEBUG_PRINT("Running partition: ");
-  DEBUG_PRINTLN(running->label);
-#endif
+  #if defined(ESP32)
+    // Print current partition info
+    const esp_partition_t *running = esp_ota_get_running_partition();
+    DEBUG_PRINT("Running partition: ");
+    DEBUG_PRINTLN(running->label);
+  #endif
 }
 
 // Call this in loop() to handle periodic update checks

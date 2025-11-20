@@ -1,15 +1,20 @@
 #ifndef LED_INDICATOR_H
 #define LED_INDICATOR_H
 
+#include <Ticker.h>
 #include "debug.h"
 
 // LED patterns for WiFi status indication
 enum LedPattern {
   LED_QUICK_FLASH,      // Fast blink during setup
-  LED_ONE_FLASH,        // 1 flash + pause (connected)
-  LED_THREE_FLASH,      // 3 flashes + pause (disconnected)
+  LED_ONE_FLASH,        // 1 flash + pause (WiFi & MQTT connected)
+  LED_TWO_FLASH,        // 2 flashes + pause (WiFi connected, MQTT disconnected)
+  LED_THREE_FLASH,      // 3 flashes + pause (WiFi disconnected)
   LED_OFF               // No flashing
 };
+
+// Ticker for checking the current status for the LED indicator
+Ticker ledStatusTicker;
 
 // Fallback for boards that don't define LED_BUILTIN
 #ifndef LED_BUILTIN
@@ -24,7 +29,7 @@ enum LedPattern {
 #endif
 
 // LED GPIO state - ESP32 and ESP8266 both use inverted logic (LOW = LED on)
-#if defined(ESP8266) || defined(ESP32)
+#if defined(ESP32) || defined(ESP8266)
   #define LED_GPIO_ON LOW
   #define LED_GPIO_OFF HIGH
 #else
@@ -95,7 +100,6 @@ inline void IRAM_ATTR ledOff() {
   portMUX_TYPE ledTimerMux = portMUX_INITIALIZER_UNLOCKED;
 #elif defined(ESP8266)
   // ESP8266 uses Timer1 (hardware timer)
-  #include <Ticker.h>  // Still needed for timer1_* functions
   extern "C" {
     #include "user_interface.h"
   }
@@ -109,9 +113,9 @@ volatile bool ledState = false;
 // LED update callback - called by hardware interrupt timer
 // IRAM_ATTR ensures function is in RAM for ESP32/ESP8266 interrupt execution
 void IRAM_ATTR ledTimerCallback() {
-#if defined(ESP32)
-  portENTER_CRITICAL_ISR(&ledTimerMux);
-#endif
+  #if defined(ESP32)
+    portENTER_CRITICAL_ISR(&ledTimerMux);
+  #endif
   
   switch (currentPattern) {
     case LED_QUICK_FLASH:
@@ -140,7 +144,27 @@ void IRAM_ATTR ledTimerCallback() {
         }
       }
       break;
-      
+
+    case LED_TWO_FLASH:
+      // 2 quick flashes followed by 2 second pause
+      if (flashCount < 4) {
+        // Flash 2 times (on/off/on/off)
+        ledState = (flashCount % 2 == 0);
+        if (ledState) {
+          ledOn();
+        } else {
+          ledOff();
+        }
+        flashCount++;
+      } else {
+        // Pause
+        flashCount++;
+        if (flashCount >= 20) {  // 20 * 100ms = 2 seconds
+          flashCount = 0;
+        }
+      }
+      break;
+    
     case LED_THREE_FLASH:
       // 3 quick flashes followed by 2 second pause
       if (flashCount < 6) {
@@ -154,9 +178,8 @@ void IRAM_ATTR ledTimerCallback() {
         flashCount++;
       } else {
         // Pause
-        ledOff();
         flashCount++;
-        if (flashCount >= 26) {  // 6 + 20 = 26 (2 second pause)
+        if (flashCount >= 20) {  // 20 * 100ms = 2 seconds
           flashCount = 0;
         }
       }
@@ -168,44 +191,46 @@ void IRAM_ATTR ledTimerCallback() {
       break;
   }
   
-#if defined(ESP32)
-  portEXIT_CRITICAL_ISR(&ledTimerMux);
+  #if defined(ESP32)
+    portEXIT_CRITICAL_ISR(&ledTimerMux);
+  #endif
+  }
+  
+  // ESP8266 Timer1 ISR wrapper
+  #if defined(ESP8266)
+  void ICACHE_RAM_ATTR onTimer1ISR() {
+    ledTimerCallback();
+    timer1_write(500000);  // Reset timer for next interrupt (100ms at 5MHz = 500,000 ticks)
+  }
 #endif
-}
 
-// ESP8266 Timer1 ISR wrapper
-#if defined(ESP8266)
-void ICACHE_RAM_ATTR onTimer1ISR() {
-  ledTimerCallback();
-  timer1_write(500000);  // Reset timer for next interrupt (100ms at 5MHz = 500,000 ticks)
-}
-#endif
-
-// Initialize LED system
-void setupLED() {
+// Initialize LED indicator
+void setupLedIndicator() {
   pinMode(LED_PIN, OUTPUT);
   ledOff();
   DEBUG_PRINT("LED indicator initialized on GPIO");
   DEBUG_PRINTLN(LED_PIN);
   
   // Initialize hardware timer
-#if defined(ESP32)
-  // ESP32: Use hardware timer 0, divider 80 (1MHz tick rate)
-  ledTimer = timerBegin(0, 80, true);  // Timer 0, divider 80, count up
-  timerAttachInterrupt(ledTimer, &ledTimerCallback, true);  // Attach ISR, edge triggered
-  timerAlarmWrite(ledTimer, 100000, true);  // 100ms interval (100,000 microseconds), auto-reload
-  // Don't enable yet - will enable when pattern is set
-  DEBUG_PRINTLN("ESP32 hardware timer initialized (100ms interval)");
-  
-#elif defined(ESP8266)
-  // ESP8266: Use Timer1 (hardware timer)
-  timer1_isr_init();
-  timer1_attachInterrupt(onTimer1ISR);
-  timer1_enable(TIM_DIV16, TIM_EDGE, TIM_LOOP);  // 80MHz / 16 = 5MHz, edge, loop mode
-  timer1_write(500000);  // 500,000 ticks = 100ms at 5MHz
-  // Timer1 starts automatically
-  DEBUG_PRINTLN("ESP8266 Timer1 initialized (100ms interval)");
-#endif
+  #if defined(ESP32)
+    // ESP32: Use hardware timer 0, divider 80 (1MHz tick rate)
+    ledTimer = timerBegin(0, 80, true);  // Timer 0, divider 80, count up
+    timerAttachInterrupt(ledTimer, &ledTimerCallback, true);  // Attach ISR, edge triggered
+    timerAlarmWrite(ledTimer, 100000, true);  // 100ms interval (100,000 microseconds), auto-reload
+    // Don't enable yet - will enable when pattern is set
+    DEBUG_PRINTLN("ESP32 hardware timer initialized (100ms interval)");
+    
+  #elif defined(ESP8266)
+    // ESP8266: Use Timer1 (hardware timer)
+    timer1_isr_init();
+    timer1_attachInterrupt(onTimer1ISR);
+    timer1_enable(TIM_DIV16, TIM_EDGE, TIM_LOOP);  // 80MHz / 16 = 5MHz, edge, loop mode
+    timer1_write(500000);  // 500,000 ticks = 100ms at 5MHz
+    // Timer1 starts automatically
+    DEBUG_PRINTLN("ESP8266 Timer1 initialized (100ms interval)");
+  #endif
+
+  setLedPattern(LED_QUICK_FLASH);  // Set LED indicator to setup status
 }
 
 // Set LED pattern
@@ -214,60 +239,57 @@ void setLedPattern(LedPattern pattern) {
     return;  // No change needed
   }
   
-#if defined(ESP32)
-  // Stop current timer
-  timerAlarmDisable(ledTimer);
-  
-  // Reset state (use critical section for volatile variables)
-  portENTER_CRITICAL(&ledTimerMux);
-  flashCount = 0;
-  ledState = false;
-  currentPattern = pattern;
-  portEXIT_CRITICAL(&ledTimerMux);
-  
-  ledOff();
-  
-  // Start new pattern
-  switch (pattern) {
-    case LED_QUICK_FLASH:
-    case LED_ONE_FLASH:
-    case LED_THREE_FLASH:
+  #if defined(ESP32)
+    // Stop current timer
+    timerAlarmDisable(ledTimer);
+    
+    // Reset state (use critical section for volatile variables)
+    portENTER_CRITICAL(&ledTimerMux);
+    flashCount = 0;
+    ledState = false;
+    currentPattern = pattern;
+    portEXIT_CRITICAL(&ledTimerMux);
+    
+    ledOff();
+    
+    // Start new pattern
+    if (pattern != LED_OFF) {
       // Enable hardware timer for all active patterns
       timerAlarmEnable(ledTimer);
-      break;
-      
-    case LED_OFF:
-    default:
-      // Timer already disabled, LED already off
-      break;
-  }
-  
-#elif defined(ESP8266)
-  // ESP8266: Timer1 is always running, just update the pattern
-  // Use noInterrupts/interrupts for critical section
-  noInterrupts();
-  flashCount = 0;
-  ledState = false;
-  currentPattern = pattern;
-  interrupts();
-  
-  ledOff();
-  
-  // Timer1 keeps running regardless of pattern (LED_OFF just turns it off in ISR)
-#endif
+    }
+    
+  #elif defined(ESP8266)
+    // ESP8266: Timer1 is always running, just update the pattern
+    // Use noInterrupts/interrupts for critical section
+    noInterrupts();
+    flashCount = 0;
+    ledState = false;
+    currentPattern = pattern;
+    interrupts();
+    
+    ledOff();
+    
+    // Timer1 keeps running regardless of pattern (LED_OFF just turns it off in ISR)
+  #endif
 }
 
-// Update LED pattern based on WiFi status (call from loop)
+// Enable periodic status updates (called when WiFi/MQTT is ready)
+void enableLedStatusTicker() {
+  ledStatusTicker.attach_ms(1000, updateLedStatus);
+  DEBUG_PRINTLN("LED status ticker enabled (1 second interval)");
+  updateLedStatus();
+}
+
+// Update LED pattern based on WiFi & MQTT status (called from ticker)
 void updateLedStatus() {
-  static unsigned long lastCheck = 0;
-  if (millis() - lastCheck > 1000) {  // Check every second
-    lastCheck = millis();
-    
-    if (WiFi.status() == WL_CONNECTED) {
+  if (WiFi.status() == WL_CONNECTED) {
+    if (mqttClient.connected()) {
       setLedPattern(LED_ONE_FLASH);
     } else {
-      setLedPattern(LED_THREE_FLASH);
+      setLedPattern(LED_TWO_FLASH);
     }
+  } else {
+    setLedPattern(LED_THREE_FLASH);
   }
 }
 
