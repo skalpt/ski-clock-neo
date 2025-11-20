@@ -15,7 +15,7 @@ The project consists of two main components:
 1.  **Firmware**: Embedded C++ for ESP32/ESP8266 microcontrollers driving a 16x16 NeoPixel LED matrix.
     *   **Features**: Custom 5x7 pixel font with diagonal smoothing, multi-panel support, freeze-proof LED status indicator with hardware interrupt timers, advanced WiFi management via `AutoConnect` (multi-network credentials, captive portal, background reconnection), secure non-blocking OTA updates, and real-time MQTT heartbeat monitoring.
     *   **OTA Implementation**: Utilizes a custom update server, API key authentication, configurable server URL, HTTPS with certificate validation, and non-blocking chunked HTTP reads with yield() calls to prevent UI freezing during version checks.
-    *   **MQTT Monitoring**: Publishes device heartbeats every 60 seconds to HiveMQ Cloud broker (device ID, board type, firmware version, uptime, WiFi RSSI, free heap). Subscribes to version update notifications for instant OTA trigger. Uses TLS encryption without certificate validation (works offline, no NTP required). Non-blocking reconnection with 5-second retry interval.
+    *   **MQTT Monitoring**: Publishes device heartbeats every 60 seconds to HiveMQ Cloud broker (device ID, board type, firmware version, uptime, WiFi RSSI, free heap). Subscribes to version update notifications for instant OTA trigger. Uses TLS encryption without certificate validation (works offline, no NTP required). WiFi event-driven lifecycle management with automatic connect/disconnect. Broker reconnection with 5-second retry interval for network resilience.
     *   **Timing**: Hardware interrupt timers (hw_timer_t for ESP32, Timer1 for ESP8266) for LED indicators ensure guaranteed execution even during blocking operations. NeoPixel updates use FreeRTOS tasks on ESP32 (high priority on C3, Core 1 on dual-core) for smooth rendering during network operations; ESP8266 uses software tickers. OTA checks use software tickers. MQTT publishes at 60-second intervals with automatic reconnection.
 
 2.  **Dashboard Server**: A Python Flask application for firmware distribution and device management.
@@ -55,6 +55,9 @@ Debug logging is **enabled** by default for development and troubleshooting:
     -   **GitHub Actions**: CI/CD platform for automated firmware builds, versioning, and deployment to the dashboard.
 ## Recent Changes
 
+- **2025-11-20**: Implemented WiFi event handlers (ARDUINO_EVENT_WIFI_STA_GOT_IP/DISCONNECTED) for automatic MQTT lifecycle management
+- **2025-11-20**: Added disconnectMQTT() function with proper heartbeat ticker cleanup on WiFi loss
+- **2025-11-20**: Implemented broker reconnection logic (5s retry) for network resilience while WiFi stays up
 - **2025-11-20**: Simplified MQTT TLS to use setInsecure() - no certificate validation or NTP sync required
 - **2025-11-20**: Removed certificates.h (no longer needed - OTA uses setInsecure(), MQTT uses setInsecure())
 - **2025-11-19**: Implemented MQTT heartbeat monitoring system with HiveMQ Cloud integration
