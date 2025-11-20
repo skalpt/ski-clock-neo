@@ -3,6 +3,9 @@ import os
 import hashlib
 import json
 import io
+import threading
+import time
+import requests
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Optional, Any
@@ -118,6 +121,94 @@ def save_version_to_db(platform, version_info):
     db.session.commit()
     print(f"✓ Saved {platform} v{version_info['version']} to database")
 
+def sync_firmware_from_production():
+    """Sync firmware metadata from production to dev database (dev environment only)"""
+    # Only sync in dev environment
+    env = os.getenv('REPL_DEPLOYMENT_TYPE', 'dev')
+    if env != 'dev':
+        return
+    
+    # Get production URL from environment
+    production_url = os.getenv('PRODUCTION_API_URL')
+    if not production_url:
+        print("⚠ PRODUCTION_API_URL not set, skipping firmware sync from production")
+        return
+    
+    try:
+        # Query production API for firmware status (with authentication)
+        headers = {}
+        download_key = os.getenv('DOWNLOAD_API_KEY')
+        if download_key:
+            headers['X-API-Key'] = download_key
+        
+        response = requests.get(f"{production_url}/api/status", headers=headers, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        
+        if 'firmwares' not in data:
+            print("⚠ No firmware data in production response")
+            return
+        
+        # Update local database with production firmware metadata
+        synced_count = 0
+        with app.app_context():
+            for platform, fw_data in data['firmwares'].items():
+                if fw_data is None:
+                    continue
+                
+                # Check if we need to update (compare versions)
+                local_fw = FirmwareVersion.query.filter_by(platform=platform).first()
+                if local_fw and local_fw.version == fw_data.get('version'):
+                    continue  # Already up to date
+                
+                # Save/update firmware metadata in dev database
+                version_info = {
+                    'version': fw_data.get('version', 'Unknown'),
+                    'filename': fw_data.get('filename', ''),
+                    'size': fw_data.get('size', 0),
+                    'sha256': fw_data.get('checksum', ''),
+                    'download_url': fw_data.get('download_url', ''),
+                    'storage': fw_data.get('storage', 'object_storage'),
+                    'object_path': fw_data.get('object_path'),
+                    'object_name': fw_data.get('object_name'),
+                    'local_path': fw_data.get('local_path')
+                }
+                save_version_to_db(platform, version_info)
+                synced_count += 1
+            
+            # Reload in-memory cache
+            if synced_count > 0:
+                load_versions_from_db()
+                print(f"✓ Synced {synced_count} firmware version(s) from production")
+    
+    except requests.exceptions.RequestException as e:
+        print(f"⚠ Failed to sync from production: {e}")
+    except Exception as e:
+        print(f"⚠ Error syncing firmware from production: {e}")
+
+def start_production_sync_thread():
+    """Start background thread that periodically syncs firmware from production (dev only)"""
+    env = os.getenv('REPL_DEPLOYMENT_TYPE', 'dev')
+    if env != 'dev':
+        return
+    
+    production_url = os.getenv('PRODUCTION_API_URL')
+    if not production_url:
+        return
+    
+    def sync_loop():
+        while True:
+            try:
+                time.sleep(300)  # 5 minutes
+                sync_firmware_from_production()
+            except Exception as e:
+                print(f"⚠ Error in production sync thread: {e}")
+                time.sleep(60)  # Wait 1 minute before retrying on error
+    
+    thread = threading.Thread(target=sync_loop, daemon=True)
+    thread.start()
+    print(f"✓ Production sync thread started (syncing every 5 minutes from {production_url})")
+
 # Initialize database and load firmware versions
 with app.app_context():
     db.create_all()
@@ -125,6 +216,9 @@ with app.app_context():
     
     # Load firmware versions from database (must be inside app context)
     load_versions_from_db()
+    
+    # Sync firmware from production on startup (dev environment only)
+    sync_firmware_from_production()
 
 from mqtt_subscriber import start_mqtt_subscriber, set_app_context
 
@@ -133,6 +227,9 @@ set_app_context(app)
 
 # Start MQTT subscriber in background thread (must be after db init)
 mqtt_client = start_mqtt_subscriber()
+
+# Start production sync thread (dev environment only)
+start_production_sync_thread()
 
 @app.route('/')
 def index():
