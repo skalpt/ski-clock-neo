@@ -61,9 +61,6 @@ void updateNeoPixels() {
   Ticker neopixelTicker;
 #endif
 
-
-#endif
-
 void setupNeoPixels() {
   // Initialise NeoPixels
   row1.begin();
