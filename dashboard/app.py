@@ -7,11 +7,29 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional, Any
 from object_storage import ObjectStorageService, ObjectNotFoundError, ObjectStorageError
-from mqtt_subscriber import start_mqtt_subscriber, get_device_status
+from models import db, Device
 
 app = Flask(__name__)
 
-# Start MQTT subscriber in background thread
+app.secret_key = os.environ.get("FLASK_SECRET_KEY") or "a secret key"
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+    "pool_recycle": 300,
+    "pool_pre_ping": True,
+}
+
+db.init_app(app)
+
+with app.app_context():
+    db.create_all()
+    print("✓ Database initialized")
+
+from mqtt_subscriber import start_mqtt_subscriber, set_app_context
+
+# Pass app context to MQTT subscriber for database operations
+set_app_context(app)
+
+# Start MQTT subscriber in background thread (must be after db init)
 mqtt_client = start_mqtt_subscriber()
 
 # Object Storage paths
@@ -469,12 +487,40 @@ def status():
 
 @app.route('/api/devices')
 def devices():
-    device_list = get_device_status()
+    """Get all devices with online/offline status (15 minute threshold)"""
+    all_devices = Device.query.all()
+    device_list = [device.to_dict(online_threshold_minutes=15) for device in all_devices]
+    
+    # Sort by online status (online first) then by last seen (newest first)
+    device_list.sort(key=lambda d: (not d['online'], d['last_seen']), reverse=True)
+    
+    online_count = sum(1 for d in device_list if d['online'])
+    
     return jsonify({
         'devices': device_list,
         'count': len(device_list),
+        'online_count': online_count,
+        'offline_count': len(device_list) - online_count,
         'mqtt_enabled': mqtt_client is not None
     })
+
+@app.route('/api/devices/<device_id>', methods=['DELETE'])
+def delete_device(device_id):
+    """Delete a device from the database (for decommissioned devices)"""
+    device = Device.query.filter_by(device_id=device_id).first()
+    
+    if not device:
+        return jsonify({'error': 'Device not found'}), 404
+    
+    db.session.delete(device)
+    db.session.commit()
+    
+    print(f"🗑️  Device removed: {device_id} ({device.board_type})")
+    
+    return jsonify({
+        'success': True,
+        'message': f'Device {device_id} removed successfully'
+    }), 200
 
 if __name__ == '__main__':
     # Development mode - debug enabled

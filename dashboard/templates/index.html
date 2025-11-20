@@ -53,6 +53,11 @@
             border-radius: 8px;
             padding: 20px;
             color: white;
+            position: relative;
+        }
+        .device-card.offline {
+            background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+            opacity: 0.7;
         }
         .device-header {
             font-weight: bold;
@@ -85,9 +90,42 @@
             margin-right: 8px;
             animation: pulse 2s infinite;
         }
+        .status.offline {
+            background: #ef4444;
+            animation: none;
+        }
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
+        }
+        .delete-btn {
+            background: rgba(239, 68, 68, 0.8);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.2s;
+        }
+        .delete-btn:hover {
+            background: rgba(239, 68, 68, 1);
+        }
+        .stats-bar {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 15px;
+            padding: 15px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 8px;
+        }
+        .stats-bar div {
+            font-weight: 600;
+        }
+        .stats-bar span {
+            font-weight: normal;
+            opacity: 0.8;
         }
         .empty-state {
             text-align: center;
@@ -131,6 +169,7 @@
 
         <div class="card">
             <h2>📡 Live Devices</h2>
+            <div id="stats-container"></div>
             <div id="devices-container">
                 <div class="empty-state">
                     <p>Loading device data...</p>
@@ -163,6 +202,7 @@
                 const response = await fetch('/api/devices');
                 const data = await response.json();
                 const container = document.getElementById('devices-container');
+                const statsContainer = document.getElementById('stats-container');
                 
                 if (data.count === 0) {
                     container.innerHTML = `
@@ -173,31 +213,69 @@
                             </p>
                         </div>
                     `;
+                    statsContainer.innerHTML = '';
                     return;
                 }
 
-                const devicesHtml = Object.values(data.devices).map(device => `
-                    <div class="device-card">
+                // Stats bar
+                statsContainer.innerHTML = `
+                    <div class="stats-bar">
+                        <div>Total: <span>${data.count}</span></div>
+                        <div>🟢 Online: <span>${data.online_count}</span></div>
+                        <div>🔴 Offline: <span>${data.offline_count}</span></div>
+                    </div>
+                `;
+
+                const devicesHtml = data.devices.map(device => `
+                    <div class="device-card ${device.online ? '' : 'offline'}">
                         <div class="device-header">
                             <div>
-                                <span class="status"></span>
+                                <span class="status ${device.online ? '' : 'offline'}"></span>
                                 ${device.device_id}
                             </div>
                             <span class="badge">${device.board}</span>
                         </div>
                         <div class="device-info">
+                            <div><strong>Status:</strong> ${device.online ? '🟢 Online' : '🔴 Offline (' + device.minutes_since_last_seen.toFixed(0) + 'm)'}</div>
                             <div><strong>Version:</strong> ${device.version}</div>
                             <div><strong>Uptime:</strong> ${formatUptime(device.uptime)}</div>
                             <div><strong>WiFi Signal:</strong> ${device.rssi} dBm</div>
                             <div><strong>Free Memory:</strong> ${(device.free_heap / 1024).toFixed(1)} KB</div>
                             <div><strong>Last Seen:</strong> ${formatTimestamp(device.last_seen)}</div>
+                            <div><strong>First Seen:</strong> ${new Date(device.first_seen).toLocaleString()}</div>
                         </div>
+                        <button class="delete-btn" onclick="deleteDevice('${device.device_id}')">
+                            🗑️ Remove Device
+                        </button>
                     </div>
                 `).join('');
 
                 container.innerHTML = `<div class="devices-grid">${devicesHtml}</div>`;
             } catch (error) {
                 console.error('Failed to load devices:', error);
+            }
+        }
+
+        async function deleteDevice(deviceId) {
+            if (!confirm(`Are you sure you want to remove device ${deviceId}?\n\nThis will permanently delete it from the database.`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/devices/${deviceId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    alert('Device removed successfully');
+                    loadDevices(); // Refresh the list
+                } else {
+                    const error = await response.json();
+                    alert(`Failed to remove device: ${error.error}`);
+                }
+            } catch (error) {
+                console.error('Failed to delete device:', error);
+                alert('Failed to remove device');
             }
         }
 
