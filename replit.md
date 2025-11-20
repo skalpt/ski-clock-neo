@@ -15,7 +15,7 @@ The project consists of two main components:
 1.  **Firmware**: Embedded C++ for ESP32/ESP8266 microcontrollers driving a 16x16 NeoPixel LED matrix.
     *   **Features**: Custom 5x7 pixel font with diagonal smoothing, multi-panel support, freeze-proof LED status indicator with hardware interrupt timers, advanced WiFi management via `AutoConnect` (multi-network credentials, captive portal, background reconnection), secure non-blocking OTA updates, and real-time MQTT heartbeat monitoring.
     *   **OTA Implementation**: Utilizes a custom update server, API key authentication, configurable server URL, HTTPS with certificate validation, and non-blocking chunked HTTP reads with yield() calls to prevent UI freezing during version checks.
-    *   **MQTT Monitoring**: Publishes device heartbeats every 60 seconds to HiveMQ Cloud broker (device ID, board type, firmware version, uptime, WiFi RSSI, free heap). Subscribes to version update notifications for instant OTA trigger. Uses TLS/SSL with Let's Encrypt R3 certificate validation. Non-blocking reconnection with 5-second retry interval.
+    *   **MQTT Monitoring**: Publishes device heartbeats every 60 seconds to HiveMQ Cloud broker (device ID, board type, firmware version, uptime, WiFi RSSI, free heap). Subscribes to version update notifications for instant OTA trigger. Uses TLS encryption without certificate validation (works offline, no NTP required). Non-blocking reconnection with 5-second retry interval.
     *   **Timing**: Hardware interrupt timers (hw_timer_t for ESP32, Timer1 for ESP8266) for LED indicators ensure guaranteed execution even during blocking operations. NeoPixel updates use FreeRTOS tasks on ESP32 (high priority on C3, Core 1 on dual-core) for smooth rendering during network operations; ESP8266 uses software tickers. OTA checks use software tickers. MQTT publishes at 60-second intervals with automatic reconnection.
 
 2.  **Dashboard Server**: A Python Flask application for firmware distribution and device management.
@@ -51,13 +51,15 @@ Debug logging is **enabled** by default for development and troubleshooting:
     -   **paho-mqtt**: Python MQTT client for subscribing to device heartbeats.
     -   **Replit Object Storage** (Optional): For persistent storage of firmware binaries and version metadata, with graceful fallback to local filesystem.
 -   **Cloud Services**:
-    -   **HiveMQ Cloud Serverless**: MQTT broker for real-time device monitoring (free tier: 100 devices, 10GB/month). Uses TLS (port 8883) with Let's Encrypt certificates.
+    -   **HiveMQ Cloud Serverless**: MQTT broker for real-time device monitoring (free tier: 100 devices, 10GB/month). Uses TLS (port 8883) with setInsecure() for simplified connection (no cert validation).
     -   **GitHub Actions**: CI/CD platform for automated firmware builds, versioning, and deployment to the dashboard.
 ## Recent Changes
 
+- **2025-11-20**: Simplified MQTT TLS to use setInsecure() - no certificate validation or NTP sync required
+- **2025-11-20**: Removed certificates.h (no longer needed - OTA uses setInsecure(), MQTT uses setInsecure())
 - **2025-11-19**: Implemented MQTT heartbeat monitoring system with HiveMQ Cloud integration
 - **2025-11-19**: Added real-time device status dashboard with auto-refresh UI (10-second intervals)
-- **2025-11-19**: Created mqtt_client.h for firmware with TLS certificate validation (Let's Encrypt R3)
+- **2025-11-19**: Created mqtt_client.h for firmware with TLS encryption (no cert validation for offline support)
 - **2025-11-19**: Implemented paho-mqtt subscriber in dashboard with background thread for heartbeat processing
 - **2025-11-19**: Added /api/devices endpoint to expose live device status from MQTT messages
 - **2025-11-19**: Injected MQTT credentials (MQTT_HOST, MQTT_USERNAME, MQTT_PASSWORD) into firmware builds via GitHub Actions
