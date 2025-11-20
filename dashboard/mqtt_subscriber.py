@@ -3,6 +3,7 @@ import json
 import os
 import ssl
 import threading
+import uuid
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 
@@ -65,11 +66,18 @@ def start_mqtt_subscriber():
         print("⚠ MQTT credentials not configured, device monitoring disabled")
         return None
     
+    # Generate unique client ID for each instance (prevents collision between dev/prod)
+    # Format: SkiClockDashboard-<environment>-<unique_id>
+    env = os.getenv('REPL_DEPLOYMENT_TYPE', 'dev')  # 'dev' or 'production'
+    unique_suffix = str(uuid.uuid4())[:8]
+    client_id = f"SkiClockDashboard-{env}-{unique_suffix}"
+    
     print(f"Starting MQTT subscriber...")
     print(f"  Broker: {MQTT_HOST}:{MQTT_PORT}")
     print(f"  Username: {MQTT_USERNAME}")
+    print(f"  Client ID: {client_id}")
     
-    client = mqtt.Client(client_id="SkiClockDashboard", protocol=mqtt.MQTTv311)
+    client = mqtt.Client(client_id=client_id, protocol=mqtt.MQTTv311)
     client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
     
     client.tls_set(cert_reqs=ssl.CERT_REQUIRED, tls_version=ssl.PROTOCOL_TLS)
