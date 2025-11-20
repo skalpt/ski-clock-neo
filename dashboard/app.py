@@ -20,18 +20,6 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 
 db.init_app(app)
 
-with app.app_context():
-    db.create_all()
-    print("✓ Database initialized")
-
-from mqtt_subscriber import start_mqtt_subscriber, set_app_context
-
-# Pass app context to MQTT subscriber for database operations
-set_app_context(app)
-
-# Start MQTT subscriber in background thread (must be after db init)
-mqtt_client = start_mqtt_subscriber()
-
 # Object Storage paths (only for firmware binaries now)
 FIRMWARES_PREFIX = "firmwares/"
 
@@ -79,9 +67,12 @@ PLATFORM_FIRMWARE_MAPPING = {
     'esp8266': 'esp12f',  # Legacy ESP8266 devices get ESP-12F firmware
 }
 
-# Load firmware versions from database
+# In-memory cache of firmware versions (loaded from database)
+LATEST_VERSIONS = {}
+
 def load_versions_from_db():
     """Load all firmware versions from database into memory for fast lookups"""
+    global LATEST_VERSIONS
     versions = {}
     for platform in SUPPORTED_PLATFORMS:
         fw = FirmwareVersion.query.filter_by(platform=platform).first()
@@ -89,6 +80,7 @@ def load_versions_from_db():
     
     count = sum(1 for v in versions.values() if v is not None)
     print(f"✓ Loaded {count} firmware versions from database")
+    LATEST_VERSIONS = versions
     return versions
 
 def save_version_to_db(platform, version_info):
@@ -126,8 +118,21 @@ def save_version_to_db(platform, version_info):
     db.session.commit()
     print(f"✓ Saved {platform} v{version_info['version']} to database")
 
-# Load versions into memory (for fast lookups)
-LATEST_VERSIONS = load_versions_from_db()
+# Initialize database and load firmware versions
+with app.app_context():
+    db.create_all()
+    print("✓ Database initialized")
+    
+    # Load firmware versions from database (must be inside app context)
+    load_versions_from_db()
+
+from mqtt_subscriber import start_mqtt_subscriber, set_app_context
+
+# Pass app context to MQTT subscriber for database operations
+set_app_context(app)
+
+# Start MQTT subscriber in background thread (must be after db init)
+mqtt_client = start_mqtt_subscriber()
 
 @app.route('/')
 def index():
