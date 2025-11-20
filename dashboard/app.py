@@ -3,11 +3,11 @@ import os
 import hashlib
 import json
 import io
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Optional, Any
 from object_storage import ObjectStorageService, ObjectNotFoundError, ObjectStorageError
-from models import db, Device
+from models import db, Device, FirmwareVersion
 
 app = Flask(__name__)
 
@@ -32,15 +32,13 @@ set_app_context(app)
 # Start MQTT subscriber in background thread (must be after db init)
 mqtt_client = start_mqtt_subscriber()
 
-# Object Storage paths
-VERSIONS_OBJECT_PATH = "versions.json"
+# Object Storage paths (only for firmware binaries now)
 FIRMWARES_PREFIX = "firmwares/"
 
-# Fallback local paths (used during development if Object Storage not available)
+# Local paths
 FIRMWARES_DIR = Path(__file__).parent / 'firmwares'
 FIRMWARES_DIR.mkdir(exist_ok=True)
 CONFIG_FILE = Path(__file__).parent / 'config.json'
-VERSIONS_FILE = Path(__file__).parent / 'versions.json'
 
 # Load configuration from file (uploaded by GitHub Actions) or fallback to environment
 def load_config():
@@ -81,62 +79,55 @@ PLATFORM_FIRMWARE_MAPPING = {
     'esp8266': 'esp12f',  # Legacy ESP8266 devices get ESP-12F firmware
 }
 
-# Check if Object Storage is available
-def is_object_storage_available():
-    try:
-        storage = ObjectStorageService()
-        storage.get_bucket_name()
-        return True
-    except ObjectStorageError:
-        return False
-
-# Load firmware versions (try Object Storage first, fall back to local file)
-def load_versions():
-    # Try Object Storage first
-    try:
-        storage = ObjectStorageService()
-        bucket_name = storage.get_bucket_name()
-        
-        if storage.exists(VERSIONS_OBJECT_PATH):
-            versions_json = storage.download_as_string(VERSIONS_OBJECT_PATH)
-            saved_versions = json.loads(versions_json)
-            print(f"✓ Loaded {len([v for v in saved_versions.values() if v])} firmware versions from Object Storage")
-            return saved_versions
-    except (ObjectStorageError, ObjectNotFoundError) as e:
-        print(f"Object Storage not available for versions, trying local fallback: {e}")
+# Load firmware versions from database
+def load_versions_from_db():
+    """Load all firmware versions from database into memory for fast lookups"""
+    versions = {}
+    for platform in SUPPORTED_PLATFORMS:
+        fw = FirmwareVersion.query.filter_by(platform=platform).first()
+        versions[platform] = fw.to_dict() if fw else None
     
-    # Fall back to local file system
-    if VERSIONS_FILE.exists():
-        try:
-            with open(VERSIONS_FILE, 'r') as f:
-                saved_versions = json.load(f)
-                print(f"Loaded {len([v for v in saved_versions.values() if v])} firmware versions from local file")
-                return saved_versions
-        except Exception as e:
-            print(f"Warning: Could not load local versions file: {e}")
+    count = sum(1 for v in versions.values() if v is not None)
+    print(f"✓ Loaded {count} firmware versions from database")
+    return versions
+
+def save_version_to_db(platform, version_info):
+    """Save or update a firmware version in the database"""
+    fw = FirmwareVersion.query.filter_by(platform=platform).first()
     
-    # Initialize with None for all platforms
-    return {platform: None for platform in SUPPORTED_PLATFORMS}
+    if fw:
+        # Update existing
+        fw.version = version_info['version']
+        fw.filename = version_info['filename']
+        fw.size = version_info['size']
+        fw.sha256 = version_info['sha256']
+        fw.uploaded_at = datetime.now(timezone.utc)
+        fw.download_url = version_info['download_url']
+        fw.storage = version_info['storage']
+        fw.object_path = version_info.get('object_path')
+        fw.object_name = version_info.get('object_name')
+        fw.local_path = version_info.get('local_path')
+    else:
+        # Create new
+        fw = FirmwareVersion(
+            platform=platform,
+            version=version_info['version'],
+            filename=version_info['filename'],
+            size=version_info['size'],
+            sha256=version_info['sha256'],
+            download_url=version_info['download_url'],
+            storage=version_info['storage'],
+            object_path=version_info.get('object_path'),
+            object_name=version_info.get('object_name'),
+            local_path=version_info.get('local_path')
+        )
+        db.session.add(fw)
+    
+    db.session.commit()
+    print(f"✓ Saved {platform} v{version_info['version']} to database")
 
-# Save firmware versions (to Object Storage if available, otherwise local file)
-def save_versions():
-    try:
-        storage = ObjectStorageService()
-        bucket_name = storage.get_bucket_name()
-        
-        versions_json = json.dumps(LATEST_VERSIONS, indent=2)
-        storage.upload_string(VERSIONS_OBJECT_PATH, versions_json)
-        print(f"✓ Saved firmware versions to Object Storage")
-    except ObjectStorageError as e:
-        print(f"Object Storage not available, saving to local file: {e}")
-        try:
-            with open(VERSIONS_FILE, 'w') as f:
-                json.dump(LATEST_VERSIONS, f, indent=2)
-            print(f"Saved firmware versions to local file: {VERSIONS_FILE}")
-        except Exception as e:
-            print(f"Error saving versions file: {e}")
-
-LATEST_VERSIONS = load_versions()
+# Load versions into memory (for fast lookups)
+LATEST_VERSIONS = load_versions_from_db()
 
 @app.route('/')
 def index():
@@ -420,16 +411,18 @@ def upload_firmware():
     elif filepath:
         version_info['local_path'] = str(filepath)
     
+    # Update in-memory cache
     LATEST_VERSIONS[platform] = version_info
+    
+    # Save to database
+    save_version_to_db(platform, version_info)
     
     # Mirror esp12f firmware to legacy esp8266 alias for monitoring visibility
     if platform == 'esp12f':
-        LATEST_VERSIONS['esp8266'] = version_info.copy()
-        LATEST_VERSIONS['esp8266']['download_url'] = '/api/firmware/esp8266'
-        LATEST_VERSIONS['esp8266']['note'] = 'Legacy alias for ESP-12F (backward compatibility)'
-    
-    # Persist versions to disk (survives server restarts)
-    save_versions()
+        esp8266_info = version_info.copy()
+        esp8266_info['download_url'] = '/api/firmware/esp8266'
+        LATEST_VERSIONS['esp8266'] = esp8266_info
+        save_version_to_db('esp8266', esp8266_info)
     
     return jsonify({
         'success': True,

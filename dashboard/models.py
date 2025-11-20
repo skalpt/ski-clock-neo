@@ -10,6 +10,47 @@ class Base(DeclarativeBase):
 db = SQLAlchemy(model_class=Base)
 
 
+class FirmwareVersion(db.Model):
+    __tablename__ = 'firmware_versions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    platform = db.Column(db.String(32), unique=True, nullable=False, index=True)
+    version = db.Column(db.String(32), nullable=False)
+    filename = db.Column(db.String(128), nullable=False)
+    size = db.Column(db.Integer, nullable=False)
+    sha256 = db.Column(db.String(64), nullable=False)
+    uploaded_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    download_url = db.Column(db.String(128), nullable=False)
+    storage = db.Column(db.String(32), nullable=False)
+    object_path = db.Column(db.String(256))
+    object_name = db.Column(db.String(128))
+    local_path = db.Column(db.String(256))
+    
+    def __repr__(self):
+        return f'<FirmwareVersion {self.platform} v{self.version}>'
+    
+    def to_dict(self):
+        """Convert firmware version to dictionary for API responses"""
+        result = {
+            'version': self.version,
+            'filename': self.filename,
+            'size': self.size,
+            'sha256': self.sha256,
+            'uploaded_at': self.uploaded_at.isoformat(),
+            'download_url': self.download_url,
+            'storage': self.storage
+        }
+        
+        if self.object_path:
+            result['object_path'] = self.object_path
+        if self.object_name:
+            result['object_name'] = self.object_name
+        if self.local_path:
+            result['local_path'] = self.local_path
+            
+        return result
+
+
 class Device(db.Model):
     __tablename__ = 'devices'
     
