@@ -239,6 +239,8 @@
                             <div><strong>Status:</strong> ${device.online ? '🟢 Online' : '🔴 Offline (' + device.minutes_since_last_seen.toFixed(0) + 'm)'}</div>
                             <div><strong>Version:</strong> ${device.version}</div>
                             <div><strong>Uptime:</strong> ${formatUptime(device.uptime)}</div>
+                            ${device.ssid ? `<div><strong>WiFi Network:</strong> ${device.ssid}</div>` : ''}
+                            ${device.ip_address ? `<div><strong>IP Address:</strong> ${device.ip_address}</div>` : ''}
                             <div><strong>WiFi Signal:</strong> ${device.rssi} dBm</div>
                             <div><strong>Free Memory:</strong> ${(device.free_heap / 1024).toFixed(1)} KB</div>
                             <div><strong>Last Seen:</strong> ${formatTimestamp(device.last_seen)}</div>
