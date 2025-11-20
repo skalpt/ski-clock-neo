@@ -50,12 +50,18 @@ Debug logging is **enabled** by default for development and troubleshooting:
 -   **Dashboard Dependencies**:
     -   **Flask**: Web framework for REST API and UI serving.
     -   **paho-mqtt**: Python MQTT client for subscribing to device heartbeats.
-    -   **Replit Object Storage** (Optional): For persistent storage of firmware binaries and version metadata, with graceful fallback to local filesystem.
+    -   **PostgreSQL**: Database for persistent storage of firmware metadata and device registry.
+    -   **Replit Object Storage** (Optional): For persistent storage of firmware binaries only (.bin files), with graceful fallback to local filesystem.
 -   **Cloud Services**:
     -   **HiveMQ Cloud Serverless**: MQTT broker for real-time device monitoring (free tier: 100 devices, 10GB/month). Uses TLS (port 8883) with setInsecure() for simplified connection (no cert validation).
     -   **GitHub Actions**: CI/CD platform for automated firmware builds, versioning, and deployment to the dashboard.
 ## Recent Changes
 
+- **2025-11-20**: Migrated firmware version metadata from Object Storage to PostgreSQL database (FirmwareVersion model)
+- **2025-11-20**: Object Storage now only stores firmware binaries (.bin files), not metadata (versions.json removed)
+- **2025-11-20**: Database schema includes: platform, version, filename, size, sha256, uploaded_at, download_url, storage, object_path, local_path
+- **2025-11-20**: In-memory cache (LATEST_VERSIONS) hydrated from database on startup for fast lookups
+- **2025-11-20**: Upload endpoint performs upsert (create/update) of firmware version records in database
 - **2025-11-20**: Implemented PostgreSQL database for persistent device tracking with first_seen/last_seen timestamps
 - **2025-11-20**: Added device management API: DELETE /api/devices/<device_id> endpoint for removing decommissioned devices
 - **2025-11-20**: Enhanced dashboard UI with online/offline status indicators, stats bar (Total/Online/Offline counts), and delete buttons
