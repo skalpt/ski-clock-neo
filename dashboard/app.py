@@ -137,9 +137,8 @@ def sync_firmware_from_production():
     try:
         # Query production API for firmware status (with authentication)
         headers = {}
-        download_key = os.getenv('DOWNLOAD_API_KEY')
-        if download_key:
-            headers['X-API-Key'] = download_key
+        if DOWNLOAD_API_KEY:
+            headers['X-API-Key'] = DOWNLOAD_API_KEY
         
         response = requests.get(f"{production_url}/api/status", headers=headers, timeout=10)
         response.raise_for_status()
@@ -181,6 +180,11 @@ def sync_firmware_from_production():
                 load_versions_from_db()
                 print(f"✓ Synced {synced_count} firmware version(s) from production")
     
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 401:
+            print(f"⚠ Production sync authentication failed (401). Check DOWNLOAD_API_KEY in config.")
+        else:
+            print(f"⚠ Production sync HTTP error: {e.response.status_code} - {e}")
     except requests.exceptions.RequestException as e:
         print(f"⚠ Failed to sync from production: {e}")
     except Exception as e:
