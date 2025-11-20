@@ -72,6 +72,10 @@ String getBoardType() {
   #endif
 }
 
+// Forward declarations for WiFi event handlers
+bool connectMQTT();
+void disconnectMQTT();
+
 // MQTT message callback for incoming messages
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
   DEBUG_PRINT("MQTT message received on topic: ");
@@ -93,6 +97,29 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   }
 }
 
+// WiFi event handlers for automatic MQTT lifecycle management
+#if defined(ESP32)
+void onWiFiConnected(WiFiEvent_t event, WiFiEventInfo_t info) {
+  DEBUG_PRINTLN("WiFi connected, connecting to MQTT...");
+  connectMQTT();
+}
+
+void onWiFiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info) {
+  DEBUG_PRINTLN("WiFi disconnected, stopping MQTT...");
+  disconnectMQTT();
+}
+#elif defined(ESP8266)
+void onWiFiConnected(const WiFiEventStationModeGotIP& event) {
+  DEBUG_PRINTLN("WiFi connected, connecting to MQTT...");
+  connectMQTT();
+}
+
+void onWiFiDisconnected(const WiFiEventStationModeDisconnected& event) {
+  DEBUG_PRINTLN("WiFi disconnected, stopping MQTT...");
+  disconnectMQTT();
+}
+#endif
+
 // Initialize MQTT connection
 void setupMQTT() {
   DEBUG_PRINTLN("Initializing MQTT client...");
@@ -112,8 +139,19 @@ void setupMQTT() {
   DEBUG_PRINTLN(MQTT_PORT);
   DEBUG_PRINTLN("TLS encryption enabled (no cert validation)");
 
-  // Initial connection attempt
-  connectMQTT();
+  // Register WiFi event handlers for automatic MQTT lifecycle management
+  #if defined(ESP32)
+    WiFi.onEvent(onWiFiConnected, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);
+    WiFi.onEvent(onWiFiDisconnected, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
+  #elif defined(ESP8266)
+    static WiFiEventHandler gotIpHandler = WiFi.onStationModeGotIP(onWiFiConnected);
+    static WiFiEventHandler disconnectedHandler = WiFi.onStationModeDisconnected(onWiFiDisconnected);
+  #endif
+  
+  // Initial connection attempt if WiFi already connected
+  if (WiFi.status() == WL_CONNECTED) {
+    connectMQTT();
+  }
 }
 
 // Connect to MQTT broker (non-blocking)
@@ -197,26 +235,27 @@ void disconnectMQTT() {
 
 // Main MQTT loop (call frequently from main loop)
 void updateMQTT() {
-  // Maintain MQTT connection
-  if (!mqttClient.connected()) {
-    if (mqttIsConnected) {
-      // Connection was lost, clean up
-      DEBUG_PRINTLN("MQTT connection lost, cleaning up...");
-      heartbeatTicker.detach();
-      mqttIsConnected = false;
-    }
-    
-    // Attempt reconnection every 5 seconds
+  // Check for connection loss (broker disconnect while WiFi remains up)
+  if (mqttIsConnected && !mqttClient.connected()) {
+    // Connection was lost, clean up
+    DEBUG_PRINTLN("MQTT connection lost unexpectedly, cleaning up...");
+    heartbeatTicker.detach();
+    mqttIsConnected = false;
+  }
+  
+  // Attempt reconnection if WiFi is up but MQTT is down
+  if (!mqttClient.connected() && WiFi.status() == WL_CONNECTED) {
     static unsigned long lastReconnectAttempt = 0;
     unsigned long now = millis();
-    if (now - lastReconnectAttempt > 5000) {
+    if (now - lastReconnectAttempt > 5000) {  // Retry every 5 seconds
       lastReconnectAttempt = now;
-      if (WiFi.status() == WL_CONNECTED) {
-        connectMQTT();
-      }
+      DEBUG_PRINTLN("Attempting MQTT reconnection...");
+      connectMQTT();
     }
-  } else {
-    // Process incoming messages (must be called regularly)
+  }
+  
+  // Process incoming messages if connected (must be called regularly)
+  if (mqttClient.connected()) {
     mqttClient.loop();
   }
 }
