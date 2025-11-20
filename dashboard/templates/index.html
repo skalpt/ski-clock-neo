@@ -243,7 +243,7 @@
                             ${device.ip_address ? `<div><strong>IP Address:</strong> ${device.ip_address}</div>` : ''}
                             <div><strong>WiFi Signal:</strong> ${device.rssi} dBm</div>
                             <div><strong>Free Memory:</strong> ${(device.free_heap / 1024).toFixed(1)} KB</div>
-                            <div><strong>Last Seen:</strong> ${formatTimestamp(device.last_seen)}</div>
+                            <div><strong>Last Seen:</strong> <span class="live-timestamp" data-timestamp="${device.last_seen}">${formatTimestamp(device.last_seen)}</span></div>
                             <div><strong>First Seen:</strong> ${new Date(device.first_seen).toLocaleString()}</div>
                         </div>
                         <button class="delete-btn" onclick="deleteDevice('${device.device_id}')">
@@ -319,11 +319,33 @@
             return date.toLocaleTimeString();
         }
 
+        function updateLiveTimestamps() {
+            // Update all live timestamp elements
+            const timestamps = document.querySelectorAll('.live-timestamp');
+            timestamps.forEach(elem => {
+                const timestamp = elem.getAttribute('data-timestamp');
+                if (timestamp) {
+                    elem.textContent = formatTimestamp(timestamp);
+                }
+            });
+        }
+
+        // Handle tab visibility changes to recalculate after backgrounding
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                // Tab is now visible - recalculate all timestamps immediately
+                updateLiveTimestamps();
+            }
+        });
+
         // Initial load
         loadDevices();
         loadFirmware();
 
-        // Refresh every 10 seconds
+        // Update live timestamps every second for smooth counting
+        setInterval(updateLiveTimestamps, 1000);
+
+        // Refresh data from server every 10 seconds
         setInterval(loadDevices, 10000);
         setInterval(loadFirmware, 60000);
     </script>
