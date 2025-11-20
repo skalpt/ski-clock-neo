@@ -53,6 +53,8 @@ def on_message(client, userdata, msg):
                     device.last_uptime = payload.get('uptime', 0)
                     device.last_rssi = payload.get('rssi', 0)
                     device.last_free_heap = payload.get('free_heap', 0)
+                    device.ssid = payload.get('ssid')
+                    device.ip_address = payload.get('ip')
                 else:
                     # Create new device
                     device = Device(
@@ -61,7 +63,9 @@ def on_message(client, userdata, msg):
                         firmware_version=payload.get('version', 'Unknown'),
                         last_uptime=payload.get('uptime', 0),
                         last_rssi=payload.get('rssi', 0),
-                        last_free_heap=payload.get('free_heap', 0)
+                        last_free_heap=payload.get('free_heap', 0),
+                        ssid=payload.get('ssid'),
+                        ip_address=payload.get('ip')
                     )
                     db.session.add(device)
                     print(f"✨ New device registered: {device_id} ({payload.get('board')})")
