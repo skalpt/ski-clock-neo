@@ -41,6 +41,7 @@ PubSubClient mqttClient(wifiSecureClient);
 // Heartbeat timing
 const unsigned long HEARTBEAT_INTERVAL = 60000;  // 60 seconds
 Ticker heartbeatTicker;  // Software ticker for heartbeat updates
+bool mqttIsConnected = false;  // Track MQTT connection state
 
 // Get unique device ID
 String getDeviceID() {
@@ -134,10 +135,12 @@ bool connectMQTT() {
   // Attempt connection
   if (mqttClient.connect(clientId.c_str(), MQTT_USERNAME, MQTT_PASSWORD)) {
     DEBUG_PRINTLN("MQTT broker connected!");
+    mqttIsConnected = true;
 
-    // Start heartbeat ticker and publish initial heartbeat
+    // Start heartbeat ticker only if not already running
+    heartbeatTicker.detach();  // Detach first to prevent duplicates
     heartbeatTicker.attach_ms(HEARTBEAT_INTERVAL, publishHeartbeat);
-    publishHeartbeat();
+    publishHeartbeat();  // Publish initial heartbeat immediately
 
     // Subscribe to version update topic
     if (mqttClient.subscribe(MQTT_TOPIC_VERSION_UPDATES)) {
@@ -151,6 +154,7 @@ bool connectMQTT() {
   } else {
     DEBUG_PRINT("MQTT broker connection failed, rc=");
     DEBUG_PRINTLN(mqttClient.state());
+    mqttIsConnected = false;
     return false;
   }
 }
@@ -181,19 +185,38 @@ void publishHeartbeat() {
   }
 }
 
+// Disconnect from MQTT broker and stop heartbeat
+void disconnectMQTT() {
+  if (mqttIsConnected) {
+    DEBUG_PRINTLN("Disconnecting from MQTT broker...");
+    heartbeatTicker.detach();  // Stop heartbeat ticker
+    mqttClient.disconnect();   // Clean disconnect
+    mqttIsConnected = false;
+  }
+}
+
 // Main MQTT loop (call frequently from main loop)
-void updateMQTT(const char* firmwareVersion) {
+void updateMQTT() {
   // Maintain MQTT connection
   if (!mqttClient.connected()) {
+    if (mqttIsConnected) {
+      // Connection was lost, clean up
+      DEBUG_PRINTLN("MQTT connection lost, cleaning up...");
+      heartbeatTicker.detach();
+      mqttIsConnected = false;
+    }
+    
     // Attempt reconnection every 5 seconds
     static unsigned long lastReconnectAttempt = 0;
     unsigned long now = millis();
     if (now - lastReconnectAttempt > 5000) {
       lastReconnectAttempt = now;
-      connectMQTT();
+      if (WiFi.status() == WL_CONNECTED) {
+        connectMQTT();
+      }
     }
   } else {
-    // Process incoming messages
+    // Process incoming messages (must be called regularly)
     mqttClient.loop();
   }
 }
