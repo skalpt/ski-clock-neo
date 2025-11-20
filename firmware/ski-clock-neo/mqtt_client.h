@@ -72,9 +72,10 @@ String getBoardType() {
   #endif
 }
 
-// Forward declarations for WiFi event handlers
+// Forward declarations
 bool connectMQTT();
 void disconnectMQTT();
+void publishHeartbeat();
 
 // MQTT message callback for incoming messages
 void mqttCallback(char* topic, byte* payload, unsigned int length) {

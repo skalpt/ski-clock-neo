@@ -1,0 +1,70 @@
+Run arduino-cli compile --fqbn esp32:esp32:esp32 \
+  arduino-cli compile --fqbn esp32:esp32:esp32 \
+    --build-property "build.partitions=min_spiffs" \
+    --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"***\" -DDOWNLOAD_API_KEY=\"***\" -DFIRMWARE_VERSION=\"2025.11.20.28\" -DMQTT_HOST=\"***\" -DMQTT_USERNAME=\"***\" -DMQTT_PASSWORD=\"***\" -DBOARD_ESP32" \
+    --output-dir build/esp32 \
+    firmware/***
+  cp build/esp32/***.ino.bin build/***-esp32.bin
+  shell: /usr/bin/bash -e {0}
+In file included from /home/runner/work/***/***/firmware/***/***.ino:3:
+/home/runner/work/***/***/firmware/***/neopixel_render.h: In function 'void updateNeoPixels()':
+/home/runner/work/***/***/firmware/***/neopixel_render.h:41:3: error: 'drawTextCentered' was not declared in this scope
+   drawTextCentered(row1, numStr, 1, red, 2);
+   ^~~~~~~~~~~~~~~~
+In file included from /home/runner/work/***/***/firmware/***/***.ino:5:
+/home/runner/work/***/***/firmware/***/led_indicator.h: In function 'void setupLedIndicator()':
+/home/runner/work/***/***/firmware/***/led_indicator.h:233:3: error: 'setLedPattern' was not declared in this scope
+   setLedPattern(LED_QUICK_FLASH);  // Set LED indicator to setup status
+   ^~~~~~~~~~~~~
+/home/runner/work/***/***/firmware/***/led_indicator.h:233:3: note: suggested alternative: 'LedPattern'
+   setLedPattern(LED_QUICK_FLASH);  // Set LED indicator to setup status
+   ^~~~~~~~~~~~~
+   LedPattern
+/home/runner/work/***/***/firmware/***/led_indicator.h: In function 'void enableLedStatusTicker()':
+/home/runner/work/***/***/firmware/***/led_indicator.h:278:35: error: 'updateLedStatus' was not declared in this scope
+   ledStatusTicker.attach_ms(1000, updateLedStatus);
+                                   ^~~~~~~~~~~~~~~
+/home/runner/work/***/***/firmware/***/led_indicator.h:278:35: note: suggested alternative: 'updateNeoPixels'
+   ledStatusTicker.attach_ms(1000, updateLedStatus);
+                                   ^~~~~~~~~~~~~~~
+                                   updateNeoPixels
+/home/runner/work/***/***/firmware/***/led_indicator.h: In function 'void updateLedStatus()':
+/home/runner/work/***/***/firmware/***/led_indicator.h:286:9: error: 'mqttClient' was not declared in this scope
+     if (mqttClient.connected()) {
+         ^~~~~~~~~~
+/home/runner/work/***/***/firmware/***/led_indicator.h:286:9: note: suggested alternative: 'HTTPClient'
+     if (mqttClient.connected()) {
+         ^~~~~~~~~~
+         HTTPClient
+In file included from /home/runner/work/***/***/firmware/***/***.ino:7:
+/home/runner/work/***/***/firmware/***/mqtt_client.h: In function 'bool connectMQTT()':
+/home/runner/work/***/***/firmware/***/mqtt_client.h:180:51: error: 'publishHeartbeat' was not declared in this scope
+     heartbeatTicker.attach_ms(HEARTBEAT_INTERVAL, publishHeartbeat);
+                                                   ^~~~~~~~~~~~~~~~
+
+Error during build: exit status 1
+
+Used library      Version Path                                                                                   
+Adafruit NeoPixel 1.15.2  /home/runner/Arduino/libraries/Adafruit_NeoPixel                                       
+Ticker            2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Ticker          
+WiFi              2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFi            
+WebServer         2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WebServer       
+AutoConnect       1.4.2   /home/runner/Arduino/libraries/AutoConnect                                             
+DNSServer         2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/DNSServer       
+EEPROM            2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/EEPROM          
+PageBuilder       1.5.6   /home/runner/Arduino/libraries/PageBuilder                                             
+FS                2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/FS              
+SPIFFS            2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPIFFS          
+SD                2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SD              
+SPI               2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPI             
+Preferences       2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Preferences     
+ArduinoJson       7.4.2   /home/runner/Arduino/libraries/ArduinoJson                                             
+HTTPClient        2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPClient      
+WiFiClientSecure  2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFiClientSecure
+HTTPUpdate        2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPUpdate      
+Update            2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Update          
+PubSubClient      2.8     /home/runner/Arduino/libraries/PubSubClient                                            
+
+Used platform Version Path                                                        
+esp32:esp32   2.0.14  /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14
+Error: Process completed with exit code 1.

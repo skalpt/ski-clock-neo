@@ -6,6 +6,9 @@
 #include <Ticker.h>
 #include "debug.h"
 
+// Forward declarations
+void drawTextCentered(Adafruit_NeoPixel &strip, const char *text, uint8_t y0, uint32_t color, uint8_t scale);
+
 // -------------------- Pin definitions --------------------
 #define PIN_MATRIX_ROW1                  4     // WS2812 data for top row
 

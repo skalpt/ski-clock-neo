@@ -1,8 +1,22 @@
 #ifndef LED_INDICATOR_H
 #define LED_INDICATOR_H
 
+#if defined(ESP32)
+  #include <WiFi.h>
+#elif defined(ESP8266)
+  #include <ESP8266WiFi.h>
+#endif
+
 #include <Ticker.h>
 #include "debug.h"
+#include <PubSubClient.h>
+
+// Forward declarations
+void setLedPattern(int pattern);
+void updateLedStatus();
+
+// External reference to MQTT client (defined in mqtt_client.h)
+extern PubSubClient mqttClient;
 
 // LED patterns for WiFi status indication
 enum LedPattern {
