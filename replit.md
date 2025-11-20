@@ -57,6 +57,9 @@ Debug logging is **enabled** by default for development and troubleshooting:
     -   **GitHub Actions**: CI/CD platform for automated firmware builds, versioning, and deployment to the dashboard.
 ## Recent Changes
 
+- **2025-11-20**: Implemented smooth real-time "Last Seen" timer that updates every second on dashboard
+- **2025-11-20**: Added visibility change listener to recalculate timestamps after tab backgrounding (no drift)
+- **2025-11-20**: Live timestamps calculated from actual ISO timestamps, not accumulated intervals
 - **2025-11-20**: Added WiFi network tracking: SSID and IP address now displayed on dashboard for each device
 - **2025-11-20**: Firmware heartbeat expanded to include WiFi.SSID() and WiFi.localIP() (384-byte buffer)
 - **2025-11-20**: Device model extended with ssid (VARCHAR 64) and ip_address (VARCHAR 45) columns
