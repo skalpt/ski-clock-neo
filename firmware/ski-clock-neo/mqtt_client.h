@@ -99,25 +99,25 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
 // WiFi event handlers for automatic MQTT lifecycle management
 #if defined(ESP32)
-void onWiFiConnected(WiFiEvent_t event, WiFiEventInfo_t info) {
-  DEBUG_PRINTLN("WiFi connected, connecting to MQTT...");
-  connectMQTT();
-}
-
-void onWiFiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info) {
-  DEBUG_PRINTLN("WiFi disconnected, stopping MQTT...");
-  disconnectMQTT();
-}
+  void onWiFiConnected(WiFiEvent_t event, WiFiEventInfo_t info) {
+    DEBUG_PRINTLN("WiFi connected, connecting to MQTT...");
+    connectMQTT();
+  }
+  
+  void onWiFiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info) {
+    DEBUG_PRINTLN("WiFi disconnected, stopping MQTT...");
+    disconnectMQTT();
+  }
 #elif defined(ESP8266)
-void onWiFiConnected(const WiFiEventStationModeGotIP& event) {
-  DEBUG_PRINTLN("WiFi connected, connecting to MQTT...");
-  connectMQTT();
-}
-
-void onWiFiDisconnected(const WiFiEventStationModeDisconnected& event) {
-  DEBUG_PRINTLN("WiFi disconnected, stopping MQTT...");
-  disconnectMQTT();
-}
+  void onWiFiConnected(const WiFiEventStationModeGotIP& event) {
+    DEBUG_PRINTLN("WiFi connected, connecting to MQTT...");
+    connectMQTT();
+  }
+  
+  void onWiFiDisconnected(const WiFiEventStationModeDisconnected& event) {
+    DEBUG_PRINTLN("WiFi disconnected, stopping MQTT...");
+    disconnectMQTT();
+  }
 #endif
 
 // Initialize MQTT connection
@@ -139,6 +139,11 @@ void setupMQTT() {
   DEBUG_PRINTLN(MQTT_PORT);
   DEBUG_PRINTLN("TLS encryption enabled (no cert validation)");
 
+  // Initial connection attempt if WiFi already connected
+  if (WiFi.status() == WL_CONNECTED) {
+    connectMQTT();
+  }
+
   // Register WiFi event handlers for automatic MQTT lifecycle management
   #if defined(ESP32)
     WiFi.onEvent(onWiFiConnected, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);
@@ -147,11 +152,6 @@ void setupMQTT() {
     static WiFiEventHandler gotIpHandler = WiFi.onStationModeGotIP(onWiFiConnected);
     static WiFiEventHandler disconnectedHandler = WiFi.onStationModeDisconnected(onWiFiDisconnected);
   #endif
-  
-  // Initial connection attempt if WiFi already connected
-  if (WiFi.status() == WL_CONNECTED) {
-    connectMQTT();
-  }
 }
 
 // Connect to MQTT broker (non-blocking)
