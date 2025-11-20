@@ -11,10 +11,6 @@
 #include "debug.h"
 #include <PubSubClient.h>
 
-// Forward declarations
-void setLedPattern(int pattern);
-void updateLedStatus();
-
 // External reference to MQTT client (defined in mqtt_client.h)
 extern PubSubClient mqttClient;
 
@@ -26,6 +22,10 @@ enum LedPattern {
   LED_THREE_FLASH,      // 3 flashes + pause (WiFi disconnected)
   LED_OFF               // No flashing
 };
+
+// Forward declarations (must come after LedPattern enum)
+void setLedPattern(LedPattern pattern);
+void updateLedStatus();
 
 // Ticker for checking the current status for the LED indicator
 Ticker ledStatusTicker;

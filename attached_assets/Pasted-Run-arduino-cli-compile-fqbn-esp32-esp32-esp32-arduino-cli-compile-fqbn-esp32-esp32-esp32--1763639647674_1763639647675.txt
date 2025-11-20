@@ -1,0 +1,39 @@
+Run arduino-cli compile --fqbn esp32:esp32:esp32 \
+  arduino-cli compile --fqbn esp32:esp32:esp32 \
+    --build-property "build.partitions=min_spiffs" \
+    --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"***\" -DDOWNLOAD_API_KEY=\"***\" -DFIRMWARE_VERSION=\"2025.11.20.29\" -DMQTT_HOST=\"***\" -DMQTT_USERNAME=\"***\" -DMQTT_PASSWORD=\"***\" -DBOARD_ESP32" \
+    --output-dir build/esp32 \
+    firmware/***
+  cp build/esp32/***.ino.bin build/***-esp32.bin
+  shell: /usr/bin/bash -e {0}
+/home/runner/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32-elf/8.4.0/../../../../xtensa-esp32-elf/bin/ld: /tmp/arduino/sketches/A112E18D136C6DC1ED5764BF8E0E7FBE/sketch/***.ino.cpp.o:(.literal._Z17setupLedIndicatorv+0x1c): undefined reference to `setLedPattern(int)'
+/home/runner/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32-elf/8.4.0/../../../../xtensa-esp32-elf/bin/ld: /tmp/arduino/sketches/A112E18D136C6DC1ED5764BF8E0E7FBE/sketch/***.ino.cpp.o: in function `setupLedIndicator()':
+/home/runner/work/***/***/firmware/***/led_indicator.h:233: undefined reference to `setLedPattern(int)'
+collect2: error: ld returned 1 exit status
+
+Error during build: exit status 1
+
+Used library      Version Path                                                                                   
+Adafruit NeoPixel 1.15.2  /home/runner/Arduino/libraries/Adafruit_NeoPixel                                       
+Ticker            2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Ticker          
+WiFi              2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFi            
+WebServer         2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WebServer       
+AutoConnect       1.4.2   /home/runner/Arduino/libraries/AutoConnect                                             
+DNSServer         2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/DNSServer       
+EEPROM            2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/EEPROM          
+PageBuilder       1.5.6   /home/runner/Arduino/libraries/PageBuilder                                             
+FS                2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/FS              
+SPIFFS            2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPIFFS          
+SD                2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SD              
+SPI               2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPI             
+Preferences       2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Preferences     
+ArduinoJson       7.4.2   /home/runner/Arduino/libraries/ArduinoJson                                             
+HTTPClient        2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPClient      
+WiFiClientSecure  2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFiClientSecure
+HTTPUpdate        2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPUpdate      
+Update            2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Update          
+PubSubClient      2.8     /home/runner/Arduino/libraries/PubSubClient                                            
+
+Used platform Version Path                                                        
+esp32:esp32   2.0.14  /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14
+Error: Process completed with exit code 1.
