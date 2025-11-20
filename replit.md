@@ -19,8 +19,9 @@ The project consists of two main components:
     *   **Timing**: Hardware interrupt timers (hw_timer_t for ESP32, Timer1 for ESP8266) for LED indicators ensure guaranteed execution even during blocking operations. NeoPixel updates use FreeRTOS tasks on ESP32 (high priority on C3, Core 1 on dual-core) for smooth rendering during network operations; ESP8266 uses software tickers. OTA checks use software tickers. MQTT publishes at 60-second intervals with automatic reconnection.
 
 2.  **Dashboard Server**: A Python Flask application for firmware distribution and device management.
-    *   **Features**: API-based firmware distribution supporting multiple platforms (ESP32, ESP32-C3, ESP32-S3, ESP-12F, ESP-01, Wemos D1 Mini), upload/download endpoints with API key authentication, platform aliasing (e.g., ESP8266 to ESP-12F), SHA256 checksums, real-time device monitoring via MQTT, and interactive web dashboard.
-    *   **MQTT Integration**: Background MQTT subscriber (paho-mqtt) connects to HiveMQ Cloud via TLS (port 8883), subscribes to heartbeat messages from all devices, stores device status in memory, and exposes live device data via REST API. Web UI auto-refreshes every 10 seconds to display connected devices, uptime, WiFi signal strength, and firmware versions.
+    *   **Features**: API-based firmware distribution supporting multiple platforms (ESP32, ESP32-C3, ESP32-S3, ESP-12F, ESP-01, Wemos D1 Mini), upload/download endpoints with API key authentication, platform aliasing (e.g., ESP8266 to ESP-12F), SHA256 checksums, real-time device monitoring via MQTT, PostgreSQL database for persistent device tracking, and interactive web dashboard.
+    *   **MQTT Integration**: Background MQTT subscriber (paho-mqtt) connects to HiveMQ Cloud via TLS (port 8883), subscribes to heartbeat messages from all devices, saves devices to PostgreSQL database on first heartbeat, updates last_seen timestamp on subsequent heartbeats, and exposes live device data via REST API. Web UI auto-refreshes every 10 seconds to display connected devices with online/offline status (15-minute threshold), uptime, WiFi signal strength, and firmware versions.
+    *   **Device Management**: PostgreSQL database stores device registry (device_id, board_type, firmware_version, first_seen, last_seen, uptime, rssi, free_heap). Dashboard shows online/offline status with visual distinction (gray cards for offline), minutes since last seen, total/online/offline counts, and delete button per device for decommissioning. Devices offline for 15+ minutes are marked as offline.
     *   **Deployment**: VM deployment (always-on) ensures consistent state across requests and maintains persistent MQTT connections. Fully automatic CI/CD via GitHub Actions builds firmware for various board variants, generates timestamp-based versions (`year.month.day.buildnum`), injects MQTT credentials, and uploads binaries and configuration to the dashboard.
     *   **System Design Choices**: Emphasizes automated versioning, secure communication, and graceful fallback for optional services like Object Storage. Secrets are managed securely in GitHub and Replit, with GitHub Actions injecting configuration (including MQTT credentials) into the dashboard. VM deployment prevents multi-instance state synchronization issues and ensures MQTT connections remain active.
 
@@ -55,6 +56,11 @@ Debug logging is **enabled** by default for development and troubleshooting:
     -   **GitHub Actions**: CI/CD platform for automated firmware builds, versioning, and deployment to the dashboard.
 ## Recent Changes
 
+- **2025-11-20**: Implemented PostgreSQL database for persistent device tracking with first_seen/last_seen timestamps
+- **2025-11-20**: Added device management API: DELETE /api/devices/<device_id> endpoint for removing decommissioned devices
+- **2025-11-20**: Enhanced dashboard UI with online/offline status indicators, stats bar (Total/Online/Offline counts), and delete buttons
+- **2025-11-20**: MQTT subscriber now saves devices to database on first heartbeat and updates last_seen on subsequent heartbeats
+- **2025-11-20**: Fixed MQTT client ID collision between dev/prod by generating unique IDs (SkiClockDashboard-{env}-{uuid})
 - **2025-11-20**: Implemented WiFi event handlers (ARDUINO_EVENT_WIFI_STA_GOT_IP/DISCONNECTED) for automatic MQTT lifecycle management
 - **2025-11-20**: Added disconnectMQTT() function with proper heartbeat ticker cleanup on WiFi loss
 - **2025-11-20**: Implemented broker reconnection logic (5s retry) for network resilience while WiFi stays up
