@@ -129,10 +129,10 @@
             gap: 2px;
             height: 14px;
             margin-left: 4px;
-            margin-right: 6px;
+            margin-right: 4px;
             vertical-align: baseline;
             position: relative;
-            top: 3px;
+            top: 0px;
         }
         .signal-icon .bar {
             width: 3px;
@@ -259,7 +259,7 @@
                             <span class="badge">${device.board}</span>
                         </div>
                         <div class="device-info">
-                            <div><strong>Status:</strong> ${device.online ? '🟢 Online' : '🔴 Offline (' + device.minutes_since_last_seen.toFixed(0) + 'm)'}</div>
+                            <div><strong>Status:</strong> ${device.online ? 'Online' : 'Offline (' + device.minutes_since_last_seen.toFixed(0) + 'm)'}</div>
                             <div><strong>Version:</strong> ${device.version}</div>
                             <div><strong>Uptime:</strong> ${formatUptime(device.uptime)}</div>
                             ${device.ssid ? `<div><strong>WiFi Network:</strong> ${device.ssid}</div>` : ''}
