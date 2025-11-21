@@ -146,122 +146,6 @@ long parseVersion(String version) {
   }
 }
 
-// Check update server for latest version (non-blocking with chunked reads)
-String getLatestVersion() {
-  HTTPClient http;
-  
-  String apiUrl = String(UPDATE_SERVER_URL) + "/api/version?platform=" + getPlatform();
-  
-  DEBUG_PRINT("Checking for updates at: ");
-  DEBUG_PRINTLN(apiUrl);
-  
-  // Determine if we need HTTPS or HTTP
-  bool isHttps = apiUrl.startsWith("https://");
-  
-  WiFiClient* clientPtr = nullptr;
-  
-  if (isHttps) {
-    WiFiClientSecure* secureClient = new WiFiClientSecure();
-    secureClient->setInsecure();  // For custom servers, cert validation is optional
-    clientPtr = secureClient;
-  } else {
-    clientPtr = new WiFiClient();
-  }
-  
-  if (!http.begin(*clientPtr, apiUrl)) {
-    DEBUG_PRINTLN("Failed to begin HTTP connection");
-    delete clientPtr;
-    return "";
-  }
-  
-  http.addHeader("User-Agent", "SkiClockNeo-OTA");
-  
-  int httpCode = http.GET();
-  
-  if (httpCode != HTTP_CODE_OK) {
-    DEBUG_PRINT("Update server error: ");
-    DEBUG_PRINTLN(httpCode);
-    http.end();
-    delete clientPtr;
-    return "";
-  }
-  
-  // Get content length
-  int contentLength = http.getSize();
-  DEBUG_PRINT("Response size: ");
-  DEBUG_PRINTLN(contentLength);
-  
-  // Read response in chunks with yield() to keep system responsive
-  String payload = "";
-  WiFiClient* stream = http.getStreamPtr();
-  
-  unsigned long startTime = millis();
-  const unsigned long TIMEOUT_MS = 10000;  // 10 second timeout
-  const int CHUNK_SIZE = 32;  // Read 32 bytes at a time
-  const int MAX_RESPONSE_SIZE = 1024;  // Max 1KB for version response
-  
-  while (http.connected() && (contentLength > 0 || contentLength == -1)) {
-    // Check timeout
-    if (millis() - startTime > TIMEOUT_MS) {
-      DEBUG_PRINTLN("OTA version check timeout");
-      break;
-    }
-    
-    // Safety check: prevent unbounded memory growth
-    if (payload.length() >= MAX_RESPONSE_SIZE) {
-      DEBUG_PRINTLN("OTA version response too large, truncating");
-      break;
-    }
-    
-    // Get available data size
-    size_t available = stream->available();
-    
-    if (available) {
-      // Read up to CHUNK_SIZE bytes
-      int readSize = (available > CHUNK_SIZE) ? CHUNK_SIZE : available;
-      char buffer[CHUNK_SIZE + 1];
-      int bytesRead = stream->readBytes(buffer, readSize);
-      
-      if (bytesRead > 0) {
-        buffer[bytesRead] = '\0';
-        payload += String(buffer);
-        
-        if (contentLength > 0) {
-          contentLength -= bytesRead;
-        }
-        
-        // Yield to system to allow tickers/WiFi to run
-        yield();
-      }
-    } else {
-      // No data available, yield and wait a bit
-      yield();
-      delay(1);
-    }
-  }
-  
-  DEBUG_PRINT("Received payload: ");
-  DEBUG_PRINTLN(payload);
-  
-  http.end();
-  delete clientPtr;
-  
-  // Simple JSON parsing to extract "version"
-  int versionIndex = payload.indexOf("\"version\"");
-  if (versionIndex > 0) {
-    int colonIndex = payload.indexOf(":", versionIndex);
-    int quoteStart = payload.indexOf("\"", colonIndex + 1);
-    int quoteEnd = payload.indexOf("\"", quoteStart + 1);
-    
-    if (quoteStart > 0 && quoteEnd > quoteStart) {
-      String version = payload.substring(quoteStart + 1, quoteEnd);
-      return version;
-    }
-  }
-  
-  return "";  // Return empty string if failed
-}
-
 // Perform OTA update from custom server
 bool performOTAUpdate(String version) {
   if (!WiFi.isConnected()) {
@@ -486,56 +370,23 @@ bool performOTAUpdate(String version) {
   return false;
 }
 
-// Check for updates and install if available
-void checkForOTAUpdate(bool force = false) {
-  unsigned long nowMs = millis();
-  
+// Trigger OTA update when MQTT version response indicates update available
+void triggerOTAUpdate(String newVersion) {
   // Skip if update already in progress
   if (otaUpdateInProgress) {
+    DEBUG_PRINTLN("OTA update already in progress");
     return;
   }
-  
-  // Determine appropriate interval based on last attempt success
-  // If last check was successful, use full interval
-  // If last check failed, use shorter retry interval
-  unsigned long timeSinceSuccess = nowMs - lastOTACheckMs;
-  unsigned long timeSinceAttempt = nowMs - lastOTAAttemptMs;
-  
-  if (!force) {
-    // If we've had a successful check recently, wait for full interval
-    if (lastOTACheckMs > 0 && timeSinceSuccess < OTA_CHECK_INTERVAL_MS) {
-      return;
-    }
-    // If we've attempted recently (but failed), use shorter retry interval
-    if (lastOTAAttemptMs > 0 && timeSinceAttempt < OTA_RETRY_INTERVAL_MS) {
-      return;
-    }
-  }
-  
-  // Record this attempt
-  lastOTAAttemptMs = nowMs;
   
   // Skip if WiFi not connected
   if (!WiFi.isConnected()) {
-    DEBUG_PRINTLN("OTA: Skipping check - WiFi not connected");
+    DEBUG_PRINTLN("OTA: WiFi not connected");
     return;
   }
-  
-  DEBUG_PRINTLN("Checking for firmware updates...");
-  
-  String latestVersion = getLatestVersion();
-  
-  if (latestVersion.length() == 0) {
-    DEBUG_PRINTLN("OTA: Could not retrieve latest version - will retry in 5 minutes");
-    return;
-  }
-  
-  DEBUG_PRINT("Latest version: ");
-  DEBUG_PRINTLN(latestVersion);
   
   // Compare versions
   long currentVer = parseVersion(FIRMWARE_VERSION);
-  long latestVer = parseVersion(latestVersion);
+  long latestVer = parseVersion(newVersion);
   
   DEBUG_PRINT("Current version code: ");
   DEBUG_PRINTLN(currentVer);
@@ -544,30 +395,19 @@ void checkForOTAUpdate(bool force = false) {
   
   if (latestVer > currentVer) {
     DEBUG_PRINTLN("New version available! Starting OTA update...");
-    bool updateSuccess = performOTAUpdate(latestVersion);
-    
-    // Only update success timestamp if download/install succeeded
-    // Failed downloads will retry in 5 minutes via lastOTAAttemptMs
-    if (updateSuccess) {
-      lastOTACheckMs = nowMs;
-    }
+    performOTAUpdate(newVersion);
   } else {
     DEBUG_PRINTLN("Firmware is up to date");
-    // Update success timestamp - no new version available
-    lastOTACheckMs = nowMs;
   }
 }
 
 // Initialize OTA updates
 void setupOTA() {
-  DEBUG_PRINTLN("OTA Update initialized");
+  DEBUG_PRINTLN("OTA Update initialized (MQTT-triggered)");
   DEBUG_PRINT("Current firmware version: ");
   DEBUG_PRINTLN(FIRMWARE_VERSION);
   DEBUG_PRINT("Update server: ");
   DEBUG_PRINTLN(UPDATE_SERVER_URL);
-  DEBUG_PRINT("Check interval: ");
-  DEBUG_PRINT(OTA_CHECK_INTERVAL_MS / 1000);
-  DEBUG_PRINTLN(" seconds");
   
   #if defined(ESP32)
     // Print current partition info
@@ -575,31 +415,6 @@ void setupOTA() {
     DEBUG_PRINT("Running partition: ");
     DEBUG_PRINTLN(running->label);
   #endif
-}
-
-// Call this in loop() to handle periodic update checks
-void updateOTA() {
-  checkForOTAUpdate(false);
-}
-
-// Force an immediate update check
-void forceOTACheck() {
-  DEBUG_PRINTLN("Forcing OTA update check...");
-  checkForOTAUpdate(true);
-  
-  // Schedule next check in 1 hour (software ticker)
-  otaTicker.once(3600, forceOTACheck);
-  DEBUG_PRINTLN("Next OTA check scheduled in 1 hour");
-}
-
-// Initialize OTA system with initial check delay
-void setupOTA(int initialDelaySeconds) {
-  DEBUG_PRINT("OTA system initialized. First check in ");
-  DEBUG_PRINT(initialDelaySeconds);
-  DEBUG_PRINTLN(" seconds");
-  
-  // Schedule initial OTA check using one-shot ticker
-  otaTicker.once(initialDelaySeconds, forceOTACheck);
 }
 
 #endif

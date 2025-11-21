@@ -27,8 +27,8 @@ void setup() {
   // Initialize MQTT system for heartbeat monitoring
   setupMQTT();
   
-  // Initialize OTA system (schedules first check in 30s, then hourly)
-  setupOTA(30);
+  // Initialize OTA system (MQTT-triggered updates)
+  setupOTA();
     
   DEBUG_PRINTLN("===========================================");
   DEBUG_PRINTLN("Setup complete - entering main loop");
@@ -39,9 +39,6 @@ void loop() {
   // Handle WiFi tasks (config portal or reconnection)
   updateWiFi();
 
-  // Handle MQTT updates (subscriptions)
+  // Handle MQTT updates (subscriptions and version requests)
   updateMQTT();
-  
-  // Handle OTA update retry logic only (checks are triggered by tickers)
-  updateOTA();
 }
