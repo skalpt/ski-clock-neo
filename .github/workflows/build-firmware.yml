@@ -70,6 +70,8 @@ jobs:
             --output-dir build/esp32 \
             firmware/ski-clock-neo
           cp build/esp32/ski-clock-neo.ino.bin build/ski-clock-neo-esp32.bin
+          cp build/esp32/ski-clock-neo.ino.bootloader.bin build/ski-clock-neo-esp32.bootloader.bin || echo "Warning: Bootloader not found for ESP32"
+          cp build/esp32/ski-clock-neo.ino.partitions.bin build/ski-clock-neo-esp32.partitions.bin || echo "Warning: Partitions not found for ESP32"
 
       - name: Build for ESP32-C3
         run: |
@@ -79,6 +81,8 @@ jobs:
             --output-dir build/esp32c3 \
             firmware/ski-clock-neo
           cp build/esp32c3/ski-clock-neo.ino.bin build/ski-clock-neo-esp32c3.bin
+          cp build/esp32c3/ski-clock-neo.ino.bootloader.bin build/ski-clock-neo-esp32c3.bootloader.bin || echo "Warning: Bootloader not found for ESP32-C3"
+          cp build/esp32c3/ski-clock-neo.ino.partitions.bin build/ski-clock-neo-esp32c3.partitions.bin || echo "Warning: Partitions not found for ESP32-C3"
 
       - name: Build for ESP32-S3
         run: |
@@ -88,6 +92,8 @@ jobs:
             --output-dir build/esp32s3 \
             firmware/ski-clock-neo
           cp build/esp32s3/ski-clock-neo.ino.bin build/ski-clock-neo-esp32s3.bin
+          cp build/esp32s3/ski-clock-neo.ino.bootloader.bin build/ski-clock-neo-esp32s3.bootloader.bin || echo "Warning: Bootloader not found for ESP32-S3"
+          cp build/esp32s3/ski-clock-neo.ino.partitions.bin build/ski-clock-neo-esp32s3.partitions.bin || echo "Warning: Partitions not found for ESP32-S3"
 
       # -------------------------------------------------------
       # ESP8266 FAMILY BUILDS
@@ -124,17 +130,43 @@ jobs:
       - name: Upload all firmware binaries
         if: success()  # Only upload to server if all builds succeeded
         run: |
-          for file in build/*.bin; do
+          # Upload main firmware binaries (exclude bootloader/partitions files)
+          for file in build/ski-clock-neo-*.bin; do
+            # Skip bootloader and partitions files
+            if [[ "$file" == *".bootloader.bin" ]] || [[ "$file" == *".partitions.bin" ]]; then
+              continue
+            fi
+
             PLATFORM=$(basename "$file" .bin | sed 's/ski-clock-neo-//')
             echo "Uploading $file (platform=$PLATFORM version=${{ steps.get_version.outputs.VERSION }})..."
 
-            curl --fail --show-error \
-              -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/upload" \
-              -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
-              -F "file=@$file" \
-              -F "version=${{ steps.get_version.outputs.VERSION }}" \
-              -F "platform=$PLATFORM" \
-              -w "\n"
+            # Check if this is an ESP32 family platform (has bootloader/partitions)
+            BOOTLOADER="build/ski-clock-neo-${PLATFORM}.bootloader.bin"
+            PARTITIONS="build/ski-clock-neo-${PLATFORM}.partitions.bin"
+
+            if [ -f "$BOOTLOADER" ] && [ -f "$PARTITIONS" ]; then
+              # ESP32 family: upload firmware + bootloader + partitions
+              echo "  → Full flash mode: uploading firmware, bootloader, and partitions"
+              curl --fail --show-error \
+                -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/upload" \
+                -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
+                -F "file=@$file" \
+                -F "bootloader=@$BOOTLOADER" \
+                -F "partitions=@$PARTITIONS" \
+                -F "version=${{ steps.get_version.outputs.VERSION }}" \
+                -F "platform=$PLATFORM" \
+                -w "\n"
+            else
+              # ESP8266: upload firmware only
+              echo "  → Quick flash mode: uploading firmware only"
+              curl --fail --show-error \
+                -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/upload" \
+                -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
+                -F "file=@$file" \
+                -F "version=${{ steps.get_version.outputs.VERSION }}" \
+                -F "platform=$PLATFORM" \
+                -w "\n"
+            fi
 
             echo "✓ Upload for platform '$PLATFORM' succeeded"
           done
