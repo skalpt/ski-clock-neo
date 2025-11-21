@@ -611,6 +611,13 @@ h2 {
     width: 192px; /* Fixed width: 160px main + 32px dropdown */
 }
 
+/* Ensure esp-web-install-button respects container width */
+.split-button-group esp-web-install-button {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+}
+
 .flash-btn-main {
     flex: 1;
     min-width: 0;
@@ -624,7 +631,6 @@ h2 {
 
 .flash-btn-main.flash-btn-single {
     border-radius: 6px; /* Full rounded corners for single button */
-    /* Width inherited from parent .split-button-group (192px) */
 }
 
 .flash-btn-main.full-flash-mode {
