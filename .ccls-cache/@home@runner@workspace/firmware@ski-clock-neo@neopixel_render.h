@@ -1,12 +1,8 @@
 #ifndef NEOPIXEL_RENDER_H
 #define NEOPIXEL_RENDER_H
 
-// ==================== HARDWARE CONFIGURATION ====================
-// Import display dimensions from shared config
-#include "display_config.h"
-
-// ==================== INCLUDE DEPENDENCIES ====================
-#include <new>                // For placement-new operator
+#include "display_config.h" // Import display dimensions from shared config
+#include <new>              // For placement-new operator
 #include <Adafruit_NeoPixel.h>
 #include "font_5x7.h"
 #include <Ticker.h>
@@ -14,15 +10,11 @@
 #include "display.h"
 
 // ==================== CONSTANTS ====================
-// NeoPixel-specific configuration
-extern const uint8_t ROW_PINS[DISPLAY_ROWS];  // Pin array for row initialization
-
 // Display settings
 #define BRIGHTNESS 1                    // 0-255 (keeping dim for development)
 #define UPDATE_INTERVAL_MS 200          // 0.2 second refresh rate
 
-// Calculated constants
-extern const uint16_t NUM_LEDS_PER_ROW;
+extern const uint8_t ROW_PINS[DISPLAY_ROWS];  // Pin array for row initialization
 
 // ==================== GLOBAL STATE ====================
 // Static storage buffer for NeoPixel objects (no heap allocation)
