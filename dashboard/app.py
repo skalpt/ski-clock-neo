@@ -12,15 +12,12 @@ from typing import Dict, Optional, Any
 from functools import wraps
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from object_storage import ObjectStorageService, ObjectNotFoundError, ObjectStorageError
-from models import db, Device, FirmwareVersion
+from models import db, Device, FirmwareVersion, User
 
 app = Flask(__name__)
 
 app.secret_key = os.environ.get("FLASK_SECRET_KEY") or "a secret key"
 
-# Authentication credentials (stored securely in Replit Secrets)
-DASHBOARD_USERNAME = os.getenv('DASHBOARD_USERNAME')
-DASHBOARD_PASSWORD = os.getenv('DASHBOARD_PASSWORD')
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 300,
@@ -253,6 +250,16 @@ with app.app_context():
     db.create_all()
     print("✓ Database initialized")
     
+    # Create initial user if none exists
+    if User.query.count() == 0:
+        initial_user = User(email='julian@norrtek.se')
+        initial_user.set_password('testing123')
+        db.session.add(initial_user)
+        db.session.commit()
+        print("✓ Created initial user: julian@norrtek.se")
+    else:
+        print(f"✓ Found {User.query.count()} user(s) in database")
+    
     # Load firmware versions from database (must be inside app context)
     load_versions_from_db()
     
@@ -285,13 +292,16 @@ def login():
     error = None
     
     if request.method == 'POST':
-        username = request.form.get('username')
+        email = request.form.get('username')  # Form field is still named 'username' for consistency
         password = request.form.get('password')
         
-        # Check credentials against environment secrets
-        if username == DASHBOARD_USERNAME and password == DASHBOARD_PASSWORD:
+        # Check credentials against database
+        user = User.query.filter_by(email=email).first()
+        
+        if user and user.check_password(password):
             session['logged_in'] = True
-            session['username'] = username
+            session['user_email'] = user.email
+            session['user_id'] = user.id
             
             # Redirect to requested page or dashboard
             next_page = request.args.get('next')
