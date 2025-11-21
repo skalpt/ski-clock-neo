@@ -9,6 +9,7 @@ import requests
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Optional, Any
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from object_storage import ObjectStorageService, ObjectNotFoundError, ObjectStorageError
 from models import db, Device, FirmwareVersion
 
@@ -22,6 +23,9 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 }
 
 db.init_app(app)
+
+# Token serializer for signed download URLs (24-hour expiration)
+token_serializer = URLSafeTimedSerializer(app.secret_key)
 
 # Object Storage paths (only for firmware binaries now)
 FIRMWARES_PREFIX = "firmwares/"
@@ -79,7 +83,10 @@ def load_versions_from_db():
     versions = {}
     for platform in SUPPORTED_PLATFORMS:
         fw = FirmwareVersion.query.filter_by(platform=platform).first()
-        versions[platform] = fw.to_dict() if fw else None
+        if fw:
+            versions[platform] = fw.to_dict()
+        else:
+            versions[platform] = None
     
     count = sum(1 for v in versions.values() if v is not None)
     print(f"✓ Loaded {count} firmware versions from database")
@@ -120,6 +127,18 @@ def save_version_to_db(platform, version_info):
     
     db.session.commit()
     print(f"✓ Saved {platform} v{version_info['version']} to database")
+
+def generate_download_token(platform):
+    """Generate a signed token for public firmware downloads (24-hour expiration)"""
+    return token_serializer.dumps(platform, salt='firmware-download')
+
+def verify_download_token(token, max_age=86400):
+    """Verify a download token and return the platform name (default 24-hour expiration)"""
+    try:
+        platform = token_serializer.loads(token, salt='firmware-download', max_age=max_age)
+        return platform
+    except (BadSignature, SignatureExpired):
+        return None
 
 def sync_firmware_from_production():
     """Sync firmware metadata from production to dev database (dev environment only)"""
@@ -290,6 +309,78 @@ def get_version():
         return jsonify(response_info)
     
     return jsonify(version_info)
+
+@app.route('/firmware/download/<token>')
+def public_download_firmware(token):
+    """Public firmware download endpoint using signed tokens (no API key required)"""
+    # Verify token and extract platform
+    platform = verify_download_token(token)
+    
+    if not platform:
+        return jsonify({'error': 'Invalid or expired download token'}), 401
+    
+    # Validate platform
+    if platform not in SUPPORTED_PLATFORMS:
+        return jsonify({'error': 'Invalid platform'}), 400
+    
+    version_info = LATEST_VERSIONS.get(platform)
+    
+    if not version_info:
+        return jsonify({'error': 'No firmware available'}), 404
+    
+    # Check where the firmware is stored
+    storage_location = version_info.get('storage', 'local')
+    
+    if storage_location == 'object_storage':
+        # Download from Object Storage
+        object_path = None
+        try:
+            storage = ObjectStorageService()
+            
+            # Use the full object_path if available
+            object_path = version_info.get('object_path')
+            if not object_path:
+                bucket_name = storage.get_bucket_name()
+                object_path = f"/{bucket_name}/{version_info.get('object_name', FIRMWARES_PREFIX + version_info['filename'])}"
+            
+            # Download as bytes and stream to client
+            firmware_data = storage.download_as_bytes(object_path)
+            
+            return Response(
+                firmware_data,
+                mimetype='application/octet-stream',
+                headers={
+                    'Content-Disposition': f'attachment; filename="{version_info["filename"]}"',
+                    'Content-Length': str(len(firmware_data))
+                }
+            )
+        except (ObjectStorageError, ObjectNotFoundError) as e:
+            error_msg = f"Error downloading from Object Storage"
+            if object_path:
+                error_msg += f" ({object_path})"
+            print(f"{error_msg}: {e}")
+            # Try local filesystem as fallback
+            firmware_path = FIRMWARES_DIR / version_info['filename']
+            if firmware_path.exists():
+                return send_file(
+                    firmware_path,
+                    mimetype='application/octet-stream',
+                    as_attachment=True,
+                    download_name=version_info['filename']
+                )
+            return jsonify({'error': 'Firmware file not found'}), 404
+    else:
+        # Serve from local filesystem
+        firmware_path = FIRMWARES_DIR / version_info['filename']
+        if not firmware_path.exists():
+            return jsonify({'error': 'Firmware file not found'}), 404
+        
+        return send_file(
+            firmware_path,
+            mimetype='application/octet-stream',
+            as_attachment=True,
+            download_name=version_info['filename']
+        )
 
 @app.route('/api/firmware/<platform>')
 def download_firmware(platform):
@@ -575,8 +666,20 @@ def update_config():
 
 @app.route('/api/status')
 def status():
+    # Generate fresh public download tokens for each firmware (prevents expiration issues)
+    firmwares_with_tokens = {}
+    for platform, fw_data in LATEST_VERSIONS.items():
+        if fw_data:
+            fw_copy = fw_data.copy()
+            # Generate fresh token valid for 24 hours
+            token = generate_download_token(platform)
+            fw_copy['public_download_url'] = f'/firmware/download/{token}'
+            firmwares_with_tokens[platform] = fw_copy
+        else:
+            firmwares_with_tokens[platform] = None
+    
     return jsonify({
-        'firmwares': LATEST_VERSIONS,
+        'firmwares': firmwares_with_tokens,
         'storage': {
             'files': [f.name for f in FIRMWARES_DIR.glob('*.bin')],
             'count': len(list(FIRMWARES_DIR.glob('*.bin')))

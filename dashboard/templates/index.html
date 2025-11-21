@@ -314,7 +314,7 @@
                     .map(([platform, fw]) => `
                         <tr>
                             <td><strong>${platform.toUpperCase()}</strong></td>
-                            <td><a href="${fw.download_url}" style="color: #667eea; text-decoration: none;">${fw.filename || 'Unknown'}</a></td>
+                            <td><a href="${fw.public_download_url || fw.download_url}" style="color: #667eea; text-decoration: none;">${fw.filename || 'Unknown'}</a></td>
                             <td>${fw.version || 'Unknown'}</td>
                         </tr>
                     `).join('');
