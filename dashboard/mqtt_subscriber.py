@@ -17,6 +17,8 @@ MQTT_PORT = 8883
 MQTT_USERNAME = os.getenv('MQTT_USERNAME', '')
 MQTT_PASSWORD = os.getenv('MQTT_PASSWORD', '')
 MQTT_TOPIC_HEARTBEAT = "skiclock/heartbeat"
+MQTT_TOPIC_VERSION_REQUEST = "skiclock/version/request"
+MQTT_TOPIC_VERSION_RESPONSE = "skiclock/version/response"
 
 # Store Flask app instance for database access
 _app_context = None
@@ -50,51 +52,98 @@ def on_connect(client, userdata, flags, rc, properties=None):
         print(f"✓ Connected to MQTT broker: {MQTT_HOST}")
         client.subscribe(MQTT_TOPIC_HEARTBEAT)
         print(f"✓ Subscribed to topic: {MQTT_TOPIC_HEARTBEAT}")
+        client.subscribe(MQTT_TOPIC_VERSION_REQUEST)
+        print(f"✓ Subscribed to topic: {MQTT_TOPIC_VERSION_REQUEST}")
     else:
         print(f"✗ Failed to connect to MQTT broker, return code {rc}")
+
+def handle_heartbeat(client, payload):
+    """Handle device heartbeat messages"""
+    device_id = payload.get('device_id')
+    
+    if device_id and _app_context:
+        # Save to database
+        from models import Device, db
+        
+        with _app_context.app_context():
+            device = Device.query.filter_by(device_id=device_id).first()
+            
+            if device:
+                # Update existing device
+                device.board_type = payload.get('board', device.board_type)
+                device.firmware_version = payload.get('version', device.firmware_version)
+                device.last_seen = datetime.now(timezone.utc)
+                device.last_uptime = payload.get('uptime', 0)
+                device.last_rssi = payload.get('rssi', 0)
+                device.last_free_heap = payload.get('free_heap', 0)
+                device.ssid = payload.get('ssid')
+                # Validate IP address to prevent XSS attacks
+                device.ip_address = validate_ip_address(payload.get('ip'))
+            else:
+                # Create new device
+                device = Device(
+                    device_id=device_id,
+                    board_type=payload.get('board', 'Unknown'),
+                    firmware_version=payload.get('version', 'Unknown'),
+                    last_uptime=payload.get('uptime', 0),
+                    last_rssi=payload.get('rssi', 0),
+                    last_free_heap=payload.get('free_heap', 0),
+                    ssid=payload.get('ssid'),
+                    # Validate IP address to prevent XSS attacks
+                    ip_address=validate_ip_address(payload.get('ip'))
+                )
+                db.session.add(device)
+                print(f"✨ New device registered: {device_id} ({payload.get('board')})")
+            
+            db.session.commit()
+        
+        print(f"📡 Heartbeat from {device_id} ({payload.get('board')}): v{payload.get('version')}, uptime={payload.get('uptime')}s, RSSI={payload.get('rssi')}dBm")
+
+def handle_version_request(client, payload):
+    """Handle device version check requests"""
+    device_id = payload.get('device_id')
+    platform = payload.get('platform')
+    current_version = payload.get('current_version')
+    
+    if not device_id or not platform:
+        print(f"⚠ Invalid version request: missing device_id or platform")
+        return
+    
+    # Get latest version info from app context
+    if _app_context:
+        with _app_context.app_context():
+            # Import here to avoid circular imports
+            from app import LATEST_VERSIONS
+            
+            version_info = LATEST_VERSIONS.get(platform)
+            
+            if version_info:
+                latest_version = version_info.get('version', 'Unknown')
+                update_available = latest_version != current_version
+                
+                # Publish response to device-specific topic
+                response_topic = f"{MQTT_TOPIC_VERSION_RESPONSE}/{device_id}"
+                response_payload = {
+                    'latest_version': latest_version,
+                    'current_version': current_version,
+                    'update_available': update_available,
+                    'platform': platform
+                }
+                
+                client.publish(response_topic, json.dumps(response_payload), qos=1)
+                print(f"📤 Version response sent to {device_id}: {latest_version} (update: {update_available})")
+            else:
+                print(f"⚠ No firmware found for platform: {platform}")
 
 def on_message(client, userdata, msg):
     try:
         payload = json.loads(msg.payload.decode())
-        device_id = payload.get('device_id')
         
-        if device_id and _app_context:
-            # Save to database
-            from models import Device, db
-            
-            with _app_context.app_context():
-                device = Device.query.filter_by(device_id=device_id).first()
-                
-                if device:
-                    # Update existing device
-                    device.board_type = payload.get('board', device.board_type)
-                    device.firmware_version = payload.get('version', device.firmware_version)
-                    device.last_seen = datetime.now(timezone.utc)
-                    device.last_uptime = payload.get('uptime', 0)
-                    device.last_rssi = payload.get('rssi', 0)
-                    device.last_free_heap = payload.get('free_heap', 0)
-                    device.ssid = payload.get('ssid')
-                    # Validate IP address to prevent XSS attacks
-                    device.ip_address = validate_ip_address(payload.get('ip'))
-                else:
-                    # Create new device
-                    device = Device(
-                        device_id=device_id,
-                        board_type=payload.get('board', 'Unknown'),
-                        firmware_version=payload.get('version', 'Unknown'),
-                        last_uptime=payload.get('uptime', 0),
-                        last_rssi=payload.get('rssi', 0),
-                        last_free_heap=payload.get('free_heap', 0),
-                        ssid=payload.get('ssid'),
-                        # Validate IP address to prevent XSS attacks
-                        ip_address=validate_ip_address(payload.get('ip'))
-                    )
-                    db.session.add(device)
-                    print(f"✨ New device registered: {device_id} ({payload.get('board')})")
-                
-                db.session.commit()
-            
-            print(f"📡 Heartbeat from {device_id} ({payload.get('board')}): v{payload.get('version')}, uptime={payload.get('uptime')}s, RSSI={payload.get('rssi')}dBm")
+        # Route message to appropriate handler based on topic
+        if msg.topic == MQTT_TOPIC_HEARTBEAT:
+            handle_heartbeat(client, payload)
+        elif msg.topic == MQTT_TOPIC_VERSION_REQUEST:
+            handle_version_request(client, payload)
     
     except json.JSONDecodeError as e:
         print(f"✗ Failed to parse MQTT message: {e}")
