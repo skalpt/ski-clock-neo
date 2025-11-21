@@ -79,6 +79,17 @@ PLATFORM_FIRMWARE_MAPPING = {
     'esp8266': 'esp12f',  # Legacy ESP8266 devices get ESP-12F firmware
 }
 
+# Platform to ESP Web Tools chip family mapping
+PLATFORM_CHIP_FAMILY = {
+    'esp32': 'ESP32',
+    'esp32c3': 'ESP32-C3',
+    'esp32s3': 'ESP32-S3',
+    'esp12f': 'ESP8266',
+    'esp01': 'ESP8266',
+    'd1mini': 'ESP8266',
+    'esp8266': 'ESP8266',
+}
+
 # In-memory cache of firmware versions (loaded from database)
 LATEST_VERSIONS = {}
 
@@ -391,14 +402,18 @@ def public_download_firmware(token):
             # Download as bytes and stream to client
             firmware_data = storage.download_as_bytes(object_path)
             
-            return Response(
+            response = Response(
                 firmware_data,
                 mimetype='application/octet-stream',
                 headers={
                     'Content-Disposition': f'attachment; filename="{version_info["filename"]}"',
-                    'Content-Length': str(len(firmware_data))
+                    'Content-Length': str(len(firmware_data)),
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type'
                 }
             )
+            return response
         except (ObjectStorageError, ObjectNotFoundError) as e:
             error_msg = f"Error downloading from Object Storage"
             if object_path:
@@ -407,12 +422,16 @@ def public_download_firmware(token):
             # Try local filesystem as fallback
             firmware_path = FIRMWARES_DIR / version_info['filename']
             if firmware_path.exists():
-                return send_file(
+                response = send_file(
                     firmware_path,
                     mimetype='application/octet-stream',
                     as_attachment=True,
                     download_name=version_info['filename']
                 )
+                response.headers['Access-Control-Allow-Origin'] = '*'
+                response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+                response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+                return response
             return jsonify({'error': 'Firmware file not found'}), 404
     else:
         # Serve from local filesystem
@@ -420,12 +439,67 @@ def public_download_firmware(token):
         if not firmware_path.exists():
             return jsonify({'error': 'Firmware file not found'}), 404
         
-        return send_file(
+        response = send_file(
             firmware_path,
             mimetype='application/octet-stream',
             as_attachment=True,
             download_name=version_info['filename']
         )
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        return response
+
+@app.route('/firmware/manifest/<platform>.json')
+def firmware_manifest(platform):
+    """Generate ESP Web Tools manifest for browser-based flashing"""
+    platform = platform.lower()
+    
+    # Apply platform firmware mapping for backward compatibility
+    if platform in PLATFORM_FIRMWARE_MAPPING:
+        platform = PLATFORM_FIRMWARE_MAPPING[platform]
+    
+    # Validate platform
+    if platform not in SUPPORTED_PLATFORMS:
+        return jsonify({'error': 'Invalid platform'}), 400
+    
+    version_info = LATEST_VERSIONS.get(platform)
+    
+    if not version_info:
+        return jsonify({'error': 'No firmware available'}), 404
+    
+    # Get chip family for this platform
+    chip_family = PLATFORM_CHIP_FAMILY.get(platform, 'ESP32')
+    
+    # Generate fresh download token for the manifest
+    download_token = generate_download_token(platform)
+    firmware_url = url_for('public_download_firmware', token=download_token, _external=True)
+    
+    # Create ESP Web Tools manifest
+    manifest = {
+        "name": f"Ski Clock Neo - {platform.upper()}",
+        "version": version_info['version'],
+        "new_install_prompt_erase": True,
+        "builds": [
+            {
+                "chipFamily": chip_family,
+                "parts": [
+                    {
+                        "path": firmware_url,
+                        "offset": 0
+                    }
+                ]
+            }
+        ]
+    }
+    
+    # Return with CORS headers for ESP Web Tools
+    response = jsonify(manifest)
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    
+    return response
 
 @app.route('/api/firmware/<platform>')
 def download_firmware(platform):

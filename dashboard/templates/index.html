@@ -399,10 +399,15 @@
                             <td><strong>${platform.toUpperCase()}</strong></td>
                             <td><a href="${fw.public_download_url || fw.download_url}" style="color: #667eea; text-decoration: none;">${fw.filename || 'Unknown'}</a></td>
                             <td>${fw.version || 'Unknown'}</td>
+                            <td>
+                                <esp-web-install-button manifest="/firmware/manifest/${platform}.json">
+                                    <button slot="activate" class="flash-btn">⚡ Flash to Device</button>
+                                </esp-web-install-button>
+                            </td>
                         </tr>
                     `).join('');
 
-                tbody.innerHTML = rows || '<tr><td colspan="3" style="text-align: center; color: #999;">No firmware uploaded yet</td></tr>';
+                tbody.innerHTML = rows || '<tr><td colspan="4" style="text-align: center; color: #999;">No firmware uploaded yet</td></tr>';
             } catch (error) {
                 console.error('Failed to load firmware:', error);
             }
