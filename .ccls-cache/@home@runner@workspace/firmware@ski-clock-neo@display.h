@@ -3,14 +3,8 @@
 
 #include <Arduino.h>
 
-// Maximum supported display configuration
-#define MAX_DISPLAY_ROWS 2
-#define MAX_DISPLAY_COLS 4
-#define PANEL_WIDTH 16
-#define PANEL_HEIGHT 16
-
-// Maximum buffer size: 2 rows × 4 cols × 16×16 pixels = 2048 pixels
-#define MAX_DISPLAY_BUFFER_SIZE (MAX_DISPLAY_ROWS * MAX_DISPLAY_COLS * PANEL_WIDTH * PANEL_HEIGHT)
+// Maximum buffer size: 2 rows × 2 cols × 32×64 pixels = 8192 pixels
+#define MAX_DISPLAY_BUFFER_SIZE (8192)
 
 // Display configuration structure
 struct DisplayConfig {

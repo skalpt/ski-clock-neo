@@ -4,52 +4,36 @@
 uint8_t displayBuffer[MAX_DISPLAY_BUFFER_SIZE / 8] = {0};
 DisplayConfig displayConfig = {0};
 
-// 5x7 pixel font for digits 0-9
-const uint8_t FONT_5X7[][7] = {
-  {0x1F, 0x11, 0x11, 0x11, 0x1F}, // 0
-  {0x00, 0x12, 0x1F, 0x10, 0x00}, // 1
-  {0x1D, 0x15, 0x15, 0x15, 0x17}, // 2
-  {0x11, 0x15, 0x15, 0x15, 0x1F}, // 3
-  {0x07, 0x04, 0x04, 0x1F, 0x04}, // 4
-  {0x17, 0x15, 0x15, 0x15, 0x1D}, // 5
-  {0x1F, 0x15, 0x15, 0x15, 0x1D}, // 6
-  {0x01, 0x01, 0x01, 0x01, 0x1F}, // 7
-  {0x1F, 0x15, 0x15, 0x15, 0x1F}, // 8
-  {0x17, 0x15, 0x15, 0x15, 0x1F}  // 9
-};
-
-void initDisplay(uint8_t rows, uint8_t cols) {
+void initDisplayBuffer(uint8_t rows, uint8_t panelsPerRow, uint8_t panelWidth, uint8_t panelHeight) {
   displayConfig.rows = rows;
-  displayConfig.cols = cols;
-  displayConfig.width = cols * PANEL_WIDTH;
-  displayConfig.height = rows * PANEL_HEIGHT;
-  displayConfig.numPixels = displayConfig.width * displayConfig.height;
+  displayConfig.panelsPerRow = panelsPerRow;
+  displayConfig.panelWidth = panelWidth;
+  displayConfig.panelHeight = panelHeight;
   
-  clearDisplay();
+  clearDisplayBuffer();
 }
 
 DisplayConfig getDisplayConfig() {
   return displayConfig;
 }
 
-bool getPixel(uint16_t x, uint16_t y) {
-  if (x >= displayConfig.width || y >= displayConfig.height) {
-    return false;
-  }
-  
-  uint16_t pixelIndex = y * displayConfig.width + x;
-  uint16_t byteIndex = pixelIndex / 8;
-  uint8_t bitIndex = pixelIndex % 8;
-  
-  return (displayBuffer[byteIndex] >> bitIndex) & 0x01;
-}
-
-void setPixel(uint16_t x, uint16_t y, bool state) {
-  if (x >= displayConfig.width || y >= displayConfig.height) {
+void setPixel(uint8_t row, uint16_t x, uint16_t y, bool state) {
+  if (row > displayConfig.rows || x >= displayConfig.panelsPerRow * displayConfig.panelWidth || y >= displayConfig.panelHeight) {
     return;
   }
   
-  uint16_t pixelIndex = y * displayConfig.width + x;
+  // Calculate pixel index:
+  // 1. Row offset: skip all pixels from previous rows
+  uint16_t rowWidth = displayConfig.panelsPerRow * displayConfig.panelWidth;
+  uint16_t pixelsPerRow = rowWidth * displayConfig.panelHeight;
+  uint16_t rowOffset = (row - 1) * pixelsPerRow;
+
+  // 2. Within-row offset: y * row_width + x (standard row-major layout)
+  uint16_t withinRowOffset = y * rowWidth + x;
+
+  // 3. Total pixel index
+  uint16_t pixelIndex = rowOffset + withinRowOffset;
+
   uint16_t byteIndex = pixelIndex / 8;
   uint8_t bitIndex = pixelIndex % 8;
   
@@ -60,7 +44,7 @@ void setPixel(uint16_t x, uint16_t y, bool state) {
   }
 }
 
-void clearDisplay() {
+void clearDisplayBuffer() {
   memset(displayBuffer, 0, sizeof(displayBuffer));
 }
 
