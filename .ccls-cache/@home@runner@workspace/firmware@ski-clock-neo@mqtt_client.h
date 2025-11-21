@@ -41,6 +41,7 @@ extern const char MQTT_TOPIC_COMMAND[];
 extern const char MQTT_TOPIC_OTA_START[];
 extern const char MQTT_TOPIC_OTA_PROGRESS[];
 extern const char MQTT_TOPIC_OTA_COMPLETE[];
+extern const char MQTT_TOPIC_DISPLAY_SNAPSHOT[];
 
 // MQTT client objects
 extern WiFiClientSecure wifiSecureClient;
@@ -55,6 +56,10 @@ extern bool mqttIsConnected;
 extern const unsigned long VERSION_REQUEST_INTERVAL;
 extern Ticker versionRequestTicker;
 
+// Display snapshot timing
+extern const unsigned long DISPLAY_SNAPSHOT_INTERVAL;
+extern Ticker displaySnapshotTicker;
+
 // Function declarations
 void setupMQTT();
 bool connectMQTT();
@@ -62,9 +67,11 @@ void disconnectMQTT();
 void updateMQTT();
 void publishHeartbeat();
 void publishVersionRequest();
+void publishDisplaySnapshot();
 void mqttCallback(char* topic, byte* payload, unsigned int length);
 void handleRollbackCommand(String message);
 void handleRestartCommand();
+String base64Encode(const uint8_t* data, uint16_t length);
 
 // WiFi event handlers
 #if defined(ESP32)
