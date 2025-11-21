@@ -336,7 +336,7 @@
                             <div><strong>Version:</strong> ${safeVersion}</div>
                             <div><strong>Uptime:</strong> ${formatUptime(device.uptime)}</div>
                             ${device.ssid ? `<div><strong>WiFi Network:</strong> ${safeSsid}</div>` : ''}
-                            ${device.ip_address ? `<div><strong>IP Address:</strong> ${device.online && isIPv4(device.ip_address) ? `<a href="http://${encodeURIComponent(device.ip_address)}/" target="_blank" rel="noopener noreferrer" style="color: #667eea; text-decoration: none; border-bottom: 1px dotted #667eea;" title="Open AutoConnect page (only works if you're on the same network)">${safeIpAddress}</a>` : safeIpAddress}</div>` : ''}
+                            ${device.ip_address ? `<div><strong>IP Address:</strong> ${device.online && isIPv4(device.ip_address) ? `<a href="http://${encodeURIComponent(device.ip_address)}/" target="_blank" rel="noopener noreferrer" style="color: white; text-decoration: none;" title="Open AutoConnect page (only works if you're on the same network)">${safeIpAddress}</a>` : safeIpAddress}</div>` : ''}
                             <div><strong>WiFi Signal:</strong> ${getSignalStrengthIcon(device.rssi)}${device.rssi} dBm</div>
                             <div><strong>Free Memory:</strong> ${(device.free_heap / 1024).toFixed(1)} KB</div>
                             <div><strong>Last Seen:</strong> <span class="live-timestamp" data-timestamp="${escapeHtml(device.last_seen)}">${formatTimestamp(device.last_seen)}</span></div>
