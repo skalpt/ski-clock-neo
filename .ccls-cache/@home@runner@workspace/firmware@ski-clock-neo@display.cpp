@@ -7,7 +7,8 @@ uint8_t displayBuffer[DISPLAY_BUFFER_SIZE] = {0};
 DisplayConfig displayConfig = {0};
 
 // Text content storage (what should be displayed on each row)
-char displayText[2][MAX_TEXT_LENGTH] = {{0}, {0}};
+// Array size is determined by DISPLAY_ROWS from the hardware renderer
+char displayText[DISPLAY_ROWS][MAX_TEXT_LENGTH] = {{0}};
 
 // Spinlock for atomic buffer updates (ESP32 only)
 #if defined(ESP32)

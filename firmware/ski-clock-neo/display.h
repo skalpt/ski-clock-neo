@@ -3,10 +3,16 @@
 
 #include <Arduino.h>
 
-// DISPLAY_BUFFER_SIZE is defined by the hardware renderer (neopixel_render.h, hub75_render.h, etc.)
-// before including this file. This allows dynamic buffer sizing based on actual hardware.
+// Import hardware configuration (defines DISPLAY_ROWS, DISPLAY_BUFFER_SIZE, etc.)
+#include "display_config.h"
+
+// Sanity checks to ensure config was loaded correctly
+#ifndef DISPLAY_ROWS
+  #error "DISPLAY_ROWS must be defined in display_config.h"
+#endif
+
 #ifndef DISPLAY_BUFFER_SIZE
-  #error "DISPLAY_BUFFER_SIZE must be defined by the renderer before including display.h"
+  #error "DISPLAY_BUFFER_SIZE must be defined in display_config.h"
 #endif
 
 #define MAX_TEXT_LENGTH 32
@@ -25,7 +31,8 @@ extern uint8_t displayBuffer[DISPLAY_BUFFER_SIZE];
 extern DisplayConfig displayConfig;
 
 // Text content for each row (what should be displayed)
-extern char displayText[2][MAX_TEXT_LENGTH];
+// Array size is determined by DISPLAY_ROWS from the hardware renderer
+extern char displayText[DISPLAY_ROWS][MAX_TEXT_LENGTH];
 
 // Initialize display system with panel configuration
 void initDisplayBuffer(uint8_t rows, uint8_t panelsPerRow, uint8_t panelWidth, uint8_t panelHeight);

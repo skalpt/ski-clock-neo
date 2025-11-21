@@ -2,21 +2,12 @@
 #define NEOPIXEL_RENDER_H
 
 // ==================== HARDWARE CONFIGURATION ====================
-// Define display dimensions BEFORE including display.h so DISPLAY_BUFFER_SIZE is available
-#define NEOPIXEL_ROWS 2           // Number of physical NeoPixel rows
-#define PANELS_PER_ROW 3          // Number of panels per row
-#define PANEL_WIDTH 16            // Width of each panel in pixels
-#define PANEL_HEIGHT 16           // Height of each panel in pixels
+// Import display dimensions from shared config
+#include "display_config.h"
 
-// Calculate total dimensions
-#define ROW_WIDTH (PANELS_PER_ROW * PANEL_WIDTH)   // 3 * 16 = 48 pixels
-#define ROW_HEIGHT PANEL_HEIGHT                     // 16 pixels
-
-// Calculate buffer size needed for this hardware configuration
-#define DISPLAY_BUFFER_SIZE ((NEOPIXEL_ROWS * ROW_WIDTH * ROW_HEIGHT) / 8)  // Bit-packed: (2 * 48 * 16) / 8 = 192 bytes
-
+// NeoPixel-specific configuration
 // Pin array for row initialization (change pins here for all rows)
-const uint8_t ROW_PINS[NEOPIXEL_ROWS] = {4, 3};  // Row 1: GPIO4, Row 2: GPIO3
+const uint8_t ROW_PINS[DISPLAY_ROWS] = {4, 3};  // Row 1: GPIO4, Row 2: GPIO3
 
 // Display settings
 #define BRIGHTNESS 1                    // 0-255 (keeping dim for development)
@@ -38,7 +29,7 @@ const uint16_t NUM_LEDS_PER_ROW = (uint16_t)ROW_WIDTH * ROW_HEIGHT;
 
 // Static storage buffer for NeoPixel objects (no heap allocation)
 // We'll use placement-new to construct them in setup()
-alignas(Adafruit_NeoPixel) uint8_t rowsStorage[NEOPIXEL_ROWS * sizeof(Adafruit_NeoPixel)];
+alignas(Adafruit_NeoPixel) uint8_t rowsStorage[DISPLAY_ROWS * sizeof(Adafruit_NeoPixel)];
 Adafruit_NeoPixel* rows = reinterpret_cast<Adafruit_NeoPixel*>(rowsStorage);
 
 // Internal rendering buffer (hardware-specific, sized exactly for our config)
@@ -50,7 +41,7 @@ void updateNeoPixels() {
   memset(neopixelRenderBuffer, 0, sizeof(neopixelRenderBuffer));
   
   // Loop through each row and render
-  for (uint8_t rowIdx = 0; rowIdx < NEOPIXEL_ROWS; rowIdx++) {
+  for (uint8_t rowIdx = 0; rowIdx < DISPLAY_ROWS; rowIdx++) {
     // Read text from display library (set by external firmware/MQTT/etc)
     const char* displayText = getText(rowIdx);
     
@@ -104,10 +95,10 @@ void updateNeoPixels() {
 
 void setupNeoPixels() {
   // Initialize display library with actual hardware configuration
-  initDisplayBuffer(NEOPIXEL_ROWS, PANELS_PER_ROW, PANEL_WIDTH, PANEL_HEIGHT);
+  initDisplayBuffer(DISPLAY_ROWS, PANELS_PER_ROW, PANEL_WIDTH, PANEL_HEIGHT);
   
   // Use placement-new to construct NeoPixel objects in loop (dynamic, no heap!)
-  for (uint8_t i = 0; i < NEOPIXEL_ROWS; i++) {
+  for (uint8_t i = 0; i < DISPLAY_ROWS; i++) {
     // Construct Adafruit_NeoPixel at rows[i] using placement-new
     new (&rows[i]) Adafruit_NeoPixel(NUM_LEDS_PER_ROW, ROW_PINS[i], NEO_GRB + NEO_KHZ800);
     

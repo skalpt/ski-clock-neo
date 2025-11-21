@@ -1,3 +1,5 @@
+// Include hardware config first to define DISPLAY_ROWS and DISPLAY_BUFFER_SIZE
+#include "display_config.h"
 #include "display.h"
 #include <string.h>
 
@@ -7,7 +9,8 @@ uint8_t displayBuffer[DISPLAY_BUFFER_SIZE] = {0};
 DisplayConfig displayConfig = {0};
 
 // Text content storage (what should be displayed on each row)
-char displayText[2][MAX_TEXT_LENGTH] = {{0}, {0}};
+// Array size is determined by DISPLAY_ROWS from the hardware renderer
+char displayText[DISPLAY_ROWS][MAX_TEXT_LENGTH] = {{0}};
 
 // Spinlock for atomic buffer updates (ESP32 only)
 #if defined(ESP32)
@@ -28,13 +31,13 @@ DisplayConfig getDisplayConfig() {
 }
 
 void setText(uint8_t row, const char* text) {
-  if (row >= 2) return;
+  if (row >= displayConfig.rows) return;  // Dynamic row bounds check
   strncpy(displayText[row], text, MAX_TEXT_LENGTH - 1);
   displayText[row][MAX_TEXT_LENGTH - 1] = '\0';
 }
 
 const char* getText(uint8_t row) {
-  if (row >= 2) return "";
+  if (row >= displayConfig.rows) return "";  // Dynamic row bounds check
   return displayText[row];
 }
 
