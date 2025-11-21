@@ -162,6 +162,9 @@ class Device(db.Model):
     ssid = db.Column(db.String(64))
     ip_address = db.Column(db.String(45))
     
+    # Relationships
+    ota_update_logs = db.relationship('OTAUpdateLog', back_populates='device', cascade='all, delete-orphan')
+    
     def __repr__(self):
         return f'<Device {self.device_id} ({self.board_type})>'
     
@@ -185,3 +188,48 @@ class Device(db.Model):
             'online': is_online,
             'minutes_since_last_seen': round(minutes_since_last_seen, 1)
         }
+
+
+class OTAUpdateLog(db.Model):
+    __tablename__ = 'ota_update_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    device_id = db.Column(db.String(32), db.ForeignKey('devices.device_id'), nullable=False, index=True)
+    platform = db.Column(db.String(32), nullable=False, index=True)
+    old_version = db.Column(db.String(32))
+    new_version = db.Column(db.String(32), nullable=False)
+    status = db.Column(db.String(16), nullable=False, index=True)  # 'started', 'success', 'failed'
+    started_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
+    completed_at = db.Column(db.DateTime(timezone=True))
+    error_message = db.Column(db.Text)
+    download_progress = db.Column(db.Integer, default=0)  # 0-100 percentage
+    
+    # Relationships
+    device = db.relationship('Device', back_populates='ota_update_logs')
+    
+    def __repr__(self):
+        return f'<OTAUpdateLog {self.device_id}: {self.old_version} -> {self.new_version} ({self.status})>'
+    
+    def to_dict(self):
+        """Convert OTA update log to dictionary"""
+        result = {
+            'id': self.id,
+            'device_id': self.device_id,
+            'platform': self.platform,
+            'old_version': self.old_version,
+            'new_version': self.new_version,
+            'status': self.status,
+            'started_at': self.started_at.isoformat(),
+            'download_progress': self.download_progress
+        }
+        
+        if self.completed_at:
+            result['completed_at'] = self.completed_at.isoformat()
+            # Calculate duration in seconds
+            duration = (self.completed_at - self.started_at).total_seconds()
+            result['duration_seconds'] = round(duration, 1)
+        
+        if self.error_message:
+            result['error_message'] = self.error_message
+        
+        return result
