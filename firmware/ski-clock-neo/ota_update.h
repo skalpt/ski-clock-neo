@@ -269,6 +269,7 @@ bool performOTAUpdate(String version) {
   if (httpCode != HTTP_CODE_OK) {
     DEBUG_PRINT("HTTP GET failed: ");
     DEBUG_PRINTLN(httpCode);
+    publishOTAComplete(false, "HTTP GET failed");
     http.end();
     delete clientPtr;
     otaUpdateInProgress = false;
@@ -297,10 +298,39 @@ bool performOTAUpdate(String version) {
   }
   
   WiFiClient * stream = http.getStreamPtr();
-  size_t written = Update.writeStream(*stream);
+  
+  // Download in chunks with progress reporting
+  uint8_t buff[512] = { 0 };
+  size_t written = 0;
+  int lastReportedProgress = 0;
+  
+  while (http.connected() && (written < contentLength)) {
+    size_t available = stream->available();
+    if (available) {
+      size_t bytesToRead = ((available > sizeof(buff)) ? sizeof(buff) : available);
+      size_t bytesRead = stream->readBytes(buff, bytesToRead);
+      
+      size_t bytesWritten = Update.write(buff, bytesRead);
+      if (bytesWritten != bytesRead) {
+        DEBUG_PRINTLN("Write error during OTA");
+        break;
+      }
+      
+      written += bytesWritten;
+      
+      // Report progress every 10%
+      int progress = (written * 100) / contentLength;
+      if (progress >= lastReportedProgress + 10) {
+        publishOTAProgress(progress);
+        lastReportedProgress = progress;
+      }
+    }
+    delay(1);
+  }
   
   if (written == contentLength) {
     DEBUG_PRINTLN("Firmware written successfully");
+    publishOTAProgress(100);  // Final progress update
   } else {
     DEBUG_PRINT("Written only ");
     DEBUG_PRINT(written);
@@ -311,6 +341,7 @@ bool performOTAUpdate(String version) {
   if (Update.end()) {
     if (Update.isFinished()) {
       DEBUG_PRINTLN("OTA Update successful! Rebooting...");
+      publishOTAComplete(true);
       http.end();
       delete clientPtr;
       delay(2000);
@@ -318,10 +349,12 @@ bool performOTAUpdate(String version) {
       return true;
     } else {
       DEBUG_PRINTLN("Update not finished");
+      publishOTAComplete(false, "Update not finished");
     }
   } else {
     DEBUG_PRINT("Update error: ");
     DEBUG_PRINTLN(Update.errorString());
+    publishOTAComplete(false, Update.errorString());
   }
   
   http.end();
@@ -368,6 +401,7 @@ bool performOTAUpdate(String version) {
   if (httpCode != HTTP_CODE_OK) {
     DEBUG_PRINT("HTTP GET failed: ");
     DEBUG_PRINTLN(httpCode);
+    publishOTAComplete(false, "HTTP GET failed");
     http.end();
     delete clientPtr;
     otaUpdateInProgress = false;
@@ -396,10 +430,39 @@ bool performOTAUpdate(String version) {
   }
   
   WiFiClient * stream = http.getStreamPtr();
-  size_t written = Update.writeStream(*stream);
+  
+  // Download in chunks with progress reporting
+  uint8_t buff[512] = { 0 };
+  size_t written = 0;
+  int lastReportedProgress = 0;
+  
+  while (http.connected() && (written < contentLength)) {
+    size_t available = stream->available();
+    if (available) {
+      size_t bytesToRead = ((available > sizeof(buff)) ? sizeof(buff) : available);
+      size_t bytesRead = stream->readBytes(buff, bytesToRead);
+      
+      size_t bytesWritten = Update.write(buff, bytesRead);
+      if (bytesWritten != bytesRead) {
+        DEBUG_PRINTLN("Write error during OTA");
+        break;
+      }
+      
+      written += bytesWritten;
+      
+      // Report progress every 10%
+      int progress = (written * 100) / contentLength;
+      if (progress >= lastReportedProgress + 10) {
+        publishOTAProgress(progress);
+        lastReportedProgress = progress;
+      }
+    }
+    delay(1);
+  }
   
   if (written == contentLength) {
     DEBUG_PRINTLN("Firmware written successfully");
+    publishOTAProgress(100);  // Final progress update
   } else {
     DEBUG_PRINT("Written only ");
     DEBUG_PRINT(written);
@@ -410,6 +473,7 @@ bool performOTAUpdate(String version) {
   if (Update.end()) {
     if (Update.isFinished()) {
       DEBUG_PRINTLN("OTA Update successful! Rebooting...");
+      publishOTAComplete(true);
       http.end();
       delete clientPtr;
       delay(2000);
@@ -417,10 +481,12 @@ bool performOTAUpdate(String version) {
       return true;
     } else {
       DEBUG_PRINTLN("Update not finished");
+      publishOTAComplete(false, "Update not finished");
     }
   } else {
     DEBUG_PRINT("Update error: ");
     DEBUG_PRINTLN(Update.getErrorString());
+    publishOTAComplete(false, Update.getErrorString().c_str());
   }
   
   http.end();
