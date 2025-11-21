@@ -664,18 +664,32 @@
                         // Check if user has download permission
                         const canDownload = fw.can_download !== false;
                         const downloadUrl = fw.public_download_url || fw.download_url || '#';
+                        const supportsFullFlash = fw.supports_full_flash || false;
                         
                         // Render different content based on permission
                         if (canDownload) {
+                            // Build flash buttons based on availability
+                            let flashButtons = `
+                                <esp-web-install-button manifest="/firmware/manifest/${platform}.json?mode=quick">
+                                    <button slot="activate" class="flash-btn">⚡ Quick Flash</button>
+                                </esp-web-install-button>
+                            `;
+                            
+                            if (supportsFullFlash) {
+                                flashButtons += `
+                                <esp-web-install-button manifest="/firmware/manifest/${platform}.json?mode=full" style="margin-left: 8px;">
+                                    <button slot="activate" class="flash-btn" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);" title="Flash bootloader, partition table, and firmware (for device recovery)">🔧 Full Flash</button>
+                                </esp-web-install-button>
+                            `;
+                            }
+                            
                             return `
                                 <tr>
                                     <td><strong>${platform.toUpperCase()}</strong></td>
                                     <td><a href="${downloadUrl}" style="color: #667eea; text-decoration: none;">${escapeHtml(fw.filename || 'Unknown')}</a></td>
                                     <td>${escapeHtml(fw.version || 'Unknown')}</td>
                                     <td>
-                                        <esp-web-install-button manifest="/firmware/manifest/${platform}.json">
-                                            <button slot="activate" class="flash-btn">⚡ Flash to Device</button>
-                                        </esp-web-install-button>
+                                        ${flashButtons}
                                     </td>
                                 </tr>
                             `;
