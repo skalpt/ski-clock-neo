@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_file, Response, render_template
+from flask import Flask, request, jsonify, send_file, Response, render_template, redirect, url_for, session
 import os
 import hashlib
 import json
@@ -9,6 +9,7 @@ import requests
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Optional, Any
+from functools import wraps
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from object_storage import ObjectStorageService, ObjectNotFoundError, ObjectStorageError
 from models import db, Device, FirmwareVersion
@@ -16,6 +17,10 @@ from models import db, Device, FirmwareVersion
 app = Flask(__name__)
 
 app.secret_key = os.environ.get("FLASK_SECRET_KEY") or "a secret key"
+
+# Authentication credentials (stored securely in Replit Secrets)
+DASHBOARD_USERNAME = os.getenv('DASHBOARD_USERNAME')
+DASHBOARD_PASSWORD = os.getenv('DASHBOARD_PASSWORD')
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 300,
@@ -254,7 +259,47 @@ mqtt_client = start_mqtt_subscriber()
 # Start production sync thread (dev environment only)
 start_production_sync_thread()
 
+# Authentication decorator
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('logged_in'):
+            return redirect(url_for('login', next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
+
+# Authentication routes
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    error = None
+    
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        # Check credentials against environment secrets
+        if username == DASHBOARD_USERNAME and password == DASHBOARD_PASSWORD:
+            session['logged_in'] = True
+            session['username'] = username
+            
+            # Redirect to requested page or dashboard
+            next_page = request.args.get('next')
+            if next_page:
+                return redirect(next_page)
+            return redirect(url_for('index'))
+        else:
+            error = 'Invalid credentials. Please try again.'
+    
+    return render_template('login.html', error=error)
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
+# Protected routes
 @app.route('/')
+@login_required
 def index():
     return render_template('index.html')
 
@@ -665,6 +710,7 @@ def update_config():
         return jsonify({'error': f'Failed to update config: {str(e)}'}), 500
 
 @app.route('/api/status')
+@login_required
 def status():
     # Generate fresh public download tokens for each firmware (prevents expiration issues)
     firmwares_with_tokens = {}
@@ -688,6 +734,7 @@ def status():
     })
 
 @app.route('/api/devices')
+@login_required
 def devices():
     """Get all devices with online/offline status (15 minute threshold)"""
     all_devices = Device.query.all()
@@ -707,6 +754,7 @@ def devices():
     })
 
 @app.route('/api/devices/<device_id>', methods=['DELETE'])
+@login_required
 def delete_device(device_id):
     """Delete a device from the database (for decommissioned devices)"""
     device = Device.query.filter_by(device_id=device_id).first()
