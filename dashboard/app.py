@@ -373,6 +373,12 @@ def logout():
 def index():
     return render_template('index.html')
 
+@app.route('/ota-history')
+@login_required
+def ota_history():
+    """OTA update history page with filters"""
+    return render_template('ota_history.html')
+
 @app.route('/api')
 def api_index():
     return jsonify({
@@ -920,27 +926,53 @@ def delete_device(device_id):
 def ota_logs():
     """Get OTA update logs with optional filters"""
     from models import OTAUpdateLog
-    from sqlalchemy import desc
+    from sqlalchemy import desc, and_
+    from datetime import datetime, timedelta
     
     # Get query parameters
     device_id = request.args.get('device_id')
     status = request.args.get('status')
+    start_date = request.args.get('start_date')  # ISO 8601 format
+    end_date = request.args.get('end_date')  # ISO 8601 format
     limit = request.args.get('limit', type=int, default=100)
+    offset = request.args.get('offset', type=int, default=0)
     
     # Build query
     query = OTAUpdateLog.query
     
+    # Apply filters
     if device_id:
         query = query.filter_by(device_id=device_id)
     if status:
         query = query.filter_by(status=status)
     
-    # Order by most recent first, apply limit
-    logs = query.order_by(desc(OTAUpdateLog.started_at)).limit(limit).all()
+    # Date range filters
+    if start_date:
+        try:
+            start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+            query = query.filter(OTAUpdateLog.started_at >= start_dt)
+        except (ValueError, AttributeError):
+            return jsonify({'error': 'Invalid start_date format. Use ISO 8601.'}), 400
+    
+    if end_date:
+        try:
+            end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+            query = query.filter(OTAUpdateLog.started_at <= end_dt)
+        except (ValueError, AttributeError):
+            return jsonify({'error': 'Invalid end_date format. Use ISO 8601.'}), 400
+    
+    # Get total count before pagination
+    total_count = query.count()
+    
+    # Order by most recent first, apply pagination
+    logs = query.order_by(desc(OTAUpdateLog.started_at)).limit(limit).offset(offset).all()
     
     return jsonify({
         'logs': [log.to_dict() for log in logs],
-        'count': len(logs)
+        'count': len(logs),
+        'total': total_count,
+        'offset': offset,
+        'limit': limit
     })
 
 @app.route('/api/ota-stats')
