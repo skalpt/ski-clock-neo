@@ -164,15 +164,54 @@ class Device(db.Model):
     
     # Relationships
     ota_update_logs = db.relationship('OTAUpdateLog', back_populates='device', cascade='all, delete-orphan')
+    heartbeat_history = db.relationship('HeartbeatHistory', back_populates='device', cascade='all, delete-orphan')
     
     def __repr__(self):
         return f'<Device {self.device_id} ({self.board_type})>'
     
     def to_dict(self, online_threshold_minutes=15):
-        """Convert device to dictionary with online/offline status"""
+        """Convert device to dictionary with online/offline/degraded status"""
+        from datetime import timedelta
+        from sqlalchemy import and_
+        
         now = datetime.now(timezone.utc)
         minutes_since_last_seen = (now - self.last_seen).total_seconds() / 60
         is_online = minutes_since_last_seen < online_threshold_minutes
+        
+        # Calculate degraded status: 2+ consecutive missed checkins in past hour
+        # Expected heartbeat interval: 60 seconds, tolerance: 90 seconds
+        is_degraded = False
+        if is_online:  # Only check degradation if device is online
+            one_hour_ago = now - timedelta(hours=1)
+            heartbeats = HeartbeatHistory.query.filter(
+                and_(
+                    HeartbeatHistory.device_id == self.device_id,
+                    HeartbeatHistory.timestamp >= one_hour_ago
+                )
+            ).order_by(HeartbeatHistory.timestamp.asc()).all()
+            
+            if len(heartbeats) >= 3:  # Need at least 3 heartbeats to detect 2 consecutive misses
+                consecutive_misses = 0
+                max_consecutive_misses = 0
+                
+                for i in range(1, len(heartbeats)):
+                    gap_seconds = (heartbeats[i].timestamp - heartbeats[i-1].timestamp).total_seconds()
+                    
+                    if gap_seconds > 90:  # Missed checkin (tolerance: 90 seconds)
+                        consecutive_misses += 1
+                        max_consecutive_misses = max(max_consecutive_misses, consecutive_misses)
+                    else:
+                        consecutive_misses = 0  # Reset counter on successful checkin
+                
+                is_degraded = max_consecutive_misses >= 2
+        
+        # Determine status: "online", "degraded", or "offline"
+        if not is_online:
+            status = "offline"
+        elif is_degraded:
+            status = "degraded"
+        else:
+            status = "online"
         
         return {
             'device_id': self.device_id,
@@ -186,6 +225,8 @@ class Device(db.Model):
             'ssid': self.ssid,
             'ip_address': self.ip_address,
             'online': is_online,
+            'status': status,
+            'degraded': is_degraded,
             'minutes_since_last_seen': round(minutes_since_last_seen, 1)
         }
 
@@ -235,3 +276,25 @@ class OTAUpdateLog(db.Model):
             result['error_message'] = self.error_message
         
         return result
+
+
+class HeartbeatHistory(db.Model):
+    __tablename__ = 'heartbeat_history'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    device_id = db.Column(db.String(32), db.ForeignKey('devices.device_id'), nullable=False, index=True)
+    timestamp = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
+    rssi = db.Column(db.Integer)
+    uptime = db.Column(db.Integer)
+    free_heap = db.Column(db.Integer)
+    
+    # Relationships
+    device = db.relationship('Device', back_populates='heartbeat_history')
+    
+    # Index for efficient time-based queries
+    __table_args__ = (
+        db.Index('idx_device_timestamp', 'device_id', 'timestamp'),
+    )
+    
+    def __repr__(self):
+        return f'<HeartbeatHistory {self.device_id} at {self.timestamp}>'
