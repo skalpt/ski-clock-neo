@@ -5,6 +5,7 @@
 #include "font_5x7.h"
 #include <Ticker.h>
 #include "debug.h"
+#include "display.h"
 
 // Forward declarations
 void drawTextCentered(Adafruit_NeoPixel &strip, const char *text, uint8_t y0, uint32_t color, uint8_t scale);
@@ -29,19 +30,28 @@ int curNum = 0;
 
 // NeoPixel refresh function (called by ticker or FreeRTOS task)
 void updateNeoPixels() {
-  char numStr[2];
   curNum++;
   if (curNum == 10) curNum = 0;
 
   DEBUG_PRINT("Drawing digit: ");
   DEBUG_PRINTLN(curNum);
 
-  snprintf(numStr, sizeof(numStr), "%d", curNum);
+  // Update display content (generates pixel buffer)
+  updateDisplayContent(curNum);
 
-  // Clear and draw
+  // Render display buffer to NeoPixels
   row1.clear();
   uint32_t red = row1.Color(255, 0, 0);
-  drawTextCentered(row1, numStr, 1, red, 2);
+  
+  DisplayConfig cfg = getDisplayConfig();
+  for (uint16_t y = 0; y < cfg.height; y++) {
+    for (uint16_t x = 0; x < cfg.width; x++) {
+      if (getPixel(x, y)) {
+        setPixelRow(row1, x, y, red);
+      }
+    }
+  }
+  
   row1.show();
 }
 
@@ -65,6 +75,9 @@ void updateNeoPixels() {
 #endif
 
 void setupNeoPixels() {
+  // Initialize display library (1 row, 1 column of 16x16 panels)
+  initDisplay(1, 1);
+  
   // Initialise NeoPixels
   row1.begin();
   row1.setBrightness(BRIGHTNESS);
