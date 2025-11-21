@@ -328,18 +328,12 @@ with app.app_context():
     else:
         print(f"✓ Found admin role with {len(admin_role.platform_permissions)} platform permissions")
     
-    # Create initial user if none exists
-    if User.query.count() == 0:
-        initial_user = User(
-            email='julian@norrtek.se',
-            role_id=admin_role.id
-        )
-        initial_user.set_password('testing123')
-        db.session.add(initial_user)
-        db.session.commit()
-        print("✓ Created initial user: julian@norrtek.se (admin)")
+    # Check user count
+    user_count = User.query.count()
+    if user_count == 0:
+        print("⚠ No users in database - create an admin user manually")
     else:
-        print(f"✓ Found {User.query.count()} user(s) in database")
+        print(f"✓ Found {user_count} user(s) in database")
     
     # Load firmware versions from database (must be inside app context)
     load_versions_from_db()
