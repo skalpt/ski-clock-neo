@@ -370,12 +370,12 @@ def sync_firmware_from_production():
         return
     
     try:
-        # Query production API for firmware status (with authentication)
+        # Query production API for firmware metadata (with authentication)
         headers = {}
         if DOWNLOAD_API_KEY:
             headers['X-API-Key'] = DOWNLOAD_API_KEY
         
-        response = requests.get(f"{production_url}/api/status", headers=headers, timeout=10)
+        response = requests.get(f"{production_url}/api/firmware-metadata", headers=headers, timeout=10)
         response.raise_for_status()
         data = response.json()
         
@@ -395,17 +395,27 @@ def sync_firmware_from_production():
                 if local_fw and local_fw.version == fw_data.get('version'):
                     continue  # Already up to date
                 
-                # Save/update firmware metadata in dev database
+                # Save/update firmware metadata in dev database (including bootloader/partitions)
                 version_info = {
                     'version': fw_data.get('version', 'Unknown'),
                     'filename': fw_data.get('filename', ''),
                     'size': fw_data.get('size', 0),
-                    'sha256': fw_data.get('checksum', ''),
+                    'sha256': fw_data.get('sha256', ''),
                     'download_url': fw_data.get('download_url', ''),
                     'storage': fw_data.get('storage', 'object_storage'),
                     'object_path': fw_data.get('object_path'),
                     'object_name': fw_data.get('object_name'),
-                    'local_path': fw_data.get('local_path')
+                    'local_path': fw_data.get('local_path'),
+                    
+                    # Bootloader metadata
+                    'bootloader_filename': fw_data.get('bootloader', {}).get('filename') if fw_data.get('bootloader') else None,
+                    'bootloader_size': fw_data.get('bootloader', {}).get('size') if fw_data.get('bootloader') else None,
+                    'bootloader_sha256': fw_data.get('bootloader', {}).get('sha256') if fw_data.get('bootloader') else None,
+                    
+                    # Partitions metadata
+                    'partitions_filename': fw_data.get('partitions', {}).get('filename') if fw_data.get('partitions') else None,
+                    'partitions_size': fw_data.get('partitions', {}).get('size') if fw_data.get('partitions') else None,
+                    'partitions_sha256': fw_data.get('partitions', {}).get('sha256') if fw_data.get('partitions') else None
                 }
                 save_version_to_db(platform, version_info)
                 synced_count += 1
@@ -1309,6 +1319,20 @@ def update_config():
         }), 200
     except Exception as e:
         return jsonify({'error': f'Failed to update config: {str(e)}'}), 500
+
+@app.route('/api/firmware-metadata')
+def firmware_metadata():
+    """Public API endpoint for firmware metadata (used by dev environments for sync)"""
+    api_key = request.headers.get('X-API-Key')
+    
+    if api_key != DOWNLOAD_API_KEY:
+        return jsonify({'error': 'Invalid API key'}), 401
+    
+    # Return firmware metadata without user-specific tokens
+    return jsonify({
+        'firmwares': LATEST_VERSIONS,
+        'timestamp': datetime.now(timezone.utc).isoformat()
+    })
 
 @app.route('/api/status')
 @login_required
