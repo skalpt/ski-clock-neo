@@ -520,7 +520,6 @@
                     
                     // Determine CSS class based on status
                     const statusClass = device.status === 'offline' ? 'offline' : device.status === 'degraded' ? 'degraded' : '';
-                    const statusEmoji = device.status === 'online' ? '🟢' : device.status === 'degraded' ? '🟠' : '🔴';
                     const statusText = device.status.charAt(0).toUpperCase() + device.status.slice(1);
                     
                     return `
@@ -533,7 +532,7 @@
                             <span class="badge">${safeBoard}</span>
                         </div>
                         <div class="device-info">
-                            <div><strong>Status:</strong> ${statusEmoji} ${statusText}${device.status === 'degraded' ? ' (unstable connection)' : ''}</div>
+                            <div><strong>Status:</strong> ${statusText}${device.status === 'degraded' ? ' (unstable connection)' : ''}</div>
                             <div><strong>Version:</strong> ${safeVersion}</div>
                             <div><strong>Uptime:</strong> ${formatUptime(device.uptime)}</div>
                             ${device.ssid ? `<div><strong>WiFi Network:</strong> ${safeSsid}</div>` : ''}
