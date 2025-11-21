@@ -156,6 +156,7 @@ class FirmwareVersion(db.Model):
             'supports_full_flash': bool(self.bootloader_filename and self.partitions_filename)
         }
         
+        # Firmware file paths
         if self.object_path:
             result['object_path'] = self.object_path
         if self.object_name:
@@ -163,16 +164,32 @@ class FirmwareVersion(db.Model):
         if self.local_path:
             result['local_path'] = self.local_path
         
-        # Include bootloader info if available
+        # Bootloader metadata (top-level fields for download routes + nested for API)
         if self.bootloader_filename:
+            result['bootloader_filename'] = self.bootloader_filename
+            result['bootloader_size'] = self.bootloader_size
+            result['bootloader_sha256'] = self.bootloader_sha256
+            result['bootloader_object_path'] = self.bootloader_object_path
+            result['bootloader_object_name'] = self.bootloader_object_name
+            result['bootloader_local_path'] = self.bootloader_local_path
+            
+            # Nested object for API responses
             result['bootloader'] = {
                 'filename': self.bootloader_filename,
                 'size': self.bootloader_size,
                 'sha256': self.bootloader_sha256
             }
         
-        # Include partition table info if available
+        # Partition table metadata (top-level fields for download routes + nested for API)
         if self.partitions_filename:
+            result['partitions_filename'] = self.partitions_filename
+            result['partitions_size'] = self.partitions_size
+            result['partitions_sha256'] = self.partitions_sha256
+            result['partitions_object_path'] = self.partitions_object_path
+            result['partitions_object_name'] = self.partitions_object_name
+            result['partitions_local_path'] = self.partitions_local_path
+            
+            # Nested object for API responses
             result['partitions'] = {
                 'filename': self.partitions_filename,
                 'size': self.partitions_size,
