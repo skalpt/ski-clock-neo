@@ -3,15 +3,16 @@
 
 #include <Arduino.h>
 
-// DISPLAY_ROWS and DISPLAY_BUFFER_SIZE are defined by the hardware renderer
-// (neopixel_render.h, hub75_render.h, etc.) before including this file.
-// This allows dynamic configuration based on actual hardware.
+// Import hardware configuration (defines DISPLAY_ROWS, DISPLAY_BUFFER_SIZE, etc.)
+#include "display_config.h"
+
+// Sanity checks to ensure config was loaded correctly
 #ifndef DISPLAY_ROWS
-  #error "DISPLAY_ROWS must be defined by the renderer before including display.h"
+  #error "DISPLAY_ROWS must be defined in display_config.h"
 #endif
 
 #ifndef DISPLAY_BUFFER_SIZE
-  #error "DISPLAY_BUFFER_SIZE must be defined by the renderer before including display.h"
+  #error "DISPLAY_BUFFER_SIZE must be defined in display_config.h"
 #endif
 
 #define MAX_TEXT_LENGTH 32
