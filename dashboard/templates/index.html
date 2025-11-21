@@ -254,6 +254,43 @@
             cursor: not-allowed;
             transform: none;
         }
+        .ota-progress {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+        .ota-progress-label {
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        .ota-progress-bar {
+            height: 24px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+        .ota-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #34d399);
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+        .ota-progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
     </style>
     <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
 </head>
@@ -381,8 +418,14 @@
 
         async function loadDevices() {
             try {
-                const response = await fetch('/api/devices');
-                const data = await response.json();
+                const [devicesResponse, progressResponse] = await Promise.all([
+                    fetch('/api/devices'),
+                    fetch('/api/ota-progress')
+                ]);
+                
+                const data = await devicesResponse.json();
+                const otaProgress = await progressResponse.json();
+                
                 const container = document.getElementById('devices-container');
                 const statsContainer = document.getElementById('stats-container');
                 
@@ -416,6 +459,20 @@
                     const safeSsid = escapeHtml(device.ssid);
                     const safeIpAddress = escapeHtml(device.ip_address);
                     
+                    // Check if this device has an OTA update in progress
+                    const ota = otaProgress[device.device_id];
+                    const otaHtml = ota ? `
+                        <div class="ota-progress">
+                            <div class="ota-progress-label">
+                                🔄 Updating: ${escapeHtml(ota.old_version || 'Unknown')} → ${escapeHtml(ota.new_version)}
+                            </div>
+                            <div class="ota-progress-bar">
+                                <div class="ota-progress-fill" style="width: ${ota.progress}%"></div>
+                                <div class="ota-progress-text">${ota.progress}%</div>
+                            </div>
+                        </div>
+                    ` : '';
+                    
                     return `
                     <div class="device-card ${device.online ? '' : 'offline'}">
                         <div class="device-header">
@@ -436,6 +493,7 @@
                             <div><strong>Last Seen:</strong> <span class="live-timestamp" data-timestamp="${escapeHtml(device.last_seen)}">${formatTimestamp(device.last_seen)}</span></div>
                             <div><strong>First Seen:</strong> ${new Date(device.first_seen).toLocaleString()}</div>
                         </div>
+                        ${otaHtml}
                         <button class="delete-btn" data-device-id="${safeDeviceId}">
                             🗑️ Remove Device
                         </button>

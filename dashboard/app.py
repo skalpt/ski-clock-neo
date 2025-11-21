@@ -975,6 +975,32 @@ def ota_logs():
         'limit': limit
     })
 
+@app.route('/api/ota-progress')
+@login_required
+def ota_progress():
+    """Get in-progress OTA updates for all devices"""
+    from models import OTAUpdateLog
+    
+    # Get all in-progress updates (started or downloading)
+    in_progress = OTAUpdateLog.query.filter(
+        OTAUpdateLog.status.in_(['started', 'downloading'])
+    ).all()
+    
+    # Create a map of device_id -> progress info
+    progress_map = {}
+    for log in in_progress:
+        progress_map[log.device_id] = {
+            'session_id': log.session_id,
+            'platform': log.platform,
+            'old_version': log.old_version,
+            'new_version': log.new_version,
+            'status': log.status,
+            'progress': log.download_progress,
+            'started_at': log.started_at.isoformat() if log.started_at else None
+        }
+    
+    return jsonify(progress_map)
+
 @app.route('/api/ota-stats')
 @login_required
 def ota_stats():
