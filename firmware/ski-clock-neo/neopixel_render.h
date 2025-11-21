@@ -1,68 +1,88 @@
 #ifndef NEOPIXEL_RENDER_H
 #define NEOPIXEL_RENDER_H
 
+// ==================== HARDWARE CONFIGURATION ====================
+// Define display dimensions BEFORE including display.h so DISPLAY_BUFFER_SIZE is available
+#define NEOPIXEL_ROWS 2           // Number of physical NeoPixel rows
+#define PANELS_PER_ROW 3          // Number of panels per row
+#define PANEL_WIDTH 16            // Width of each panel in pixels
+#define PANEL_HEIGHT 16           // Height of each panel in pixels
+
+// Calculate total dimensions
+#define ROW_WIDTH (PANELS_PER_ROW * PANEL_WIDTH)   // 3 * 16 = 48 pixels
+#define ROW_HEIGHT PANEL_HEIGHT                     // 16 pixels
+
+// Calculate buffer size needed for this hardware configuration
+#define DISPLAY_BUFFER_SIZE ((NEOPIXEL_ROWS * ROW_WIDTH * ROW_HEIGHT) / 8)  // Bit-packed: (2 * 48 * 16) / 8 = 192 bytes
+
+// Pin definitions for each row
+#define PIN_MATRIX_ROW1 4         // WS2812 data for row 1
+#define PIN_MATRIX_ROW2 3         // WS2812 data for row 2
+
+// Pin array for dynamic row initialization
+const uint8_t ROW_PINS[NEOPIXEL_ROWS] = {PIN_MATRIX_ROW1, PIN_MATRIX_ROW2};
+
+// Display settings
+#define BRIGHTNESS 1                    // 0-255 (keeping dim for development)
+#define UPDATE_INTERVAL_MS 200          // 0.2 second refresh rate
+
+// ==================== NOW INCLUDE DEPENDENCIES ====================
 #include <Adafruit_NeoPixel.h>
 #include "font_5x7.h"
 #include <Ticker.h>
 #include "debug.h"
-#include "display.h"
+#include "display.h"  // This will use DISPLAY_BUFFER_SIZE we defined above
 
 // Forward declarations
 void drawTextCentered(Adafruit_NeoPixel &strip, const char *text, uint8_t y0, uint32_t color, uint8_t scale);
 
-// -------------------- Pin definitions --------------------
-#define PIN_MATRIX_ROW1                  4     // WS2812 data for top row
-#define PIN_MATRIX_ROW2                  3     // WS2812 data for top row
-
-// -------------------- Display layout ---------------------
-const uint8_t ROWS                     = 2;    // Two rows of panels
-const uint8_t ROW_WIDTH                = 48;   // 3 panels x 16 pixels wide
-const uint8_t ROW_HEIGHT               = 16;   // All panels 16 pixels high
-
-// ----------- Display brightness & refresh rate -----------
-const uint8_t BRIGHTNESS               = 1;    // 0-255 (keeping it as dim as possible while I'm developing in the office)
-const unsigned long UPDATE_INTERVAL_MS = 200;  // 0.2 second refresh rate
-
 // ----------------- Declare display rows ------------------
 const uint16_t NUM_LEDS_PER_ROW = (uint16_t)ROW_WIDTH * ROW_HEIGHT;
-Adafruit_NeoPixel row[ROWS](NUM_LEDS_PER_ROW, PIN_MATRIX_ROW1, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel rows[NEOPIXEL_ROWS] = {
+  Adafruit_NeoPixel(NUM_LEDS_PER_ROW, PIN_MATRIX_ROW1, NEO_GRB + NEO_KHZ800),
+  Adafruit_NeoPixel(NUM_LEDS_PER_ROW, PIN_MATRIX_ROW2, NEO_GRB + NEO_KHZ800)
+};
 
-// Internal rendering buffer (hardware-specific)
-uint8_t neopixelRenderBuffer[MAX_DISPLAY_BUFFER_SIZE / 8] = {0};
+// Internal rendering buffer (hardware-specific, sized exactly for our config)
+uint8_t neopixelRenderBuffer[DISPLAY_BUFFER_SIZE] = {0};
 
 // NeoPixel refresh function (called by ticker or FreeRTOS task)
 void updateNeoPixels() {
   // Clear internal render buffer
   memset(neopixelRenderBuffer, 0, sizeof(neopixelRenderBuffer));
   
-  // Read text from display library and render to internal buffer (note, the text will be set by the display library - to be developed later)
-  const char* displayText = getText(0);
-  row1.clear();
-  uint32_t red = row1.Color(255, 0, 0);
-  
-  // Render text using drawTextCentered
-  drawTextCentered(row1, displayText, 0, red, 1);
-  
-  // Copy rendered pixels to internal buffer for atomic commit
-  DisplayConfig cfg = getDisplayConfig();
-  for (uint16_t y = 0; y < ROW_HEIGHT; y++) {
-    for (uint16_t x = 0; x < ROW_WIDTH; x++) {
-      uint16_t idx = xyToIndex(x, y);
-      if (idx < row1.numPixels() && row1.getPixelColor(idx) != 0) {
-        // Set pixel in internal buffer
-        uint16_t pixelIndex = y * ROW_WIDTH + x;
-        uint16_t byteIndex = pixelIndex / 8;
-        uint8_t bitIndex = pixelIndex % 8;
-        neopixelRenderBuffer[byteIndex] |= (1 << bitIndex);
+  // Loop through each row and render
+  for (uint8_t rowIdx = 0; rowIdx < NEOPIXEL_ROWS; rowIdx++) {
+    // Read text from display library (set by external firmware/MQTT/etc)
+    const char* displayText = getText(rowIdx);
+    
+    // Clear this row's NeoPixels
+    rows[rowIdx].clear();
+    uint32_t red = rows[rowIdx].Color(255, 0, 0);
+    
+    // Render text using drawTextCentered
+    drawTextCentered(rows[rowIdx], displayText, 0, red, 1);
+    
+    // Copy rendered pixels to internal buffer for this row
+    for (uint16_t y = 0; y < ROW_HEIGHT; y++) {
+      for (uint16_t x = 0; x < ROW_WIDTH; x++) {
+        uint16_t idx = xyToIndex(x, y);
+        if (idx < rows[rowIdx].numPixels() && rows[rowIdx].getPixelColor(idx) != 0) {
+          // Calculate pixel index in unified buffer (accounting for row offset)
+          uint16_t pixelIndex = (rowIdx * ROW_WIDTH * ROW_HEIGHT) + (y * ROW_WIDTH) + x;
+          uint16_t byteIndex = pixelIndex / 8;
+          uint8_t bitIndex = pixelIndex % 8;
+          neopixelRenderBuffer[byteIndex] |= (1 << bitIndex);
+        }
       }
     }
+    
+    // Show on physical NeoPixels for this row
+    rows[rowIdx].show();
   }
   
   // Commit complete frame to display library (for MQTT)
   commitBuffer(neopixelRenderBuffer, sizeof(neopixelRenderBuffer));
-  
-  // Show on physical NeoPixels
-  row1.show();
 }
 
 // --------------------- Timers for updating NeoPixels ----------------------
@@ -85,14 +105,18 @@ void updateNeoPixels() {
 #endif
 
 void setupNeoPixels() {
-  // Initialize display library (1 row, 1 panel of 16x16 pixels)
-  initDisplayBuffer(1, 1, 16, 16);
+  // Initialize display library with actual hardware configuration
+  initDisplayBuffer(NEOPIXEL_ROWS, PANELS_PER_ROW, PANEL_WIDTH, PANEL_HEIGHT);
   
-  // Initialise NeoPixels
-  row1.begin();
-  row1.setBrightness(BRIGHTNESS);
-  row1.show();
-  DEBUG_PRINTLN("NeoPixels initialised.");
+  // Initialize all NeoPixel rows
+  for (uint8_t i = 0; i < NEOPIXEL_ROWS; i++) {
+    rows[i].begin();
+    rows[i].setBrightness(BRIGHTNESS);
+    rows[i].show();
+    DEBUG_PRINT("NeoPixel row ");
+    DEBUG_PRINT(i + 1);
+    DEBUG_PRINTLN(" initialised.");
+  }
   
   #if defined(ESP32)
     // ESP32: Use FreeRTOS task for guaranteed timing even during network operations

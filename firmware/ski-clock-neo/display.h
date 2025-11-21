@@ -3,8 +3,12 @@
 
 #include <Arduino.h>
 
-// Maximum buffer size: 2 rows × 2 cols × 32×64 pixels = 8192 pixels
-#define MAX_DISPLAY_BUFFER_SIZE (8192)
+// DISPLAY_BUFFER_SIZE is defined by the hardware renderer (neopixel_render.h, hub75_render.h, etc.)
+// before including this file. This allows dynamic buffer sizing based on actual hardware.
+#ifndef DISPLAY_BUFFER_SIZE
+  #error "DISPLAY_BUFFER_SIZE must be defined by the renderer before including display.h"
+#endif
+
 #define MAX_TEXT_LENGTH 32
 
 // Display configuration structure
@@ -16,7 +20,8 @@ struct DisplayConfig {
 };
 
 // Display buffer - stores on/off state for each pixel (1 bit per pixel, packed into bytes)
-extern uint8_t displayBuffer[MAX_DISPLAY_BUFFER_SIZE / 8];
+// Size is determined by DISPLAY_BUFFER_SIZE from the hardware renderer
+extern uint8_t displayBuffer[DISPLAY_BUFFER_SIZE];
 extern DisplayConfig displayConfig;
 
 // Text content for each row (what should be displayed)

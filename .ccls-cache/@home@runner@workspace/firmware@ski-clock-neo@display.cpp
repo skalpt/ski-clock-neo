@@ -2,7 +2,8 @@
 #include <string.h>
 
 // Display buffer storage (final rendered output for MQTT)
-uint8_t displayBuffer[MAX_DISPLAY_BUFFER_SIZE / 8] = {0};
+// Size is determined by DISPLAY_BUFFER_SIZE from the hardware renderer
+uint8_t displayBuffer[DISPLAY_BUFFER_SIZE] = {0};
 DisplayConfig displayConfig = {0};
 
 // Text content storage (what should be displayed on each row)
