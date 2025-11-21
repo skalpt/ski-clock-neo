@@ -4,15 +4,15 @@
 // MQTT broker port
 const uint16_t MQTT_PORT = 8883;  // TLS port for HiveMQ Cloud
 
-// MQTT topics
-const char* MQTT_TOPIC_HEARTBEAT = "skiclock/heartbeat";
-const char* MQTT_TOPIC_VERSION_UPDATES = "skiclock/version/updates";
-const char* MQTT_TOPIC_VERSION_REQUEST = "skiclock/version/request";
-const char* MQTT_TOPIC_VERSION_RESPONSE = "skiclock/version/response";
-const char* MQTT_TOPIC_COMMAND = "skiclock/command";
-const char* MQTT_TOPIC_OTA_START = "skiclock/ota/start";
-const char* MQTT_TOPIC_OTA_PROGRESS = "skiclock/ota/progress";
-const char* MQTT_TOPIC_OTA_COMPLETE = "skiclock/ota/complete";
+// MQTT topics (const arrays with external linkage)
+const char MQTT_TOPIC_HEARTBEAT[] = "skiclock/heartbeat";
+const char MQTT_TOPIC_VERSION_UPDATES[] = "skiclock/version/updates";
+const char MQTT_TOPIC_VERSION_REQUEST[] = "skiclock/version/request";
+const char MQTT_TOPIC_VERSION_RESPONSE[] = "skiclock/version/response";
+const char MQTT_TOPIC_COMMAND[] = "skiclock/command";
+const char MQTT_TOPIC_OTA_START[] = "skiclock/ota/start";
+const char MQTT_TOPIC_OTA_PROGRESS[] = "skiclock/ota/progress";
+const char MQTT_TOPIC_OTA_COMPLETE[] = "skiclock/ota/complete";
 
 // MQTT client objects
 WiFiClientSecure wifiSecureClient;
