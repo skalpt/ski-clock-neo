@@ -624,7 +624,7 @@ h2 {
 
 .flash-btn-main.flash-btn-single {
     border-radius: 6px; /* Full rounded corners for single button */
-    width: 192px; /* Match split button width */
+    /* Width inherited from parent .split-button-group (192px) */
 }
 
 .flash-btn-main.full-flash-mode {
