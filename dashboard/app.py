@@ -430,6 +430,11 @@ def firmware_manifest(platform):
     download_token = generate_user_download_token(user_id, platform, max_age=3600)
     firmware_url = url_for('user_download_firmware', token=download_token, _external=True)
     
+    # Determine correct flash offset based on chip family
+    # ESP32 family: firmware goes to 0x10000 (bootloader at 0x0, partition table at 0x8000)
+    # ESP8266: firmware goes to 0x0 (different bootloader architecture)
+    flash_offset = 0x10000 if chip_family in ['ESP32', 'ESP32-C3', 'ESP32-S3'] else 0x0
+    
     # Create ESP Web Tools manifest
     manifest = {
         "name": f"Ski Clock Neo - {platform.upper()}",
@@ -441,7 +446,7 @@ def firmware_manifest(platform):
                 "parts": [
                     {
                         "path": firmware_url,
-                        "offset": 0
+                        "offset": flash_offset
                     }
                 ]
             }
