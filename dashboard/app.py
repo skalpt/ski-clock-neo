@@ -454,13 +454,14 @@ def public_download_firmware(token):
 def firmware_manifest(platform):
     """Generate ESP Web Tools manifest for browser-based flashing"""
     platform = platform.lower()
+    original_platform = platform
     
     # Apply platform firmware mapping for backward compatibility
     if platform in PLATFORM_FIRMWARE_MAPPING:
         platform = PLATFORM_FIRMWARE_MAPPING[platform]
     
-    # Validate platform
-    if platform not in SUPPORTED_PLATFORMS:
+    # Validate original platform request (before mapping) OR mapped platform
+    if original_platform not in SUPPORTED_PLATFORMS and platform not in SUPPORTED_PLATFORMS:
         return jsonify({'error': 'Invalid platform'}), 400
     
     version_info = LATEST_VERSIONS.get(platform)
