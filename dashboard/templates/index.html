@@ -135,6 +135,12 @@
         .restart-btn:hover {
             background: rgba(59, 130, 246, 1);
         }
+        .rollback-btn:disabled,
+        .restart-btn:disabled {
+            background: #999;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
         .stats-bar {
             display: flex;
             gap: 20px;
@@ -519,10 +525,10 @@
                         </div>
                         ${otaHtml}
                         <div class="device-actions">
-                            <button class="device-btn rollback-btn" data-device-id="${safeDeviceId}" data-action="rollback">
+                            <button class="device-btn rollback-btn" data-device-id="${safeDeviceId}" data-action="rollback" ${device.online ? '' : 'disabled title="Device must be online"'}>
                                 ⏮️ Rollback
                             </button>
-                            <button class="device-btn restart-btn" data-device-id="${safeDeviceId}" data-action="restart">
+                            <button class="device-btn restart-btn" data-device-id="${safeDeviceId}" data-action="restart" ${device.online ? '' : 'disabled title="Device must be online"'}>
                                 🔄 Restart
                             </button>
                             <button class="device-btn delete-btn" data-device-id="${safeDeviceId}" data-action="delete">
