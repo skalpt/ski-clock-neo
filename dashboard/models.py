@@ -11,13 +11,55 @@ class Base(DeclarativeBase):
 db = SQLAlchemy(model_class=Base)
 
 
+class Role(db.Model):
+    __tablename__ = 'roles'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(64), unique=True, nullable=False)
+    description = db.Column(db.String(256))
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    
+    # Relationships
+    users = db.relationship('User', back_populates='role')
+    platform_permissions = db.relationship('PlatformPermission', back_populates='role', cascade='all, delete-orphan')
+    
+    def __repr__(self):
+        return f'<Role {self.name}>'
+
+
+class PlatformPermission(db.Model):
+    __tablename__ = 'platform_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    role_id = db.Column(db.Integer, db.ForeignKey('roles.id'), nullable=False)
+    platform = db.Column(db.String(32), nullable=False, index=True)
+    can_download = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    
+    # Relationships
+    role = db.relationship('Role', back_populates='platform_permissions')
+    
+    # Unique constraint: one permission per role per platform
+    __table_args__ = (
+        db.UniqueConstraint('role_id', 'platform', name='uix_role_platform'),
+    )
+    
+    def __repr__(self):
+        return f'<PlatformPermission {self.role.name} -> {self.platform}>'
+
+
 class User(db.Model):
     __tablename__ = 'users'
     
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(128), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(256), nullable=False)
+    role_id = db.Column(db.Integer, db.ForeignKey('roles.id'), nullable=False)
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    
+    # Relationships
+    role = db.relationship('Role', back_populates='users')
+    download_logs = db.relationship('DownloadLog', back_populates='user', cascade='all, delete-orphan')
     
     def set_password(self, password):
         """Hash and set password"""
@@ -27,8 +69,41 @@ class User(db.Model):
         """Verify password against hash"""
         return check_password_hash(self.password_hash, password)
     
+    def can_download_platform(self, platform):
+        """Check if user has permission to download a specific platform"""
+        # Check if role has specific permission for this platform
+        permission = PlatformPermission.query.filter_by(
+            role_id=self.role_id,
+            platform=platform
+        ).first()
+        
+        if permission:
+            return permission.can_download
+        
+        # Default: no explicit permission means no access (whitelist approach)
+        # Can change to True for permissive default
+        return False
+    
     def __repr__(self):
         return f'<User {self.email}>'
+
+
+class DownloadLog(db.Model):
+    __tablename__ = 'download_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    platform = db.Column(db.String(32), nullable=False, index=True)
+    firmware_version = db.Column(db.String(32))
+    downloaded_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
+    ip_address = db.Column(db.String(45))
+    user_agent = db.Column(db.String(256))
+    
+    # Relationships
+    user = db.relationship('User', back_populates='download_logs')
+    
+    def __repr__(self):
+        return f'<DownloadLog {self.user.email} -> {self.platform} at {self.downloaded_at}>'
 
 
 class FirmwareVersion(db.Model):
