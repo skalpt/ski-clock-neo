@@ -1,4 +1,5 @@
 #include "display.h"
+#include <string.h>
 
 // Display buffer storage (final rendered output for MQTT)
 uint8_t displayBuffer[MAX_DISPLAY_BUFFER_SIZE / 8] = {0};
@@ -6,6 +7,11 @@ DisplayConfig displayConfig = {0};
 
 // Text content storage (what should be displayed on each row)
 char displayText[2][MAX_TEXT_LENGTH] = {{0}, {0}};
+
+// Spinlock for atomic buffer updates (ESP32 only)
+#if defined(ESP32)
+  portMUX_TYPE spinlock = portMUX_INITIALIZER_UNLOCKED;
+#endif
 
 void initDisplayBuffer(uint8_t rows, uint8_t panelsPerRow, uint8_t panelWidth, uint8_t panelHeight) {
   displayConfig.rows = rows;
@@ -32,14 +38,14 @@ const char* getText(uint8_t row) {
 }
 
 void setPixel(uint8_t row, uint16_t x, uint16_t y, bool state) {
-  if (row == 0 || row > displayConfig.rows) return;
+  if (row >= displayConfig.rows) return;  // 0-based indexing
   if (x >= displayConfig.panelsPerRow * displayConfig.panelWidth) return;
   if (y >= displayConfig.panelHeight) return;
   
   // Calculate pixel index in buffer
   // Each row occupies (panelsPerRow * panelWidth * panelHeight) pixels
   uint16_t rowPixels = displayConfig.panelsPerRow * displayConfig.panelWidth * displayConfig.panelHeight;
-  uint16_t pixelIndex = (row - 1) * rowPixels + y * (displayConfig.panelsPerRow * displayConfig.panelWidth) + x;
+  uint16_t pixelIndex = row * rowPixels + y * (displayConfig.panelsPerRow * displayConfig.panelWidth) + x;
   
   uint16_t byteIndex = pixelIndex / 8;
   uint8_t bitIndex = pixelIndex % 8;
@@ -61,7 +67,20 @@ void commitBuffer(const uint8_t* renderBuffer, uint16_t bufferSize) {
   if (bufferSize > sizeof(displayBuffer)) {
     bufferSize = sizeof(displayBuffer);
   }
-  memcpy(displayBuffer, renderBuffer, bufferSize);
+  
+  // Use critical section to ensure atomic update (prevents MQTT from reading half-updated buffer)
+  #if defined(ESP32)
+    taskENTER_CRITICAL(&spinlock);
+    memcpy(displayBuffer, renderBuffer, bufferSize);
+    taskEXIT_CRITICAL(&spinlock);
+  #elif defined(ESP8266)
+    noInterrupts();
+    memcpy(displayBuffer, renderBuffer, bufferSize);
+    interrupts();
+  #else
+    // Fallback for other platforms
+    memcpy(displayBuffer, renderBuffer, bufferSize);
+  #endif
 }
 
 const uint8_t* getDisplayBuffer() {

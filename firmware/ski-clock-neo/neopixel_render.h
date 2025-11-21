@@ -12,9 +12,11 @@ void drawTextCentered(Adafruit_NeoPixel &strip, const char *text, uint8_t y0, ui
 
 // -------------------- Pin definitions --------------------
 #define PIN_MATRIX_ROW1                  4     // WS2812 data for top row
+#define PIN_MATRIX_ROW2                  3     // WS2812 data for top row
 
 // -------------------- Display layout ---------------------
-const uint8_t ROW_WIDTH                = 16;   // 1 panel x 16 pixels wide
+const uint8_t ROWS                     = 2;    // Two rows of panels
+const uint8_t ROW_WIDTH                = 48;   // 3 panels x 16 pixels wide
 const uint8_t ROW_HEIGHT               = 16;   // All panels 16 pixels high
 
 // ----------- Display brightness & refresh rate -----------
@@ -23,31 +25,17 @@ const unsigned long UPDATE_INTERVAL_MS = 200;  // 0.2 second refresh rate
 
 // ----------------- Declare display rows ------------------
 const uint16_t NUM_LEDS_PER_ROW = (uint16_t)ROW_WIDTH * ROW_HEIGHT;
-Adafruit_NeoPixel row1(NUM_LEDS_PER_ROW, PIN_MATRIX_ROW1, NEO_GRB + NEO_KHZ800);
-
-// --------------------- Display state ----------------------
-int curNum = 0;
+Adafruit_NeoPixel row[ROWS](NUM_LEDS_PER_ROW, PIN_MATRIX_ROW1, NEO_GRB + NEO_KHZ800);
 
 // Internal rendering buffer (hardware-specific)
 uint8_t neopixelRenderBuffer[MAX_DISPLAY_BUFFER_SIZE / 8] = {0};
 
 // NeoPixel refresh function (called by ticker or FreeRTOS task)
 void updateNeoPixels() {
-  curNum++;
-  if (curNum == 10) curNum = 0;
-
-  DEBUG_PRINT("Drawing digit: ");
-  DEBUG_PRINTLN(curNum);
-
-  // Update text content in display library
-  char text[10];
-  snprintf(text, sizeof(text), "%d", curNum);
-  setText(0, text);  // Row 0 (1-indexed becomes row 1 in rendering)
-
   // Clear internal render buffer
   memset(neopixelRenderBuffer, 0, sizeof(neopixelRenderBuffer));
   
-  // Read text from display library and render to internal buffer
+  // Read text from display library and render to internal buffer (note, the text will be set by the display library - to be developed later)
   const char* displayText = getText(0);
   row1.clear();
   uint32_t red = row1.Color(255, 0, 0);
