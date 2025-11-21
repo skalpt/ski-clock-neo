@@ -58,6 +58,9 @@
         .device-card.offline {
             background: linear-gradient(135deg, #babfc7 0%, #979ca6 100%);
         }
+        .device-card.degraded {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
         .device-header {
             font-weight: bold;
             font-size: 1.1rem;
@@ -92,6 +95,14 @@
         .status.offline {
             background: #ef4444;
             animation: none;
+        }
+        .status.degraded {
+            background: #f59e0b;
+            animation: pulse-slow 3s infinite;
+        }
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
         }
         @keyframes pulse {
             0%, 100% { opacity: 1; }
@@ -472,11 +483,15 @@
                     return;
                 }
 
+                // Calculate degraded count
+                const degradedCount = data.devices.filter(d => d.status === 'degraded').length;
+                
                 // Stats bar
                 statsContainer.innerHTML = `
                     <div class="stats-bar">
                         <div>Total: <span>${data.count}</span></div>
-                        <div>🟢 Online: <span>${data.online_count}</span></div>
+                        <div>🟢 Online: <span>${data.online_count - degradedCount}</span></div>
+                        ${degradedCount > 0 ? `<div>🟠 Degraded: <span>${degradedCount}</span></div>` : ''}
                         <div>🔴 Offline: <span>${data.offline_count}</span></div>
                     </div>
                 `;
@@ -503,17 +518,22 @@
                         </div>
                     ` : '';
                     
+                    // Determine CSS class based on status
+                    const statusClass = device.status === 'offline' ? 'offline' : device.status === 'degraded' ? 'degraded' : '';
+                    const statusEmoji = device.status === 'online' ? '🟢' : device.status === 'degraded' ? '🟠' : '🔴';
+                    const statusText = device.status.charAt(0).toUpperCase() + device.status.slice(1);
+                    
                     return `
-                    <div class="device-card ${device.online ? '' : 'offline'}">
+                    <div class="device-card ${statusClass}">
                         <div class="device-header">
                             <div>
-                                <span class="status ${device.online ? '' : 'offline'}"></span>
+                                <span class="status ${statusClass}"></span>
                                 ${safeDeviceId}
                             </div>
                             <span class="badge">${safeBoard}</span>
                         </div>
                         <div class="device-info">
-                            <div><strong>Status:</strong> ${device.online ? 'Online' : 'Offline'}</div>
+                            <div><strong>Status:</strong> ${statusEmoji} ${statusText}${device.status === 'degraded' ? ' (unstable connection)' : ''}</div>
                             <div><strong>Version:</strong> ${safeVersion}</div>
                             <div><strong>Uptime:</strong> ${formatUptime(device.uptime)}</div>
                             ${device.ssid ? `<div><strong>WiFi Network:</strong> ${safeSsid}</div>` : ''}
@@ -525,10 +545,10 @@
                         </div>
                         ${otaHtml}
                         <div class="device-actions">
-                            <button class="device-btn rollback-btn" data-device-id="${safeDeviceId}" data-action="rollback" ${device.online ? '' : 'disabled title="Device must be online"'}>
+                            <button class="device-btn rollback-btn" data-device-id="${safeDeviceId}" data-action="rollback" ${device.status === 'offline' ? 'disabled title="Device must be online"' : ''}>
                                 ⏮️ Rollback
                             </button>
-                            <button class="device-btn restart-btn" data-device-id="${safeDeviceId}" data-action="restart" ${device.online ? '' : 'disabled title="Device must be online"'}>
+                            <button class="device-btn restart-btn" data-device-id="${safeDeviceId}" data-action="restart" ${device.status === 'offline' ? 'disabled title="Device must be online"' : ''}>
                                 🔄 Restart
                             </button>
                             <button class="device-btn delete-btn" data-device-id="${safeDeviceId}" data-action="delete">
