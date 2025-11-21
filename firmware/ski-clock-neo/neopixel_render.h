@@ -28,6 +28,9 @@ Adafruit_NeoPixel row1(NUM_LEDS_PER_ROW, PIN_MATRIX_ROW1, NEO_GRB + NEO_KHZ800);
 // --------------------- Display state ----------------------
 int curNum = 0;
 
+// Internal rendering buffer (hardware-specific)
+uint8_t neopixelRenderBuffer[MAX_DISPLAY_BUFFER_SIZE / 8] = {0};
+
 // NeoPixel refresh function (called by ticker or FreeRTOS task)
 void updateNeoPixels() {
   curNum++;
@@ -36,22 +39,41 @@ void updateNeoPixels() {
   DEBUG_PRINT("Drawing digit: ");
   DEBUG_PRINTLN(curNum);
 
-  // Update display content (generates pixel buffer)
-  updateDisplayContent(curNum);
+  // Update text content in display library
+  char text[10];
+  snprintf(text, sizeof(text), "%d", curNum);
+  setText(0, text);  // Row 0 (1-indexed becomes row 1 in rendering)
 
-  // Render display buffer to NeoPixels
+  // Clear internal render buffer
+  memset(neopixelRenderBuffer, 0, sizeof(neopixelRenderBuffer));
+  
+  // Read text from display library and render to internal buffer
+  const char* displayText = getText(0);
   row1.clear();
   uint32_t red = row1.Color(255, 0, 0);
   
+  // Render text using drawTextCentered
+  drawTextCentered(row1, displayText, 0, red, 1);
+  
+  // Copy rendered pixels to internal buffer for atomic commit
   DisplayConfig cfg = getDisplayConfig();
-  for (uint16_t y = 0; y < cfg.height; y++) {
-    for (uint16_t x = 0; x < cfg.width; x++) {
-      if (getPixel(x, y)) {
-        setPixelRow(row1, x, y, red);
+  for (uint16_t y = 0; y < ROW_HEIGHT; y++) {
+    for (uint16_t x = 0; x < ROW_WIDTH; x++) {
+      uint16_t idx = xyToIndex(x, y);
+      if (idx < row1.numPixels() && row1.getPixelColor(idx) != 0) {
+        // Set pixel in internal buffer
+        uint16_t pixelIndex = y * ROW_WIDTH + x;
+        uint16_t byteIndex = pixelIndex / 8;
+        uint8_t bitIndex = pixelIndex % 8;
+        neopixelRenderBuffer[byteIndex] |= (1 << bitIndex);
       }
     }
   }
   
+  // Commit complete frame to display library (for MQTT)
+  commitBuffer(neopixelRenderBuffer, sizeof(neopixelRenderBuffer));
+  
+  // Show on physical NeoPixels
   row1.show();
 }
 
@@ -75,8 +97,8 @@ void updateNeoPixels() {
 #endif
 
 void setupNeoPixels() {
-  // Initialize display library (1 row, 1 column of 16x16 panels)
-  initDisplay(1, 1);
+  // Initialize display library (1 row, 1 panel of 16x16 pixels)
+  initDisplayBuffer(1, 1, 16, 16);
   
   // Initialise NeoPixels
   row1.begin();
