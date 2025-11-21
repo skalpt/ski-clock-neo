@@ -194,11 +194,12 @@ class OTAUpdateLog(db.Model):
     __tablename__ = 'ota_update_logs'
     
     id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.String(36), unique=True, nullable=True, index=True)  # UUID for tracking (nullable for backward compatibility)
     device_id = db.Column(db.String(32), db.ForeignKey('devices.device_id'), nullable=False, index=True)
     platform = db.Column(db.String(32), nullable=False, index=True)
     old_version = db.Column(db.String(32))
     new_version = db.Column(db.String(32), nullable=False)
-    status = db.Column(db.String(16), nullable=False, index=True)  # 'started', 'success', 'failed'
+    status = db.Column(db.String(16), nullable=False, index=True, default='started')  # 'started', 'downloading', 'success', 'failed'
     started_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
     completed_at = db.Column(db.DateTime(timezone=True))
     error_message = db.Column(db.Text)
@@ -214,6 +215,7 @@ class OTAUpdateLog(db.Model):
         """Convert OTA update log to dictionary"""
         result = {
             'id': self.id,
+            'session_id': self.session_id,
             'device_id': self.device_id,
             'platform': self.platform,
             'old_version': self.old_version,

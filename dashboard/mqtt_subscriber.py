@@ -19,6 +19,9 @@ MQTT_PASSWORD = os.getenv('MQTT_PASSWORD', '')
 MQTT_TOPIC_HEARTBEAT = "skiclock/heartbeat"
 MQTT_TOPIC_VERSION_REQUEST = "skiclock/version/request"
 MQTT_TOPIC_VERSION_RESPONSE = "skiclock/version/response"
+MQTT_TOPIC_OTA_START = "skiclock/ota/start"
+MQTT_TOPIC_OTA_PROGRESS = "skiclock/ota/progress"
+MQTT_TOPIC_OTA_COMPLETE = "skiclock/ota/complete"
 
 # Store Flask app instance for database access
 _app_context = None
@@ -54,6 +57,12 @@ def on_connect(client, userdata, flags, rc, properties=None):
         print(f"✓ Subscribed to topic: {MQTT_TOPIC_HEARTBEAT}")
         client.subscribe(MQTT_TOPIC_VERSION_REQUEST)
         print(f"✓ Subscribed to topic: {MQTT_TOPIC_VERSION_REQUEST}")
+        client.subscribe(MQTT_TOPIC_OTA_START)
+        print(f"✓ Subscribed to topic: {MQTT_TOPIC_OTA_START}")
+        client.subscribe(MQTT_TOPIC_OTA_PROGRESS)
+        print(f"✓ Subscribed to topic: {MQTT_TOPIC_OTA_PROGRESS}")
+        client.subscribe(MQTT_TOPIC_OTA_COMPLETE)
+        print(f"✓ Subscribed to topic: {MQTT_TOPIC_OTA_COMPLETE}")
     else:
         print(f"✗ Failed to connect to MQTT broker, return code {rc}")
 
@@ -121,6 +130,11 @@ def handle_version_request(client, payload):
                 latest_version = version_info.get('version', 'Unknown')
                 update_available = latest_version != current_version
                 
+                # Generate session ID only if update is available
+                session_id = None
+                if update_available:
+                    session_id = str(uuid.uuid4())
+                
                 # Publish response to device-specific topic
                 response_topic = f"{MQTT_TOPIC_VERSION_RESPONSE}/{device_id}"
                 response_payload = {
@@ -130,10 +144,124 @@ def handle_version_request(client, payload):
                     'platform': platform
                 }
                 
+                if session_id:
+                    response_payload['session_id'] = session_id
+                
                 client.publish(response_topic, json.dumps(response_payload), qos=1)
                 print(f"📤 Version response sent to {device_id}: {latest_version} (update: {update_available})")
             else:
                 print(f"⚠ No firmware found for platform: {platform}")
+
+def handle_ota_start(client, payload):
+    """Handle OTA update start notification from device"""
+    session_id = payload.get('session_id')
+    device_id = payload.get('device_id')
+    platform = payload.get('platform')
+    old_version = payload.get('old_version')
+    new_version = payload.get('new_version')
+    
+    if not device_id or not platform or not new_version:
+        print(f"⚠ Invalid OTA start message: missing required fields")
+        return
+    
+    # Generate fallback session ID if not provided (backward compatibility)
+    if not session_id:
+        session_id = str(uuid.uuid4())
+        print(f"ℹ️  Generated fallback session_id: {session_id}")
+    
+    if _app_context:
+        from models import OTAUpdateLog, db
+        
+        with _app_context.app_context():
+            # Create OTA log entry
+            log = OTAUpdateLog(
+                session_id=session_id,
+                device_id=device_id,
+                platform=platform,
+                old_version=old_version,
+                new_version=new_version,
+                status='started'
+            )
+            db.session.add(log)
+            db.session.commit()
+            
+            print(f"📝 OTA update started: {device_id} ({old_version} → {new_version}) [session: {session_id}]")
+
+def handle_ota_progress(client, payload):
+    """Handle OTA download progress updates from device"""
+    session_id = payload.get('session_id')
+    device_id = payload.get('device_id')
+    progress = payload.get('progress', 0)
+    
+    if _app_context:
+        from models import OTAUpdateLog, db
+        
+        with _app_context.app_context():
+            log = None
+            
+            # Try to find by session_id first
+            if session_id:
+                log = OTAUpdateLog.query.filter_by(session_id=session_id).first()
+            
+            # Fallback: find most recent in-progress update for this device
+            if not log and device_id:
+                log = OTAUpdateLog.query.filter(
+                    OTAUpdateLog.device_id == device_id,
+                    OTAUpdateLog.status.in_(['started', 'downloading'])
+                ).order_by(OTAUpdateLog.started_at.desc()).first()
+                
+                if log:
+                    print(f"ℹ️  Matched progress to recent OTA session for {device_id}")
+            
+            if log:
+                log.download_progress = progress
+                log.status = 'downloading'
+                db.session.commit()
+                print(f"📊 OTA progress: {log.device_id} - {progress}%")
+            else:
+                print(f"⚠ No OTA log found for device: {device_id}")
+
+def handle_ota_complete(client, payload):
+    """Handle OTA update completion (success or failure) from device"""
+    session_id = payload.get('session_id')
+    device_id = payload.get('device_id')
+    success = payload.get('success', False)
+    error_message = payload.get('error_message')
+    
+    if _app_context:
+        from models import OTAUpdateLog, db
+        
+        with _app_context.app_context():
+            log = None
+            
+            # Try to find by session_id first
+            if session_id:
+                log = OTAUpdateLog.query.filter_by(session_id=session_id).first()
+            
+            # Fallback: find most recent in-progress update for this device
+            if not log and device_id:
+                log = OTAUpdateLog.query.filter(
+                    OTAUpdateLog.device_id == device_id,
+                    OTAUpdateLog.status.in_(['started', 'downloading'])
+                ).order_by(OTAUpdateLog.started_at.desc()).first()
+                
+                if log:
+                    print(f"ℹ️  Matched completion to recent OTA session for {device_id}")
+            
+            if log:
+                log.status = 'success' if success else 'failed'
+                log.completed_at = datetime.now(timezone.utc)
+                log.download_progress = 100 if success else log.download_progress
+                
+                if error_message:
+                    log.error_message = error_message
+                
+                db.session.commit()
+                
+                status_emoji = "✅" if success else "❌"
+                print(f"{status_emoji} OTA update {log.status}: {log.device_id} ({log.old_version} → {log.new_version})")
+            else:
+                print(f"⚠ No OTA log found for device: {device_id}")
 
 def on_message(client, userdata, msg):
     try:
@@ -144,6 +272,12 @@ def on_message(client, userdata, msg):
             handle_heartbeat(client, payload)
         elif msg.topic == MQTT_TOPIC_VERSION_REQUEST:
             handle_version_request(client, payload)
+        elif msg.topic == MQTT_TOPIC_OTA_START:
+            handle_ota_start(client, payload)
+        elif msg.topic == MQTT_TOPIC_OTA_PROGRESS:
+            handle_ota_progress(client, payload)
+        elif msg.topic == MQTT_TOPIC_OTA_COMPLETE:
+            handle_ota_complete(client, payload)
     
     except json.JSONDecodeError as e:
         print(f"✗ Failed to parse MQTT message: {e}")

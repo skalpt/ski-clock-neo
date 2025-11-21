@@ -915,6 +915,93 @@ def delete_device(device_id):
         'message': f'Device {device_id} removed successfully'
     }), 200
 
+@app.route('/api/ota-logs')
+@login_required
+def ota_logs():
+    """Get OTA update logs with optional filters"""
+    from models import OTAUpdateLog
+    from sqlalchemy import desc
+    
+    # Get query parameters
+    device_id = request.args.get('device_id')
+    status = request.args.get('status')
+    limit = request.args.get('limit', type=int, default=100)
+    
+    # Build query
+    query = OTAUpdateLog.query
+    
+    if device_id:
+        query = query.filter_by(device_id=device_id)
+    if status:
+        query = query.filter_by(status=status)
+    
+    # Order by most recent first, apply limit
+    logs = query.order_by(desc(OTAUpdateLog.started_at)).limit(limit).all()
+    
+    return jsonify({
+        'logs': [log.to_dict() for log in logs],
+        'count': len(logs)
+    })
+
+@app.route('/api/ota-stats')
+@login_required
+def ota_stats():
+    """Get OTA update statistics"""
+    from models import OTAUpdateLog
+    from sqlalchemy import func
+    
+    # Total updates
+    total_updates = OTAUpdateLog.query.count()
+    
+    # Success/failure counts
+    success_count = OTAUpdateLog.query.filter_by(status='success').count()
+    failed_count = OTAUpdateLog.query.filter_by(status='failed').count()
+    in_progress_count = OTAUpdateLog.query.filter(
+        OTAUpdateLog.status.in_(['started', 'downloading'])
+    ).count()
+    
+    # Success rate
+    success_rate = (success_count / total_updates * 100) if total_updates > 0 else 0
+    
+    # Average update duration (only for completed updates)
+    completed_logs = OTAUpdateLog.query.filter(
+        OTAUpdateLog.completed_at.isnot(None)
+    ).all()
+    
+    if completed_logs:
+        durations = [
+            (log.completed_at - log.started_at).total_seconds()
+            for log in completed_logs
+        ]
+        avg_duration = sum(durations) / len(durations)
+    else:
+        avg_duration = 0
+    
+    # Recent updates (last 7 days)
+    from datetime import timedelta
+    seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    recent_updates = OTAUpdateLog.query.filter(
+        OTAUpdateLog.started_at >= seven_days_ago
+    ).count()
+    
+    # Failed devices (unique devices with failed updates in last 24 hours)
+    one_day_ago = datetime.now(timezone.utc) - timedelta(days=1)
+    failed_devices = OTAUpdateLog.query.filter(
+        OTAUpdateLog.status == 'failed',
+        OTAUpdateLog.started_at >= one_day_ago
+    ).with_entities(OTAUpdateLog.device_id).distinct().count()
+    
+    return jsonify({
+        'total_updates': total_updates,
+        'success_count': success_count,
+        'failed_count': failed_count,
+        'in_progress_count': in_progress_count,
+        'success_rate': round(success_rate, 1),
+        'avg_duration_seconds': round(avg_duration, 1),
+        'recent_updates_7days': recent_updates,
+        'failed_devices_24h': failed_devices
+    })
+
 if __name__ == '__main__':
     # Development mode - debug enabled
     # Production deployments use gunicorn instead

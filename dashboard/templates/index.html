@@ -168,6 +168,33 @@
         .refresh-btn:hover {
             transform: translateY(-2px);
         }
+        .ota-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .ota-stat-card {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .ota-stat-card .value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+        .ota-stat-card .label {
+            font-size: 0.85rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .ota-stat-card.success .value { color: #10b981; }
+        .ota-stat-card.failed .value { color: #ef4444; }
+        .ota-stat-card.in-progress .value { color: #f59e0b; }
         .firmware-table {
             width: 100%;
             border-collapse: collapse;
@@ -241,6 +268,15 @@
         </div>
 
         <div class="card">
+            <h2>📊 OTA Update Statistics</h2>
+            <div id="ota-stats-container">
+                <div class="empty-state">
+                    <p>Loading OTA statistics...</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
             <h2>📡 Live Devices</h2>
             <div id="stats-container"></div>
             <div id="devices-container">
@@ -283,6 +319,59 @@
         function isIPv4(ip) {
             // Simple check: IPv4 has dots, IPv6 has colons
             return ip && !ip.includes(':');
+        }
+
+        async function loadOTAStats() {
+            try {
+                const response = await fetch('/api/ota-stats');
+                const data = await response.json();
+                
+                const container = document.getElementById('ota-stats-container');
+                container.innerHTML = `
+                    <div class="ota-stats-grid">
+                        <div class="ota-stat-card">
+                            <div class="label">Total Updates</div>
+                            <div class="value">${data.total_updates}</div>
+                        </div>
+                        <div class="ota-stat-card success">
+                            <div class="label">Successful</div>
+                            <div class="value">${data.success_count}</div>
+                        </div>
+                        <div class="ota-stat-card failed">
+                            <div class="label">Failed</div>
+                            <div class="value">${data.failed_count}</div>
+                        </div>
+                        <div class="ota-stat-card in-progress">
+                            <div class="label">In Progress</div>
+                            <div class="value">${data.in_progress_count}</div>
+                        </div>
+                        <div class="ota-stat-card">
+                            <div class="label">Success Rate</div>
+                            <div class="value">${data.success_rate}%</div>
+                        </div>
+                        <div class="ota-stat-card">
+                            <div class="label">Avg Duration</div>
+                            <div class="value">${data.avg_duration_seconds}s</div>
+                        </div>
+                        <div class="ota-stat-card">
+                            <div class="label">Last 7 Days</div>
+                            <div class="value">${data.recent_updates_7days}</div>
+                        </div>
+                        <div class="ota-stat-card failed">
+                            <div class="label">Failed (24h)</div>
+                            <div class="value">${data.failed_devices_24h}</div>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Failed to load OTA stats:', error);
+                const container = document.getElementById('ota-stats-container');
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <p>No OTA update data available yet</p>
+                    </div>
+                `;
+            }
         }
 
         async function loadDevices() {
@@ -488,11 +577,15 @@
         });
 
         // Initial load
+        loadOTAStats();
         loadDevices();
         loadFirmware();
 
         // Update live timestamps every second for smooth counting
         setInterval(updateLiveTimestamps, 1000);
+        
+        // Refresh OTA stats every 30 seconds
+        setInterval(loadOTAStats, 30000);
 
         // Refresh data from server every 10 seconds
         setInterval(loadDevices, 10000);
