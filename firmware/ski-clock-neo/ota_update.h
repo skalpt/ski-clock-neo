@@ -16,11 +16,7 @@
 #endif
 
 #include <WiFiClientSecure.h>
-#include <Ticker.h>
 #include "debug.h"
-
-// OTA Ticker (software-driven for non-blocking operation)
-Ticker otaTicker;
 
 // Update server configuration
 // These MUST be injected at build time from GitHub Actions
@@ -39,20 +35,8 @@ Ticker otaTicker;
   #error "FIRMWARE_VERSION must be defined at compile time via -DFIRMWARE_VERSION=\"...\""
 #endif
 
-// OTA update check interval (default: 1 hour)
-#ifndef OTA_CHECK_INTERVAL_MS
-  #define OTA_CHECK_INTERVAL_MS 3600000  // 1 hour in milliseconds
-#endif
-
 // Global state
-unsigned long lastOTACheckMs = 0;
-unsigned long lastOTAAttemptMs = 0;
 bool otaUpdateInProgress = false;
-
-// Retry interval for failed checks (5 minutes)
-#ifndef OTA_RETRY_INTERVAL_MS
-  #define OTA_RETRY_INTERVAL_MS 300000  // 5 minutes in milliseconds
-#endif
 
 // Get the platform identifier for this device
 // This must match the platform names used in GitHub Actions workflow

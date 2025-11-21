@@ -14,6 +14,7 @@
 #include <PubSubClient.h>
 #include <Ticker.h>
 #include "debug.h"
+#include "ota_update.h"  // For triggerOTAUpdate
 
 // MQTT broker configuration (injected at build time)
 #ifndef MQTT_HOST
@@ -33,6 +34,8 @@ const uint16_t MQTT_PORT = 8883;  // TLS port for HiveMQ Cloud
 // MQTT topics
 #define MQTT_TOPIC_HEARTBEAT "skiclock/heartbeat"
 #define MQTT_TOPIC_VERSION_UPDATES "skiclock/version/updates"
+#define MQTT_TOPIC_VERSION_REQUEST "skiclock/version/request"
+#define MQTT_TOPIC_VERSION_RESPONSE "skiclock/version/response"
 
 // MQTT client objects
 WiFiClientSecure wifiSecureClient;
@@ -42,6 +45,10 @@ PubSubClient mqttClient(wifiSecureClient);
 const unsigned long HEARTBEAT_INTERVAL = 60000;  // 60 seconds
 Ticker heartbeatTicker;  // Software ticker for heartbeat updates
 bool mqttIsConnected = false;  // Track MQTT connection state
+
+// Version request timing
+const unsigned long VERSION_REQUEST_INTERVAL = 3600000;  // 1 hour in milliseconds
+Ticker versionRequestTicker;  // Software ticker for version requests
 
 // Get unique device ID
 String getDeviceID() {
@@ -76,6 +83,7 @@ String getBoardType() {
 bool connectMQTT();
 void disconnectMQTT();
 void publishHeartbeat();
+void publishVersionRequest();
 
 // MQTT message callback for incoming messages
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
@@ -91,10 +99,38 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   DEBUG_PRINT("Message: ");
   DEBUG_PRINTLN(message);
   
-  // Handle version update notifications
+  // Handle version update broadcast notifications
   if (strcmp(topic, MQTT_TOPIC_VERSION_UPDATES) == 0) {
-    DEBUG_PRINTLN("Version update notification received!");
-    // Trigger immediate OTA check (will be handled by main loop)
+    DEBUG_PRINTLN("Version update broadcast received!");
+    // Publish version request to get latest version info
+    publishVersionRequest();
+  }
+  
+  // Handle device-specific version responses
+  String versionResponseTopic = String(MQTT_TOPIC_VERSION_RESPONSE) + "/" + getDeviceID();
+  if (strcmp(topic, versionResponseTopic.c_str()) == 0) {
+    DEBUG_PRINTLN("Version response received!");
+    
+    // Simple JSON parsing to extract update_available and latest_version
+    if (message.indexOf("\"update_available\":true") > 0) {
+      int versionIndex = message.indexOf("\"latest_version\"");
+      if (versionIndex > 0) {
+        int colonIndex = message.indexOf(":", versionIndex);
+        int quoteStart = message.indexOf("\"", colonIndex + 1);
+        int quoteEnd = message.indexOf("\"", quoteStart + 1);
+        
+        if (quoteStart > 0 && quoteEnd > quoteStart) {
+          String latestVersion = message.substring(quoteStart + 1, quoteEnd);
+          DEBUG_PRINT("New version available: ");
+          DEBUG_PRINTLN(latestVersion);
+          
+          // Trigger OTA update
+          triggerOTAUpdate(latestVersion);
+        }
+      }
+    } else {
+      DEBUG_PRINTLN("Firmware is up to date");
+    }
   }
 }
 
@@ -181,13 +217,27 @@ bool connectMQTT() {
     heartbeatTicker.attach_ms(HEARTBEAT_INTERVAL, publishHeartbeat);
     publishHeartbeat();  // Publish initial heartbeat immediately
 
-    // Subscribe to version update topic
+    // Subscribe to version update broadcast topic
     if (mqttClient.subscribe(MQTT_TOPIC_VERSION_UPDATES)) {
       DEBUG_PRINT("Subscribed to topic: ");
       DEBUG_PRINTLN(MQTT_TOPIC_VERSION_UPDATES);
     } else {
       DEBUG_PRINTLN("Failed to subscribe to version updates topic");
     }
+    
+    // Subscribe to device-specific version response topic
+    String versionResponseTopic = String(MQTT_TOPIC_VERSION_RESPONSE) + "/" + getDeviceID();
+    if (mqttClient.subscribe(versionResponseTopic.c_str())) {
+      DEBUG_PRINT("Subscribed to topic: ");
+      DEBUG_PRINTLN(versionResponseTopic);
+    } else {
+      DEBUG_PRINTLN("Failed to subscribe to version response topic");
+    }
+    
+    // Start version request ticker only if not already running
+    versionRequestTicker.detach();  // Detach first to prevent duplicates
+    versionRequestTicker.attach_ms(VERSION_REQUEST_INTERVAL, publishVersionRequest);
+    publishVersionRequest();  // Publish initial version request immediately in case a new version was released while we were offline
     
     return true;
   } else {
@@ -226,11 +276,35 @@ void publishHeartbeat() {
   }
 }
 
-// Disconnect from MQTT broker and stop heartbeat
+// Publish version request message
+void publishVersionRequest() {
+  if (!mqttClient.connected()) {
+    return;
+  }
+  
+  // Build JSON version request payload
+  char payload[256];
+  snprintf(payload, sizeof(payload),
+    "{\"device_id\":\"%s\",\"platform\":\"%s\",\"current_version\":\"%s\"}",
+    getDeviceID().c_str(),
+    getPlatform().c_str(),
+    FIRMWARE_VERSION
+  );
+  
+  if (mqttClient.publish(MQTT_TOPIC_VERSION_REQUEST, payload)) {
+    DEBUG_PRINT("Version request published: ");
+    DEBUG_PRINTLN(payload);
+  } else {
+    DEBUG_PRINTLN("Failed to publish version request");
+  }
+}
+
+// Disconnect from MQTT broker and stop tickers
 void disconnectMQTT() {
   if (mqttIsConnected) {
     DEBUG_PRINTLN("Disconnecting from MQTT broker...");
     heartbeatTicker.detach();  // Stop heartbeat ticker
+    versionRequestTicker.detach();  // Stop version request ticker
     mqttClient.disconnect();   // Clean disconnect
     mqttIsConnected = false;
   }
