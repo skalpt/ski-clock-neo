@@ -205,8 +205,8 @@
                 <thead>
                     <tr>
                         <th>Platform</th>
+                        <th>Filename</th>
                         <th>Version</th>
-                        <th>Checksum</th>
                     </tr>
                 </thead>
                 <tbody id="firmware-body">
@@ -314,8 +314,8 @@
                     .map(([platform, fw]) => `
                         <tr>
                             <td><strong>${platform.toUpperCase()}</strong></td>
+                            <td><a href="${fw.download_url}" style="color: #667eea; text-decoration: none;">${fw.filename || 'Unknown'}</a></td>
                             <td>${fw.version || 'Unknown'}</td>
-                            <td><code style="font-size: 0.8rem;">${fw.checksum ? fw.checksum.substring(0, 16) + '...' : 'N/A'}</code></td>
                         </tr>
                     `).join('');
 
