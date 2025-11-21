@@ -22,9 +22,11 @@ MQTT_TOPIC_VERSION_RESPONSE = "skiclock/version/response"
 MQTT_TOPIC_OTA_START = "skiclock/ota/start"
 MQTT_TOPIC_OTA_PROGRESS = "skiclock/ota/progress"
 MQTT_TOPIC_OTA_COMPLETE = "skiclock/ota/complete"
+MQTT_TOPIC_COMMAND = "skiclock/command"
 
 # Store Flask app instance for database access
 _app_context = None
+_mqtt_client = None
 
 def set_app_context(app):
     """Set Flask app context for database operations"""
@@ -290,7 +292,46 @@ def on_disconnect(client, userdata, rc, properties=None):
     else:
         print("✓ Disconnected from MQTT broker")
 
+def publish_command(device_id: str, command: str, **kwargs) -> bool:
+    """
+    Publish a command to a specific device via MQTT.
+    
+    Args:
+        device_id: Target device ID
+        command: Command type (e.g., 'rollback', 'restart', 'update')
+        **kwargs: Additional command parameters
+    
+    Returns:
+        True if published successfully, False otherwise
+    """
+    global _mqtt_client
+    
+    if not _mqtt_client:
+        print(f"✗ Cannot publish command: MQTT client not connected")
+        return False
+    
+    topic = f"{MQTT_TOPIC_COMMAND}/{device_id}"
+    payload = {
+        'command': command,
+        'timestamp': datetime.now(timezone.utc).isoformat(),
+        **kwargs
+    }
+    
+    try:
+        result = _mqtt_client.publish(topic, json.dumps(payload), qos=1)
+        if result.rc == mqtt.MQTT_ERR_SUCCESS:
+            print(f"✓ Published command '{command}' to {device_id}")
+            return True
+        else:
+            print(f"✗ Failed to publish command to {device_id}: error code {result.rc}")
+            return False
+    except Exception as e:
+        print(f"✗ Error publishing command: {e}")
+        return False
+
 def start_mqtt_subscriber():
+    global _mqtt_client
+    
     if not MQTT_HOST or not MQTT_USERNAME or not MQTT_PASSWORD:
         print("⚠ MQTT credentials not configured, device monitoring disabled")
         return None
@@ -319,6 +360,7 @@ def start_mqtt_subscriber():
     try:
         client.connect(MQTT_HOST, MQTT_PORT, keepalive=60)
         client.loop_start()
+        _mqtt_client = client  # Store global reference
         print("✓ MQTT subscriber started in background thread")
         return client
     except Exception as e:

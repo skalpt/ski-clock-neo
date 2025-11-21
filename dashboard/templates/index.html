@@ -97,19 +97,43 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
         }
-        .delete-btn {
-            background: rgba(239, 68, 68, 0.8);
-            color: white;
+        .device-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+        .device-btn {
+            flex: 1;
+            min-width: 90px;
             border: none;
             padding: 6px 12px;
             border-radius: 6px;
             font-size: 0.75rem;
             cursor: pointer;
-            margin-top: 10px;
-            transition: background 0.2s;
+            transition: all 0.2s;
+            font-weight: bold;
+        }
+        .delete-btn {
+            background: rgba(239, 68, 68, 0.8);
+            color: white;
         }
         .delete-btn:hover {
             background: rgba(239, 68, 68, 1);
+        }
+        .rollback-btn {
+            background: rgba(249, 115, 22, 0.8);
+            color: white;
+        }
+        .rollback-btn:hover {
+            background: rgba(249, 115, 22, 1);
+        }
+        .restart-btn {
+            background: rgba(59, 130, 246, 0.8);
+            color: white;
+        }
+        .restart-btn:hover {
+            background: rgba(59, 130, 246, 1);
         }
         .stats-bar {
             display: flex;
@@ -494,20 +518,36 @@
                             <div><strong>First Seen:</strong> ${new Date(device.first_seen).toLocaleString()}</div>
                         </div>
                         ${otaHtml}
-                        <button class="delete-btn" data-device-id="${safeDeviceId}">
-                            🗑️ Remove Device
-                        </button>
+                        <div class="device-actions">
+                            <button class="device-btn rollback-btn" data-device-id="${safeDeviceId}" data-action="rollback">
+                                ⏮️ Rollback
+                            </button>
+                            <button class="device-btn restart-btn" data-device-id="${safeDeviceId}" data-action="restart">
+                                🔄 Restart
+                            </button>
+                            <button class="device-btn delete-btn" data-device-id="${safeDeviceId}" data-action="delete">
+                                🗑️ Remove
+                            </button>
+                        </div>
                     </div>
                 `;
                 }).join('');
 
                 container.innerHTML = `<div class="devices-grid">${devicesHtml}</div>`;
                 
-                // Attach event listeners to delete buttons (safer than inline onclick)
-                document.querySelectorAll('.delete-btn').forEach(btn => {
+                // Attach event listeners to all device action buttons
+                document.querySelectorAll('.device-btn').forEach(btn => {
                     btn.addEventListener('click', () => {
                         const deviceId = btn.getAttribute('data-device-id');
-                        deleteDevice(deviceId);
+                        const action = btn.getAttribute('data-action');
+                        
+                        if (action === 'delete') {
+                            deleteDevice(deviceId);
+                        } else if (action === 'rollback') {
+                            rollbackDevice(deviceId);
+                        } else if (action === 'restart') {
+                            restartDevice(deviceId);
+                        }
                     });
                 });
             } catch (error) {
@@ -527,7 +567,7 @@
                 
                 if (response.ok) {
                     alert('Device removed successfully');
-                    loadDevices(); // Refresh the list
+                    loadDevices();
                 } else {
                     const error = await response.json();
                     alert(`Failed to remove device: ${error.error}`);
@@ -535,6 +575,54 @@
             } catch (error) {
                 console.error('Failed to delete device:', error);
                 alert('Failed to remove device');
+            }
+        }
+
+        async function rollbackDevice(deviceId) {
+            if (!confirm(`Send rollback command to ${deviceId}?\n\nThis will instruct the device to restore its previous firmware version.`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/devices/${deviceId}/rollback`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert(data.message || 'Rollback command sent successfully');
+                } else {
+                    alert(`Failed to send rollback command: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Failed to send rollback command:', error);
+                alert('Failed to send rollback command');
+            }
+        }
+
+        async function restartDevice(deviceId) {
+            if (!confirm(`Send restart command to ${deviceId}?\n\nThis will reboot the device.`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/devices/${deviceId}/restart`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert(data.message || 'Restart command sent successfully');
+                } else {
+                    alert(`Failed to send restart command: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Failed to send restart command:', error);
+                alert('Failed to send restart command');
             }
         }
 

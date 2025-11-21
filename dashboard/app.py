@@ -921,6 +921,68 @@ def delete_device(device_id):
         'message': f'Device {device_id} removed successfully'
     }), 200
 
+@app.route('/api/devices/<device_id>/rollback', methods=['POST'])
+@login_required
+def rollback_device(device_id):
+    """Send rollback command to a device via MQTT"""
+    from mqtt_subscriber import publish_command
+    
+    device = Device.query.filter_by(device_id=device_id).first()
+    if not device:
+        return jsonify({
+            'success': False,
+            'error': 'Device not found'
+        }), 404
+    
+    data = request.get_json() or {}
+    target_version = data.get('target_version')
+    
+    success = publish_command(
+        device_id=device_id,
+        command='rollback',
+        target_version=target_version
+    )
+    
+    if success:
+        return jsonify({
+            'success': True,
+            'message': f'Rollback command sent to {device_id}'
+        }), 200
+    else:
+        return jsonify({
+            'success': False,
+            'error': 'Failed to send rollback command (MQTT not connected)'
+        }), 503
+
+@app.route('/api/devices/<device_id>/restart', methods=['POST'])
+@login_required
+def restart_device(device_id):
+    """Send restart command to a device via MQTT"""
+    from mqtt_subscriber import publish_command
+    
+    device = Device.query.filter_by(device_id=device_id).first()
+    if not device:
+        return jsonify({
+            'success': False,
+            'error': 'Device not found'
+        }), 404
+    
+    success = publish_command(
+        device_id=device_id,
+        command='restart'
+    )
+    
+    if success:
+        return jsonify({
+            'success': True,
+            'message': f'Restart command sent to {device_id}'
+        }), 200
+    else:
+        return jsonify({
+            'success': False,
+            'error': 'Failed to send restart command (MQTT not connected)'
+        }), 503
+
 @app.route('/api/ota-logs')
 @login_required
 def ota_logs():
@@ -934,7 +996,7 @@ def ota_logs():
     status = request.args.get('status')
     start_date = request.args.get('start_date')  # ISO 8601 format
     end_date = request.args.get('end_date')  # ISO 8601 format
-    limit = request.args.get('limit', type=int, default=100)
+    limit = request.args.get('limit', type=int, default=50)
     offset = request.args.get('offset', type=int, default=0)
     
     # Build query
