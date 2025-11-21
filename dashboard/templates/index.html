@@ -344,26 +344,37 @@
                         let flashButtons;
                         
                         if (supportsFullFlash) {
-                            // Split button with dropdown for Quick/Full Flash
+                            // Mode-switcher button with dropdown for Quick/Full Flash
                             flashButtons = `
-                                <div class="split-button-group">
-                                    <esp-web-install-button manifest="/firmware/manifest/${platform}.json?mode=quick">
-                                        <button slot="activate" class="flash-btn flash-btn-main">⚡ Quick Flash</button>
+                                <div class="split-button-group" data-platform="${platform}">
+                                    <esp-web-install-button id="flash-installer-${platform}" manifest="/firmware/manifest/${platform}.json?mode=quick">
+                                        <button slot="activate" class="flash-btn flash-btn-main" id="flash-btn-${platform}">
+                                            <span class="flash-btn-icon">⚡</span>
+                                            <span class="flash-btn-text">Quick Flash</span>
+                                        </button>
                                     </esp-web-install-button>
                                     <button class="flash-btn flash-btn-dropdown" onclick="toggleFlashDropdown(event, '${platform}')" title="Flash options">▼</button>
                                     <div class="flash-dropdown" id="flash-dropdown-${platform}">
-                                        <esp-web-install-button manifest="/firmware/manifest/${platform}.json?mode=full">
-                                            <button slot="activate" class="flash-dropdown-item">🔧 Full Flash (Recovery)</button>
-                                        </esp-web-install-button>
+                                        <button class="flash-dropdown-item" onclick="switchFlashMode('${platform}', 'full')" data-mode="full">
+                                            <span class="flash-btn-icon">🔧</span> Full Flash (Recovery)
+                                        </button>
+                                        <button class="flash-dropdown-item" onclick="switchFlashMode('${platform}', 'quick')" data-mode="quick" style="display: none;">
+                                            <span class="flash-btn-icon">⚡</span> Quick Flash
+                                        </button>
                                     </div>
                                 </div>
                             `;
                         } else {
-                            // Single Quick Flash button (no dropdown)
+                            // Single Quick Flash button (same width as split buttons)
                             flashButtons = `
-                                <esp-web-install-button manifest="/firmware/manifest/${platform}.json?mode=quick">
-                                    <button slot="activate" class="flash-btn">⚡ Quick Flash</button>
-                                </esp-web-install-button>
+                                <div class="split-button-group">
+                                    <esp-web-install-button manifest="/firmware/manifest/${platform}.json?mode=quick">
+                                        <button slot="activate" class="flash-btn flash-btn-main flash-btn-single">
+                                            <span class="flash-btn-icon">⚡</span>
+                                            <span class="flash-btn-text">Quick Flash</span>
+                                        </button>
+                                    </esp-web-install-button>
+                                </div>
                             `;
                         }
                         
@@ -457,6 +468,38 @@
         
         // Toggle this dropdown
         dropdown.classList.toggle('show');
+    }
+
+    function switchFlashMode(platform, newMode) {
+        // Get the installer element and button
+        const installer = document.getElementById(`flash-installer-${platform}`);
+        const button = document.getElementById(`flash-btn-${platform}`);
+        const dropdown = document.getElementById(`flash-dropdown-${platform}`);
+        
+        // Update manifest URL
+        installer.setAttribute('manifest', `/firmware/manifest/${platform}.json?mode=${newMode}`);
+        
+        // Update button text and icon based on mode
+        const iconSpan = button.querySelector('.flash-btn-icon');
+        const textSpan = button.querySelector('.flash-btn-text');
+        
+        if (newMode === 'full') {
+            iconSpan.textContent = '🔧';
+            textSpan.textContent = 'Full Flash';
+        } else {
+            iconSpan.textContent = '⚡';
+            textSpan.textContent = 'Quick Flash';
+        }
+        
+        // Toggle dropdown items visibility (show opposite mode)
+        const dropdownItems = dropdown.querySelectorAll('.flash-dropdown-item');
+        dropdownItems.forEach(item => {
+            const itemMode = item.getAttribute('data-mode');
+            item.style.display = itemMode === newMode ? 'none' : 'block';
+        });
+        
+        // Close the dropdown
+        dropdown.classList.remove('show');
     }
 
     // Close dropdowns when clicking outside

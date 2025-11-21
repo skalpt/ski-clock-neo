@@ -608,14 +608,37 @@ h2 {
 .split-button-group {
     display: inline-flex;
     position: relative;
+    width: 160px; /* Fixed width for consistency */
 }
 
 .flash-btn-main {
+    flex: 1;
+    min-width: 0;
     border-radius: 6px 0 0 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.flash-btn-main.flash-btn-single {
+    border-radius: 6px; /* Full rounded corners for single button */
+    width: 100%;
+}
+
+.flash-btn-icon {
+    flex-shrink: 0;
+}
+
+.flash-btn-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .flash-btn-dropdown {
     width: 32px;
+    flex-shrink: 0;
     padding: 8px 6px;
     border-radius: 0 6px 6px 0;
     border-left: 1px solid rgba(255, 255, 255, 0.3);
@@ -630,7 +653,7 @@ h2 {
     background: white;
     border-radius: 6px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    min-width: 180px;
+    min-width: 200px;
     z-index: 1000;
     opacity: 0;
     visibility: hidden;
@@ -642,10 +665,6 @@ h2 {
     opacity: 1;
     visibility: visible;
     transform: translateY(0);
-}
-
-.flash-dropdown esp-web-install-button {
-    display: block;
 }
 
 .flash-dropdown-item {
@@ -660,9 +679,16 @@ h2 {
     font-weight: 600;
     font-size: 0.9rem;
     border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .flash-dropdown-item:hover {
     background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.1) 100%);
     color: #f59e0b;
+}
+
+.flash-dropdown-item .flash-btn-icon {
+    font-size: 1.1em;
 }
