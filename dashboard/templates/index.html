@@ -219,6 +219,20 @@
     </div>
 
     <script>
+        // HTML escape function to prevent XSS attacks
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Check if IP address is IPv4 (for clickable links)
+        function isIPv4(ip) {
+            // Simple check: IPv4 has dots, IPv6 has colons
+            return ip && !ip.includes(':');
+        }
+
         async function loadDevices() {
             try {
                 const response = await fetch('/api/devices');
@@ -248,33 +262,50 @@
                     </div>
                 `;
 
-                const devicesHtml = data.devices.map(device => `
+                const devicesHtml = data.devices.map(device => {
+                    // Escape all user-supplied data to prevent XSS
+                    const safeDeviceId = escapeHtml(device.device_id);
+                    const safeBoard = escapeHtml(device.board);
+                    const safeVersion = escapeHtml(device.version);
+                    const safeSsid = escapeHtml(device.ssid);
+                    const safeIpAddress = escapeHtml(device.ip_address);
+                    
+                    return `
                     <div class="device-card ${device.online ? '' : 'offline'}">
                         <div class="device-header">
                             <div>
                                 <span class="status ${device.online ? '' : 'offline'}"></span>
-                                ${device.device_id}
+                                ${safeDeviceId}
                             </div>
-                            <span class="badge">${device.board}</span>
+                            <span class="badge">${safeBoard}</span>
                         </div>
                         <div class="device-info">
                             <div><strong>Status:</strong> ${device.online ? 'Online' : 'Offline'}</div>
-                            <div><strong>Version:</strong> ${device.version}</div>
+                            <div><strong>Version:</strong> ${safeVersion}</div>
                             <div><strong>Uptime:</strong> ${formatUptime(device.uptime)}</div>
-                            ${device.ssid ? `<div><strong>WiFi Network:</strong> ${device.ssid}</div>` : ''}
-                            ${device.ip_address ? `<div><strong>IP Address:</strong> ${device.ip_address}</div>` : ''}
+                            ${device.ssid ? `<div><strong>WiFi Network:</strong> ${safeSsid}</div>` : ''}
+                            ${device.ip_address ? `<div><strong>IP Address:</strong> ${device.online && isIPv4(device.ip_address) ? `<a href="http://${encodeURIComponent(device.ip_address)}/" target="_blank" rel="noopener noreferrer" style="color: #667eea; text-decoration: none; border-bottom: 1px dotted #667eea;" title="Open AutoConnect page (only works if you're on the same network)">${safeIpAddress}</a>` : safeIpAddress}</div>` : ''}
                             <div><strong>WiFi Signal:</strong> ${getSignalStrengthIcon(device.rssi)}${device.rssi} dBm</div>
                             <div><strong>Free Memory:</strong> ${(device.free_heap / 1024).toFixed(1)} KB</div>
-                            <div><strong>Last Seen:</strong> <span class="live-timestamp" data-timestamp="${device.last_seen}">${formatTimestamp(device.last_seen)}</span></div>
+                            <div><strong>Last Seen:</strong> <span class="live-timestamp" data-timestamp="${escapeHtml(device.last_seen)}">${formatTimestamp(device.last_seen)}</span></div>
                             <div><strong>First Seen:</strong> ${new Date(device.first_seen).toLocaleString()}</div>
                         </div>
-                        <button class="delete-btn" onclick="deleteDevice('${device.device_id}')">
+                        <button class="delete-btn" data-device-id="${safeDeviceId}">
                             🗑️ Remove Device
                         </button>
                     </div>
-                `).join('');
+                `;
+                }).join('');
 
                 container.innerHTML = `<div class="devices-grid">${devicesHtml}</div>`;
+                
+                // Attach event listeners to delete buttons (safer than inline onclick)
+                document.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const deviceId = btn.getAttribute('data-device-id');
+                        deleteDevice(deviceId);
+                    });
+                });
             } catch (error) {
                 console.error('Failed to load devices:', error);
             }

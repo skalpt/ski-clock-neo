@@ -4,6 +4,7 @@ import os
 import ssl
 import threading
 import uuid
+import ipaddress
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, TYPE_CHECKING
 
@@ -24,6 +25,25 @@ def set_app_context(app):
     """Set Flask app context for database operations"""
     global _app_context
     _app_context = app
+
+def validate_ip_address(ip: str) -> Optional[str]:
+    """
+    Validate and sanitize IP address to prevent XSS attacks.
+    Returns the IP address if valid (IPv4 or IPv6), None otherwise.
+    Uses Python's built-in ipaddress module for robust validation.
+    """
+    if not ip or not isinstance(ip, str):
+        return None
+    
+    try:
+        # Attempt to parse as IPv4 or IPv6
+        # This properly handles compressed IPv6 (e.g., 2001:db8::1)
+        ip_obj = ipaddress.ip_address(ip.strip())
+        # Return the normalized string representation
+        return str(ip_obj)
+    except ValueError:
+        # Invalid IP address
+        return None
 
 def on_connect(client, userdata, flags, rc, properties=None):
     if rc == 0:
@@ -54,7 +74,8 @@ def on_message(client, userdata, msg):
                     device.last_rssi = payload.get('rssi', 0)
                     device.last_free_heap = payload.get('free_heap', 0)
                     device.ssid = payload.get('ssid')
-                    device.ip_address = payload.get('ip')
+                    # Validate IP address to prevent XSS attacks
+                    device.ip_address = validate_ip_address(payload.get('ip'))
                 else:
                     # Create new device
                     device = Device(
@@ -65,7 +86,8 @@ def on_message(client, userdata, msg):
                         last_rssi=payload.get('rssi', 0),
                         last_free_heap=payload.get('free_heap', 0),
                         ssid=payload.get('ssid'),
-                        ip_address=payload.get('ip')
+                        # Validate IP address to prevent XSS attacks
+                        ip_address=validate_ip_address(payload.get('ip'))
                     )
                     db.session.add(device)
                     print(f"✨ New device registered: {device_id} ({payload.get('board')})")
