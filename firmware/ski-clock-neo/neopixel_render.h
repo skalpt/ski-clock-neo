@@ -23,6 +23,7 @@ const uint8_t ROW_PINS[NEOPIXEL_ROWS] = {4, 3};  // Row 1: GPIO4, Row 2: GPIO3
 #define UPDATE_INTERVAL_MS 200          // 0.2 second refresh rate
 
 // ==================== NOW INCLUDE DEPENDENCIES ====================
+#include <new>                // For placement-new operator
 #include <Adafruit_NeoPixel.h>
 #include "font_5x7.h"
 #include <Ticker.h>
@@ -34,10 +35,11 @@ void drawTextCentered(Adafruit_NeoPixel &strip, const char *text, uint8_t y0, ui
 
 // ----------------- Declare display rows ------------------
 const uint16_t NUM_LEDS_PER_ROW = (uint16_t)ROW_WIDTH * ROW_HEIGHT;
-Adafruit_NeoPixel rows[NEOPIXEL_ROWS] = {
-  Adafruit_NeoPixel(NUM_LEDS_PER_ROW, ROW_PINS[0], NEO_GRB + NEO_KHZ800),
-  Adafruit_NeoPixel(NUM_LEDS_PER_ROW, ROW_PINS[1], NEO_GRB + NEO_KHZ800)
-};
+
+// Static storage buffer for NeoPixel objects (no heap allocation)
+// We'll use placement-new to construct them in setup()
+alignas(Adafruit_NeoPixel) uint8_t rowsStorage[NEOPIXEL_ROWS * sizeof(Adafruit_NeoPixel)];
+Adafruit_NeoPixel* rows = reinterpret_cast<Adafruit_NeoPixel*>(rowsStorage);
 
 // Internal rendering buffer (hardware-specific, sized exactly for our config)
 uint8_t neopixelRenderBuffer[DISPLAY_BUFFER_SIZE] = {0};
@@ -104,14 +106,21 @@ void setupNeoPixels() {
   // Initialize display library with actual hardware configuration
   initDisplayBuffer(NEOPIXEL_ROWS, PANELS_PER_ROW, PANEL_WIDTH, PANEL_HEIGHT);
   
-  // Initialize all NeoPixel rows
+  // Use placement-new to construct NeoPixel objects in loop (dynamic, no heap!)
   for (uint8_t i = 0; i < NEOPIXEL_ROWS; i++) {
+    // Construct Adafruit_NeoPixel at rows[i] using placement-new
+    new (&rows[i]) Adafruit_NeoPixel(NUM_LEDS_PER_ROW, ROW_PINS[i], NEO_GRB + NEO_KHZ800);
+    
+    // Initialize the hardware
     rows[i].begin();
     rows[i].setBrightness(BRIGHTNESS);
     rows[i].show();
+    
     DEBUG_PRINT("NeoPixel row ");
     DEBUG_PRINT(i + 1);
-    DEBUG_PRINTLN(" initialised.");
+    DEBUG_PRINT(" (GPIO ");
+    DEBUG_PRINT(ROW_PINS[i]);
+    DEBUG_PRINTLN(") initialised.");
   }
   
   #if defined(ESP32)
