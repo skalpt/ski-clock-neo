@@ -15,12 +15,8 @@
 // Calculate buffer size needed for this hardware configuration
 #define DISPLAY_BUFFER_SIZE ((NEOPIXEL_ROWS * ROW_WIDTH * ROW_HEIGHT) / 8)  // Bit-packed: (2 * 48 * 16) / 8 = 192 bytes
 
-// Pin definitions for each row
-#define PIN_MATRIX_ROW1 4         // WS2812 data for row 1
-#define PIN_MATRIX_ROW2 3         // WS2812 data for row 2
-
-// Pin array for dynamic row initialization
-const uint8_t ROW_PINS[NEOPIXEL_ROWS] = {PIN_MATRIX_ROW1, PIN_MATRIX_ROW2};
+// Pin array for row initialization (change pins here for all rows)
+const uint8_t ROW_PINS[NEOPIXEL_ROWS] = {4, 3};  // Row 1: GPIO4, Row 2: GPIO3
 
 // Display settings
 #define BRIGHTNESS 1                    // 0-255 (keeping dim for development)
@@ -39,8 +35,8 @@ void drawTextCentered(Adafruit_NeoPixel &strip, const char *text, uint8_t y0, ui
 // ----------------- Declare display rows ------------------
 const uint16_t NUM_LEDS_PER_ROW = (uint16_t)ROW_WIDTH * ROW_HEIGHT;
 Adafruit_NeoPixel rows[NEOPIXEL_ROWS] = {
-  Adafruit_NeoPixel(NUM_LEDS_PER_ROW, PIN_MATRIX_ROW1, NEO_GRB + NEO_KHZ800),
-  Adafruit_NeoPixel(NUM_LEDS_PER_ROW, PIN_MATRIX_ROW2, NEO_GRB + NEO_KHZ800)
+  Adafruit_NeoPixel(NUM_LEDS_PER_ROW, ROW_PINS[0], NEO_GRB + NEO_KHZ800),
+  Adafruit_NeoPixel(NUM_LEDS_PER_ROW, ROW_PINS[1], NEO_GRB + NEO_KHZ800)
 };
 
 // Internal rendering buffer (hardware-specific, sized exactly for our config)
