@@ -207,7 +207,28 @@
             background: white;
             color: #667eea;
         }
+        .flash-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-size: 0.9rem;
+        }
+        .flash-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .flash-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
     </style>
+    <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
 </head>
 <body>
     <div class="container">
@@ -237,6 +258,7 @@
                         <th>Platform</th>
                         <th>Filename</th>
                         <th>Version</th>
+                        <th>Flash to Device</th>
                     </tr>
                 </thead>
                 <tbody id="firmware-body">
