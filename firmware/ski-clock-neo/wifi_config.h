@@ -53,6 +53,7 @@ void setupWiFi() {
   config.psk = AP_PASSWORD;
   config.title = "⛷️ Ski Clock Setup";
   config.homeUri = "/";  // Default AutoConnect home page
+  config.bootUri = AC_ONBOOTURI_HOME;  // Redirect to homeUri on captive portal boot
   
   // KEY FEATURES for your requirements:
   
