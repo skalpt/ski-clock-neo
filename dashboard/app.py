@@ -141,22 +141,6 @@ def save_version_to_db(platform, version_info):
     db.session.commit()
     print(f"✓ Saved {platform} v{version_info['version']} to database")
 
-def generate_download_token(platform):
-    """Generate a signed token for public firmware downloads (24-hour expiration)
-    DEPRECATED: Use generate_user_download_token instead for user-scoped tokens
-    """
-    return token_serializer.dumps(platform, salt='firmware-download')
-
-def verify_download_token(token, max_age=86400):
-    """Verify a download token and return the platform name (default 24-hour expiration)
-    DEPRECATED: Use verify_user_download_token instead for user-scoped tokens
-    """
-    try:
-        platform = token_serializer.loads(token, salt='firmware-download', max_age=max_age)
-        return platform
-    except (BadSignature, SignatureExpired):
-        return None
-
 def generate_user_download_token(user_id, platform, max_age=3600):
     """Generate a user-scoped signed token for firmware downloads (default 1-hour expiration)
     
@@ -396,134 +380,11 @@ def api_index():
         'status': 'running',
         'supported_platforms': SUPPORTED_PLATFORMS,
         'endpoints': {
-            'version': '/api/version?platform=<platform>',
             'download': '/api/firmware/<platform>',
             'upload': '/api/upload (POST)',
             'status': '/api/status'
         }
     })
-
-@app.route('/api/version')
-def get_version():
-    platform = request.args.get('platform', '').lower()
-    original_platform = platform  # Save for download_url consistency
-    is_aliased = False
-    
-    if not platform:
-        return jsonify({
-            'error': 'Missing platform parameter',
-            'supported_platforms': SUPPORTED_PLATFORMS
-        }), 400
-    
-    # Apply platform firmware mapping for backward compatibility
-    if platform in PLATFORM_FIRMWARE_MAPPING:
-        actual_platform = PLATFORM_FIRMWARE_MAPPING[platform]
-        print(f"Platform firmware mapping: {platform} → {actual_platform}")
-        is_aliased = True
-        platform = actual_platform
-    
-    if platform not in SUPPORTED_PLATFORMS:
-        return jsonify({
-            'error': f'Invalid platform: {platform}',
-            'supported_platforms': SUPPORTED_PLATFORMS
-        }), 400
-    
-    version_info = LATEST_VERSIONS.get(platform)
-    
-    if not version_info:
-        return jsonify({'error': 'No firmware available for this platform'}), 404
-    
-    # Only modify download_url for aliased requests (backward compatibility)
-    if is_aliased:
-        response_info = version_info.copy()
-        response_info['download_url'] = f'/api/firmware/{original_platform}'
-        return jsonify(response_info)
-    
-    return jsonify(version_info)
-
-@app.route('/firmware/download/<token>')
-def public_download_firmware(token):
-    """Public firmware download endpoint using signed tokens (no API key required)"""
-    # Verify token and extract platform
-    platform = verify_download_token(token)
-    
-    if not platform:
-        return jsonify({'error': 'Invalid or expired download token'}), 401
-    
-    # Validate platform
-    if platform not in SUPPORTED_PLATFORMS:
-        return jsonify({'error': 'Invalid platform'}), 400
-    
-    version_info = LATEST_VERSIONS.get(platform)
-    
-    if not version_info:
-        return jsonify({'error': 'No firmware available'}), 404
-    
-    # Check where the firmware is stored
-    storage_location = version_info.get('storage', 'local')
-    
-    if storage_location == 'object_storage':
-        # Download from Object Storage
-        object_path = None
-        try:
-            storage = ObjectStorageService()
-            
-            # Use the full object_path if available
-            object_path = version_info.get('object_path')
-            if not object_path:
-                bucket_name = storage.get_bucket_name()
-                object_path = f"/{bucket_name}/{version_info.get('object_name', FIRMWARES_PREFIX + version_info['filename'])}"
-            
-            # Download as bytes and stream to client
-            firmware_data = storage.download_as_bytes(object_path)
-            
-            response = Response(
-                firmware_data,
-                mimetype='application/octet-stream',
-                headers={
-                    'Content-Disposition': f'attachment; filename="{version_info["filename"]}"',
-                    'Content-Length': str(len(firmware_data)),
-                    'Access-Control-Allow-Origin': '*',
-                    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-                    'Access-Control-Allow-Headers': 'Content-Type'
-                }
-            )
-            return response
-        except (ObjectStorageError, ObjectNotFoundError) as e:
-            error_msg = f"Error downloading from Object Storage"
-            if object_path:
-                error_msg += f" ({object_path})"
-            print(f"{error_msg}: {e}")
-            # Try local filesystem as fallback
-            firmware_path = FIRMWARES_DIR / version_info['filename']
-            if firmware_path.exists():
-                response = send_file(
-                    firmware_path,
-                    mimetype='application/octet-stream',
-                    as_attachment=True,
-                    download_name=version_info['filename']
-                )
-                response.headers['Access-Control-Allow-Origin'] = '*'
-                response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
-                response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-                return response
-            return jsonify({'error': 'Firmware file not found'}), 404
-    else:
-        # Serve from local filesystem
-        firmware_path = FIRMWARES_DIR / version_info['filename']
-        if not firmware_path.exists():
-            return jsonify({'error': 'Firmware file not found'}), 404
-        
-        response = send_file(
-            firmware_path,
-            mimetype='application/octet-stream',
-            as_attachment=True,
-            download_name=version_info['filename']
-        )
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-        return response
 
 @app.route('/firmware/manifest/<platform>.json')
 @login_required
