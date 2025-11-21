@@ -18,13 +18,11 @@
 #include <WiFiClientSecure.h>
 #include "debug.h"
 
-// Forward declare MQTT client and topic definitions (from mqtt_client.h)
+// Forward declare MQTT client (from mqtt_client.h)
 // This prevents circular dependency
+// Note: MQTT topic constants are defined as macros in mqtt_client.h
 #if defined(ESP32) || defined(ESP8266)
   extern PubSubClient mqttClient;
-  extern const char MQTT_TOPIC_OTA_START[];
-  extern const char MQTT_TOPIC_OTA_PROGRESS[];
-  extern const char MQTT_TOPIC_OTA_COMPLETE[];
   String getDeviceID();  // Forward declaration
   String getPlatform();  // Forward declaration (defined below)
 #endif
@@ -140,6 +138,10 @@ long parseVersion(String version) {
     return (long)major * 1000000 + (long)minor * 1000 + (long)patch;
   }
 }
+
+// Include MQTT client header to get topic macro definitions
+// This is placed here (after platform functions) to avoid circular dependency issues
+#include "mqtt_client.h"
 
 // Publish OTA start message to MQTT
 void publishOTAStart(String newVersion) {
