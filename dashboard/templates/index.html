@@ -34,7 +34,7 @@
                     <th>Platform</th>
                     <th>Filename</th>
                     <th>Version</th>
-                    <th>Flash to Device</th>
+                    <th class="flash-column">Flash to Device</th>
                 </tr>
             </thead>
             <tbody id="firmware-body">
@@ -383,7 +383,7 @@
                                 <td><strong>${platform.toUpperCase()}</strong></td>
                                 <td><a href="${downloadUrl}" style="color: #667eea; text-decoration: none;">${escapeHtml(fw.filename || 'Unknown')}</a></td>
                                 <td>${escapeHtml(fw.version || 'Unknown')}</td>
-                                <td>
+                                <td class="flash-column">
                                     ${flashButtons}
                                 </td>
                             </tr>
@@ -394,7 +394,7 @@
                                 <td><strong>${platform.toUpperCase()}</strong></td>
                                 <td>${escapeHtml(fw.filename || 'Unknown')}</td>
                                 <td>${escapeHtml(fw.version || 'Unknown')}</td>
-                                <td><span style="color: #999;">No Permission</span></td>
+                                <td class="flash-column"><span style="color: #999;">No Permission</span></td>
                             </tr>
                         `;
                     }
@@ -475,6 +475,8 @@
         const installer = document.getElementById(`flash-installer-${platform}`);
         const button = document.getElementById(`flash-btn-${platform}`);
         const dropdown = document.getElementById(`flash-dropdown-${platform}`);
+        const group = button.closest('.split-button-group');
+        const dropdownBtn = group.querySelector('.flash-btn-dropdown');
         
         // Update manifest URL
         installer.setAttribute('manifest', `/firmware/manifest/${platform}.json?mode=${newMode}`);
@@ -486,9 +488,13 @@
         if (newMode === 'full') {
             iconSpan.textContent = '🔧';
             textSpan.textContent = 'Full Flash';
+            button.classList.add('full-flash-mode');
+            dropdownBtn.classList.add('full-flash-mode');
         } else {
             iconSpan.textContent = '⚡';
             textSpan.textContent = 'Quick Flash';
+            button.classList.remove('full-flash-mode');
+            dropdownBtn.classList.remove('full-flash-mode');
         }
         
         // Toggle dropdown items visibility (show opposite mode)
@@ -519,7 +525,17 @@
         }
     });
 
+    // Check for Web Serial API support and hide flash column if not available
+    function checkWebSerialSupport() {
+        if (!('serial' in navigator)) {
+            // Add persistent class to body that hides flash column via CSS
+            document.body.classList.add('no-web-serial');
+            console.log('Web Serial API not supported - Flash to Device column hidden');
+        }
+    }
+
     // Initial load
+    checkWebSerialSupport();
     loadOTAStats();
     loadDevices();
     loadFirmware();
