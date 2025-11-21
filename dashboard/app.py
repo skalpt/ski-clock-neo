@@ -1451,6 +1451,35 @@ def restart_device(device_id):
             'error': 'Failed to send restart command (MQTT not connected)'
         }), 503
 
+@app.route('/api/devices/<device_id>/snapshot', methods=['POST'])
+@login_required
+def request_snapshot(device_id):
+    """Send snapshot command to a device via MQTT"""
+    from mqtt_subscriber import publish_command
+    
+    device = Device.query.filter_by(device_id=device_id).first()
+    if not device:
+        return jsonify({
+            'success': False,
+            'error': 'Device not found'
+        }), 404
+    
+    success = publish_command(
+        device_id=device_id,
+        command='snapshot'
+    )
+    
+    if success:
+        return jsonify({
+            'success': True,
+            'message': f'Snapshot command sent to {device_id}'
+        }), 200
+    else:
+        return jsonify({
+            'success': False,
+            'error': 'Failed to send snapshot command (MQTT not connected)'
+        }), 503
+
 @app.route('/api/ota-logs')
 @login_required
 def ota_logs():

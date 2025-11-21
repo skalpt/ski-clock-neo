@@ -196,6 +196,7 @@ class Device(db.Model):
     last_free_heap = db.Column(db.Integer, default=0)
     ssid = db.Column(db.String(64))
     ip_address = db.Column(db.String(45))
+    display_snapshot = db.Column(db.JSON)  # Stores display dimensions and base64-encoded pixel data
     
     # Relationships
     ota_update_logs = db.relationship('OTAUpdateLog', back_populates='device', cascade='all, delete-orphan')

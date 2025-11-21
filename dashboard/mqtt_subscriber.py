@@ -5,6 +5,7 @@ import ssl
 import threading
 import uuid
 import ipaddress
+import base64
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, TYPE_CHECKING
 
@@ -23,6 +24,7 @@ MQTT_TOPIC_OTA_START = "skiclock/ota/start"
 MQTT_TOPIC_OTA_PROGRESS = "skiclock/ota/progress"
 MQTT_TOPIC_OTA_COMPLETE = "skiclock/ota/complete"
 MQTT_TOPIC_COMMAND = "skiclock/command"
+MQTT_TOPIC_DISPLAY_SNAPSHOT = "skiclock/display/snapshot"
 
 # Store Flask app instance for database access
 _app_context = None
@@ -65,6 +67,8 @@ def on_connect(client, userdata, flags, rc, properties=None):
         print(f"✓ Subscribed to topic: {MQTT_TOPIC_OTA_PROGRESS}")
         client.subscribe(MQTT_TOPIC_OTA_COMPLETE)
         print(f"✓ Subscribed to topic: {MQTT_TOPIC_OTA_COMPLETE}")
+        client.subscribe(f"{MQTT_TOPIC_DISPLAY_SNAPSHOT}/#")
+        print(f"✓ Subscribed to topic: {MQTT_TOPIC_DISPLAY_SNAPSHOT}/#")
     else:
         print(f"✗ Failed to connect to MQTT broker, return code {rc}")
 
@@ -283,6 +287,35 @@ def handle_ota_complete(client, payload):
             else:
                 print(f"⚠ No OTA log found for device: {device_id}")
 
+def handle_display_snapshot(client, payload):
+    """Handle display snapshot messages"""
+    device_id = payload.get('device_id')
+    
+    if device_id and _app_context:
+        with _app_context.app_context():
+            from models import Device, db
+            
+            device = Device.query.filter_by(device_id=device_id).first()
+            if device:
+                # Store snapshot data (decode from base64 and convert to list of bytes)
+                pixels_base64 = payload.get('pixels', '')
+                
+                try:
+                    pixels_bytes = base64.b64decode(pixels_base64)
+                    device.display_snapshot = {
+                        'rows': payload.get('rows', 1),
+                        'cols': payload.get('cols', 1),
+                        'width': payload.get('width', 16),
+                        'height': payload.get('height', 16),
+                        'pixels': pixels_base64,  # Store as base64 for easy transmission to frontend
+                        'timestamp': datetime.now(timezone.utc).isoformat()
+                    }
+                    device.last_seen = datetime.now(timezone.utc)
+                    db.session.commit()
+                    print(f"📸 Display snapshot updated for {device_id} ({len(pixels_bytes)} bytes)")
+                except Exception as e:
+                    print(f"✗ Failed to decode display snapshot: {e}")
+
 def on_message(client, userdata, msg):
     try:
         payload = json.loads(msg.payload.decode())
@@ -298,6 +331,8 @@ def on_message(client, userdata, msg):
             handle_ota_progress(client, payload)
         elif msg.topic == MQTT_TOPIC_OTA_COMPLETE:
             handle_ota_complete(client, payload)
+        elif msg.topic.startswith(MQTT_TOPIC_DISPLAY_SNAPSHOT):
+            handle_display_snapshot(client, payload)
     
     except json.JSONDecodeError as e:
         print(f"✗ Failed to parse MQTT message: {e}")

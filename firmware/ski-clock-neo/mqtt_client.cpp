@@ -269,34 +269,33 @@ void publishVersionRequest() {
   }
 }
 
-// Base64 encoding lookup table
-static const char BASE64_CHARS[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+// Base64 encoding lookup table (stored in PROGMEM to save RAM)
+static const char BASE64_CHARS[] PROGMEM = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-// Base64 encode binary data
+// Base64 encode binary data with buffer safety
 String base64Encode(const uint8_t* data, uint16_t length) {
-  String encoded = "";
-  uint32_t buffer = 0;
-  uint8_t bits = 0;
+  if (!data || length == 0) {
+    return "";
+  }
   
-  for (uint16_t i = 0; i < length; i++) {
-    buffer = (buffer << 8) | data[i];
-    bits += 8;
+  // Pre-allocate string to avoid reallocations (4/3 expansion + padding)
+  uint16_t encodedLen = ((length + 2) / 3) * 4;
+  String encoded;
+  encoded.reserve(encodedLen + 1);
+  
+  uint16_t i = 0;
+  while (i < length) {
+    // Read 3 bytes (or less for final block)
+    uint32_t octet_a = i < length ? data[i++] : 0;
+    uint32_t octet_b = i < length ? data[i++] : 0;
+    uint32_t octet_c = i < length ? data[i++] : 0;
     
-    while (bits >= 6) {
-      bits -= 6;
-      encoded += BASE64_CHARS[(buffer >> bits) & 0x3F];
-    }
-  }
-  
-  // Handle remaining bits
-  if (bits > 0) {
-    buffer <<= (6 - bits);
-    encoded += BASE64_CHARS[buffer & 0x3F];
-  }
-  
-  // Add padding
-  while (encoded.length() % 4 != 0) {
-    encoded += '=';
+    uint32_t triple = (octet_a << 16) + (octet_b << 8) + octet_c;
+    
+    encoded += pgm_read_byte(&BASE64_CHARS[(triple >> 18) & 0x3F]);
+    encoded += pgm_read_byte(&BASE64_CHARS[(triple >> 12) & 0x3F]);
+    encoded += (i > length + 1) ? '=' : pgm_read_byte(&BASE64_CHARS[(triple >> 6) & 0x3F]);
+    encoded += (i > length) ? '=' : pgm_read_byte(&BASE64_CHARS[triple & 0x3F]);
   }
   
   return encoded;
@@ -313,21 +312,47 @@ void publishDisplaySnapshot() {
   // Get display configuration
   DisplayConfig cfg = getDisplayConfig();
   
+  // Validate configuration before publishing
+  if (cfg.rows == 0 || cfg.cols == 0 || cfg.width == 0 || cfg.height == 0) {
+    DEBUG_PRINTLN("Invalid display configuration, skipping snapshot");
+    return;
+  }
+  
   // Get display buffer
   const uint8_t* buffer = getDisplayBuffer();
   uint16_t bufferSize = getDisplayBufferSize();
   
+  // Sanity check buffer size
+  if (bufferSize == 0 || bufferSize > 512) {
+    DEBUG_PRINTLN("Invalid buffer size, skipping snapshot");
+    return;
+  }
+  
   // Encode buffer to base64
   String base64Data = base64Encode(buffer, bufferSize);
   
-  // Build JSON payload
+  // Build JSON payload with safe integer-to-string conversion
   // Format: {"device_id":"xxx","rows":1,"cols":1,"width":16,"height":16,"pixels":"base64data"}
+  char rowsStr[8], colsStr[8], widthStr[8], heightStr[8];
+  snprintf(rowsStr, sizeof(rowsStr), "%u", cfg.rows);
+  snprintf(colsStr, sizeof(colsStr), "%u", cfg.cols);
+  snprintf(widthStr, sizeof(widthStr), "%u", cfg.width);
+  snprintf(heightStr, sizeof(heightStr), "%u", cfg.height);
+  
   String payload = "{\"device_id\":\"" + getDeviceID() + 
-                   "\",\"rows\":" + String(cfg.rows) +
-                   ",\"cols\":" + String(cfg.cols) +
-                   ",\"width\":" + String(cfg.width) +
-                   ",\"height\":" + String(cfg.height) +
+                   "\",\"rows\":" + String(rowsStr) +
+                   ",\"cols\":" + String(colsStr) +
+                   ",\"width\":" + String(widthStr) +
+                   ",\"height\":" + String(heightStr) +
                    ",\"pixels\":\"" + base64Data + "\"}";
+  
+  // Check payload size against MQTT buffer
+  if (payload.length() > 2000) {
+    DEBUG_PRINT("Payload too large: ");
+    DEBUG_PRINT(payload.length());
+    DEBUG_PRINTLN(" bytes (max 2000)");
+    return;
+  }
   
   // Publish to device-specific snapshot topic
   String snapshotTopic = String(MQTT_TOPIC_DISPLAY_SNAPSHOT) + "/" + getDeviceID();
