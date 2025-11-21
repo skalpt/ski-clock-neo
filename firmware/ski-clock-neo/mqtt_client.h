@@ -36,6 +36,10 @@ const uint16_t MQTT_PORT = 8883;  // TLS port for HiveMQ Cloud
 #define MQTT_TOPIC_VERSION_UPDATES "skiclock/version/updates"
 #define MQTT_TOPIC_VERSION_REQUEST "skiclock/version/request"
 #define MQTT_TOPIC_VERSION_RESPONSE "skiclock/version/response"
+#define MQTT_TOPIC_COMMAND "skiclock/command"
+#define MQTT_TOPIC_OTA_START "skiclock/ota/start"
+#define MQTT_TOPIC_OTA_PROGRESS "skiclock/ota/progress"
+#define MQTT_TOPIC_OTA_COMPLETE "skiclock/ota/complete"
 
 // MQTT client objects
 WiFiClientSecure wifiSecureClient;
@@ -84,6 +88,8 @@ bool connectMQTT();
 void disconnectMQTT();
 void publishHeartbeat();
 void publishVersionRequest();
+void handleRollbackCommand(String message);
+void handleRestartCommand();
 
 // MQTT message callback for incoming messages
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
@@ -130,6 +136,23 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
       }
     } else {
       DEBUG_PRINTLN("Firmware is up to date");
+    }
+  }
+  
+  // Handle device-specific command messages
+  String commandTopic = String(MQTT_TOPIC_COMMAND) + "/" + getDeviceID();
+  if (strcmp(topic, commandTopic.c_str()) == 0) {
+    DEBUG_PRINTLN("Command received!");
+    
+    // Parse command type from JSON
+    if (message.indexOf("\"command\":\"rollback\"") > 0) {
+      DEBUG_PRINTLN("Executing rollback command");
+      handleRollbackCommand(message);
+    } else if (message.indexOf("\"command\":\"restart\"") > 0) {
+      DEBUG_PRINTLN("Executing restart command");
+      handleRestartCommand();
+    } else {
+      DEBUG_PRINTLN("Unknown command type");
     }
   }
 }
@@ -234,6 +257,15 @@ bool connectMQTT() {
       DEBUG_PRINTLN("Failed to subscribe to version response topic");
     }
     
+    // Subscribe to device-specific command topic
+    String commandTopic = String(MQTT_TOPIC_COMMAND) + "/" + getDeviceID();
+    if (mqttClient.subscribe(commandTopic.c_str())) {
+      DEBUG_PRINT("Subscribed to topic: ");
+      DEBUG_PRINTLN(commandTopic);
+    } else {
+      DEBUG_PRINTLN("Failed to subscribe to command topic");
+    }
+    
     // Start version request ticker only if not already running
     versionRequestTicker.detach();  // Detach first to prevent duplicates
     versionRequestTicker.attach_ms(VERSION_REQUEST_INTERVAL, publishVersionRequest);
@@ -335,6 +367,74 @@ void updateMQTT() {
   if (mqttClient.connected()) {
     mqttClient.loop();
   }
+}
+
+// Handle restart command
+void handleRestartCommand() {
+  DEBUG_PRINTLN("Restart command received, rebooting in 2 seconds...");
+  delay(2000);
+  ESP.restart();
+}
+
+// Handle rollback command
+void handleRollbackCommand(String message) {
+  DEBUG_PRINTLN("Rollback command processing...");
+  
+#if defined(ESP32)
+  // ESP32: Use partition switching for instant rollback
+  DEBUG_PRINTLN("ESP32 rollback: Switching to previous partition");
+  
+  const esp_partition_t* current = esp_ota_get_running_partition();
+  const esp_partition_t* next = esp_ota_get_next_update_partition(NULL);
+  
+  if (current == NULL || next == NULL) {
+    DEBUG_PRINTLN("Error: Cannot get OTA partitions");
+    return;
+  }
+  
+  DEBUG_PRINT("Current partition: ");
+  DEBUG_PRINTLN(current->label);
+  DEBUG_PRINT("Switching to partition: ");
+  DEBUG_PRINTLN(next->label);
+  
+  // Set boot partition to the other one
+  esp_err_t err = esp_ota_set_boot_partition(next);
+  if (err != ESP_OK) {
+    DEBUG_PRINT("Error setting boot partition: ");
+    DEBUG_PRINTLN(esp_err_to_name(err));
+    return;
+  }
+  
+  DEBUG_PRINTLN("Boot partition set, rebooting in 2 seconds...");
+  delay(2000);
+  ESP.restart();
+  
+#elif defined(ESP8266)
+  // ESP8266: Re-download previous version from server
+  DEBUG_PRINTLN("ESP8266 rollback: Re-downloading previous firmware");
+  
+  // Parse target_version from message if provided
+  String targetVersion = "";
+  int versionIndex = message.indexOf("\"target_version\"");
+  if (versionIndex > 0) {
+    int colonIndex = message.indexOf(":", versionIndex);
+    int quoteStart = message.indexOf("\"", colonIndex + 1);
+    int quoteEnd = message.indexOf("\"", quoteStart + 1);
+    
+    if (quoteStart > 0 && quoteEnd > quoteStart) {
+      targetVersion = message.substring(quoteStart + 1, quoteEnd);
+    }
+  }
+  
+  if (targetVersion.length() > 0 && targetVersion != "null") {
+    DEBUG_PRINT("Rolling back to version: ");
+    DEBUG_PRINTLN(targetVersion);
+    // Trigger OTA update with previous version
+    triggerOTAUpdate(targetVersion);
+  } else {
+    DEBUG_PRINTLN("No target version specified, cannot rollback");
+  }
+#endif
 }
 
 #endif

@@ -18,6 +18,17 @@
 #include <WiFiClientSecure.h>
 #include "debug.h"
 
+// Forward declare MQTT client and topic definitions (from mqtt_client.h)
+// This prevents circular dependency
+#if defined(ESP32) || defined(ESP8266)
+  extern PubSubClient mqttClient;
+  extern const char MQTT_TOPIC_OTA_START[];
+  extern const char MQTT_TOPIC_OTA_PROGRESS[];
+  extern const char MQTT_TOPIC_OTA_COMPLETE[];
+  String getDeviceID();  // Forward declaration
+  String getPlatform();  // Forward declaration (defined below)
+#endif
+
 // Update server configuration
 // These MUST be injected at build time from GitHub Actions
 // If these are not defined, the build will fail with an error
@@ -130,6 +141,70 @@ long parseVersion(String version) {
   }
 }
 
+// Publish OTA start message to MQTT
+void publishOTAStart(String newVersion) {
+  if (!mqttClient.connected()) {
+    return;
+  }
+  
+  char payload[256];
+  snprintf(payload, sizeof(payload),
+    "{\"device_id\":\"%s\",\"platform\":\"%s\",\"old_version\":\"%s\",\"new_version\":\"%s\"}",
+    getDeviceID().c_str(),
+    getPlatform().c_str(),
+    FIRMWARE_VERSION,
+    newVersion.c_str()
+  );
+  
+  mqttClient.publish(MQTT_TOPIC_OTA_START, payload);
+  DEBUG_PRINT("OTA start published: ");
+  DEBUG_PRINTLN(payload);
+}
+
+// Publish OTA progress message to MQTT
+void publishOTAProgress(int progress) {
+  if (!mqttClient.connected()) {
+    return;
+  }
+  
+  char payload[128];
+  snprintf(payload, sizeof(payload),
+    "{\"device_id\":\"%s\",\"progress\":%d}",
+    getDeviceID().c_str(),
+    progress
+  );
+  
+  mqttClient.publish(MQTT_TOPIC_OTA_PROGRESS, payload);
+  DEBUG_PRINT("OTA progress: ");
+  DEBUG_PRINT(progress);
+  DEBUG_PRINTLN("%");
+}
+
+// Publish OTA complete message to MQTT
+void publishOTAComplete(bool success, String errorMessage = "") {
+  if (!mqttClient.connected()) {
+    return;
+  }
+  
+  char payload[384];
+  if (success) {
+    snprintf(payload, sizeof(payload),
+      "{\"device_id\":\"%s\",\"status\":\"success\"}",
+      getDeviceID().c_str()
+    );
+  } else {
+    snprintf(payload, sizeof(payload),
+      "{\"device_id\":\"%s\",\"status\":\"failed\",\"error\":\"%s\"}",
+      getDeviceID().c_str(),
+      errorMessage.c_str()
+    );
+  }
+  
+  mqttClient.publish(MQTT_TOPIC_OTA_COMPLETE, payload);
+  DEBUG_PRINT("OTA complete published: ");
+  DEBUG_PRINTLN(payload);
+}
+
 // Perform OTA update from custom server
 bool performOTAUpdate(String version) {
   if (!WiFi.isConnected()) {
@@ -149,6 +224,9 @@ bool performOTAUpdate(String version) {
   DEBUG_PRINT("Download URL: ");
   DEBUG_PRINTLN(binaryUrl);
   DEBUG_PRINTLN("===========================================");
+  
+  // Publish OTA start message
+  publishOTAStart(version);
   
   otaUpdateInProgress = true;
   
