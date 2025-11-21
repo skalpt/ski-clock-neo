@@ -33,14 +33,14 @@
 extern const uint16_t MQTT_PORT;
 
 // MQTT topics (constexpr for compile-time optimization)
-extern const char* MQTT_TOPIC_HEARTBEAT;
-extern const char* MQTT_TOPIC_VERSION_UPDATES;
-extern const char* MQTT_TOPIC_VERSION_REQUEST;
-extern const char* MQTT_TOPIC_VERSION_RESPONSE;
-extern const char* MQTT_TOPIC_COMMAND;
-extern const char* MQTT_TOPIC_OTA_START;
-extern const char* MQTT_TOPIC_OTA_PROGRESS;
-extern const char* MQTT_TOPIC_OTA_COMPLETE;
+extern const char MQTT_TOPIC_HEARTBEAT[];
+extern const char MQTT_TOPIC_VERSION_UPDATES[];
+extern const char MQTT_TOPIC_VERSION_REQUEST[];
+extern const char MQTT_TOPIC_VERSION_RESPONSE[];
+extern const char MQTT_TOPIC_COMMAND[];
+extern const char MQTT_TOPIC_OTA_START[];
+extern const char MQTT_TOPIC_OTA_PROGRESS[];
+extern const char MQTT_TOPIC_OTA_COMPLETE[];
 
 // MQTT client objects
 extern WiFiClientSecure wifiSecureClient;

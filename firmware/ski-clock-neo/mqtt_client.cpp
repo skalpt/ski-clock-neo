@@ -1,5 +1,6 @@
 #include "mqtt_client.h"
 #include "ota_update.h"  // For triggerOTAUpdate
+#include "display.h"     // For display snapshot
 
 // MQTT broker port
 const uint16_t MQTT_PORT = 8883;  // TLS port for HiveMQ Cloud
@@ -13,6 +14,7 @@ const char MQTT_TOPIC_COMMAND[] = "skiclock/command";
 const char MQTT_TOPIC_OTA_START[] = "skiclock/ota/start";
 const char MQTT_TOPIC_OTA_PROGRESS[] = "skiclock/ota/progress";
 const char MQTT_TOPIC_OTA_COMPLETE[] = "skiclock/ota/complete";
+const char MQTT_TOPIC_DISPLAY_SNAPSHOT[] = "skiclock/display/snapshot";
 
 // MQTT client objects
 WiFiClientSecure wifiSecureClient;
@@ -26,6 +28,10 @@ bool mqttIsConnected = false;
 // Version request timing
 const unsigned long VERSION_REQUEST_INTERVAL = 3600000;  // 1 hour
 Ticker versionRequestTicker;
+
+// Display snapshot timing
+const unsigned long DISPLAY_SNAPSHOT_INTERVAL = 3600000;  // 1 hour
+Ticker displaySnapshotTicker;
 
 // MQTT message callback for incoming messages
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
@@ -86,6 +92,9 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     } else if (message.indexOf("\"command\":\"restart\"") > 0) {
       DEBUG_PRINTLN("Executing restart command");
       handleRestartCommand();
+    } else if (message.indexOf("\"command\":\"snapshot\"") > 0) {
+      DEBUG_PRINTLN("Executing snapshot command");
+      publishDisplaySnapshot();
     } else {
       DEBUG_PRINTLN("Unknown command type");
     }
@@ -125,7 +134,7 @@ void setupMQTT() {
   // Configure MQTT client
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
   mqttClient.setCallback(mqttCallback);
-  mqttClient.setBufferSize(512);
+  mqttClient.setBufferSize(2048);  // Increased for display snapshots (max ~342 bytes base64 for 16x16 panel)
   
   DEBUG_PRINT("MQTT broker: ");
   DEBUG_PRINT(MQTT_HOST);
@@ -197,6 +206,11 @@ bool connectMQTT() {
     versionRequestTicker.attach_ms(VERSION_REQUEST_INTERVAL, publishVersionRequest);
     publishVersionRequest();
     
+    // Start display snapshot ticker (hourly)
+    displaySnapshotTicker.detach();
+    displaySnapshotTicker.attach_ms(DISPLAY_SNAPSHOT_INTERVAL, publishDisplaySnapshot);
+    publishDisplaySnapshot();  // Send initial snapshot
+    
     return true;
   } else {
     DEBUG_PRINT("MQTT broker connection failed, rc=");
@@ -255,12 +269,85 @@ void publishVersionRequest() {
   }
 }
 
+// Base64 encoding lookup table
+static const char BASE64_CHARS[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+// Base64 encode binary data
+String base64Encode(const uint8_t* data, uint16_t length) {
+  String encoded = "";
+  uint32_t buffer = 0;
+  uint8_t bits = 0;
+  
+  for (uint16_t i = 0; i < length; i++) {
+    buffer = (buffer << 8) | data[i];
+    bits += 8;
+    
+    while (bits >= 6) {
+      bits -= 6;
+      encoded += BASE64_CHARS[(buffer >> bits) & 0x3F];
+    }
+  }
+  
+  // Handle remaining bits
+  if (bits > 0) {
+    buffer <<= (6 - bits);
+    encoded += BASE64_CHARS[buffer & 0x3F];
+  }
+  
+  // Add padding
+  while (encoded.length() % 4 != 0) {
+    encoded += '=';
+  }
+  
+  return encoded;
+}
+
+// Publish display snapshot
+void publishDisplaySnapshot() {
+  if (!mqttClient.connected()) {
+    return;
+  }
+  
+  DEBUG_PRINTLN("Publishing display snapshot...");
+  
+  // Get display configuration
+  DisplayConfig cfg = getDisplayConfig();
+  
+  // Get display buffer
+  const uint8_t* buffer = getDisplayBuffer();
+  uint16_t bufferSize = getDisplayBufferSize();
+  
+  // Encode buffer to base64
+  String base64Data = base64Encode(buffer, bufferSize);
+  
+  // Build JSON payload
+  // Format: {"device_id":"xxx","rows":1,"cols":1,"width":16,"height":16,"pixels":"base64data"}
+  String payload = "{\"device_id\":\"" + getDeviceID() + 
+                   "\",\"rows\":" + String(cfg.rows) +
+                   ",\"cols\":" + String(cfg.cols) +
+                   ",\"width\":" + String(cfg.width) +
+                   ",\"height\":" + String(cfg.height) +
+                   ",\"pixels\":\"" + base64Data + "\"}";
+  
+  // Publish to device-specific snapshot topic
+  String snapshotTopic = String(MQTT_TOPIC_DISPLAY_SNAPSHOT) + "/" + getDeviceID();
+  
+  if (mqttClient.publish(snapshotTopic.c_str(), payload.c_str())) {
+    DEBUG_PRINT("Display snapshot published (");
+    DEBUG_PRINT(payload.length());
+    DEBUG_PRINTLN(" bytes)");
+  } else {
+    DEBUG_PRINTLN("Failed to publish display snapshot");
+  }
+}
+
 // Disconnect from MQTT broker
 void disconnectMQTT() {
   if (mqttIsConnected) {
     DEBUG_PRINTLN("Disconnecting from MQTT broker...");
     heartbeatTicker.detach();
     versionRequestTicker.detach();
+    displaySnapshotTicker.detach();
     mqttClient.disconnect();
     mqttIsConnected = false;
   }
