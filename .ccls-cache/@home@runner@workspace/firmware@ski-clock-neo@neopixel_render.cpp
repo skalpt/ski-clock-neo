@@ -157,28 +157,30 @@ int charToGlyph(char c) {
 }
 
 uint16_t xyToIndex(uint8_t x, uint8_t y) {
-  // Determine which panel we are in (0,1,2)
-  uint8_t panel = x / 16;
+  // Determine which panel we are in based on panel width
+  uint8_t panel = x / PANEL_WIDTH;
 
-  // Local x,y within the 16x16 matrix
-  uint8_t localX = x % 16;
+  // Local x,y within the panel
+  uint8_t localX = x % PANEL_WIDTH;
   uint8_t localY = y;
 
   // ---- Transform: rotate 90° clockwise, then mirror horizontally ----
-  // Combined effect = swap x <-> y
-  uint8_t tX = localY;     // final X
-  uint8_t tY = localX;     // final Y
+  // After 90° rotation: original Y becomes new X, original X becomes new Y
+  // This means: rotated width = PANEL_HEIGHT, rotated height = PANEL_WIDTH
+  uint8_t tX = localY;     // final X (range: 0 to PANEL_HEIGHT-1)
+  uint8_t tY = localX;     // final Y (range: 0 to PANEL_WIDTH-1)
 
-  // Panel offset
-  uint16_t base = panel * 256;
+  // Panel offset (each panel has PANEL_WIDTH × PANEL_HEIGHT pixels)
+  uint16_t base = panel * (PANEL_WIDTH * PANEL_HEIGHT);
 
-  // Apply standard serpentine wiring within each 16×16 panel
+  // Apply standard serpentine wiring within each panel
+  // After rotation, the effective width for serpentine calculation is PANEL_HEIGHT
   if (tY % 2 == 0) {
     // even row: left→right
-    return base + tY * 16 + tX;
+    return base + tY * PANEL_HEIGHT + tX;
   } else {
     // odd row: right→left
-    return base + tY * 16 + (15 - tX);
+    return base + tY * PANEL_HEIGHT + ((PANEL_HEIGHT - 1) - tX);
   }
 }
 

@@ -14,9 +14,10 @@
 #define BRIGHTNESS 1                    // 0-255 (keeping dim for development)
 #define UPDATE_INTERVAL_MS 200          // 0.2 second refresh rate
 
-extern const uint8_t ROW_PINS[DISPLAY_ROWS];  // Pin array for row initialization
-
 // ==================== GLOBAL STATE ====================
+// Pin array for row initialization
+extern const uint8_t ROW_PINS[DISPLAY_ROWS];
+
 // Static storage buffer for NeoPixel objects (no heap allocation)
 // We'll use placement-new to construct them in setup()
 extern alignas(Adafruit_NeoPixel) uint8_t rowsStorage[DISPLAY_ROWS * sizeof(Adafruit_NeoPixel)];
