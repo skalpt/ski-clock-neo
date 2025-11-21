@@ -12,7 +12,7 @@ from typing import Dict, Optional, Any
 from functools import wraps
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from object_storage import ObjectStorageService, ObjectNotFoundError, ObjectStorageError
-from models import db, Device, FirmwareVersion, User
+from models import db, Device, FirmwareVersion, User, Role, PlatformPermission, DownloadLog
 
 app = Flask(__name__)
 
@@ -142,16 +142,54 @@ def save_version_to_db(platform, version_info):
     print(f"✓ Saved {platform} v{version_info['version']} to database")
 
 def generate_download_token(platform):
-    """Generate a signed token for public firmware downloads (24-hour expiration)"""
+    """Generate a signed token for public firmware downloads (24-hour expiration)
+    DEPRECATED: Use generate_user_download_token instead for user-scoped tokens
+    """
     return token_serializer.dumps(platform, salt='firmware-download')
 
 def verify_download_token(token, max_age=86400):
-    """Verify a download token and return the platform name (default 24-hour expiration)"""
+    """Verify a download token and return the platform name (default 24-hour expiration)
+    DEPRECATED: Use verify_user_download_token instead for user-scoped tokens
+    """
     try:
         platform = token_serializer.loads(token, salt='firmware-download', max_age=max_age)
         return platform
     except (BadSignature, SignatureExpired):
         return None
+
+def generate_user_download_token(user_id, platform, max_age=3600):
+    """Generate a user-scoped signed token for firmware downloads (default 1-hour expiration)
+    
+    Args:
+        user_id: Database ID of the user requesting the download
+        platform: Platform name (e.g., 'esp32', 'esp32c3')
+        max_age: Token expiration in seconds (default 3600 = 1 hour)
+    
+    Returns:
+        Signed token string containing user_id and platform
+    """
+    payload = {
+        'user_id': user_id,
+        'platform': platform,
+        'issued_at': datetime.now(timezone.utc).isoformat()
+    }
+    return token_serializer.dumps(payload, salt='user-firmware-download')
+
+def verify_user_download_token(token, max_age=3600):
+    """Verify a user-scoped download token and return user_id and platform
+    
+    Args:
+        token: Signed token string
+        max_age: Maximum token age in seconds (default 3600 = 1 hour)
+    
+    Returns:
+        Tuple of (user_id, platform) if valid, (None, None) if invalid or expired
+    """
+    try:
+        payload = token_serializer.loads(token, salt='user-firmware-download', max_age=max_age)
+        return payload.get('user_id'), payload.get('platform')
+    except (BadSignature, SignatureExpired):
+        return None, None
 
 def sync_firmware_from_production():
     """Sync firmware metadata from production to dev database (dev environment only)"""
@@ -250,13 +288,40 @@ with app.app_context():
     db.create_all()
     print("✓ Database initialized")
     
+    # Create admin role if it doesn't exist
+    admin_role = Role.query.filter_by(name='admin').first()
+    if not admin_role:
+        admin_role = Role(
+            name='admin',
+            description='Full access to all platforms and features'
+        )
+        db.session.add(admin_role)
+        db.session.commit()
+        
+        # Grant admin access to all platforms
+        for platform in SUPPORTED_PLATFORMS:
+            if platform not in PLATFORM_FIRMWARE_MAPPING:  # Skip aliases
+                permission = PlatformPermission(
+                    role_id=admin_role.id,
+                    platform=platform,
+                    can_download=True
+                )
+                db.session.add(permission)
+        db.session.commit()
+        print(f"✓ Created admin role with access to {len(SUPPORTED_PLATFORMS) - len(PLATFORM_FIRMWARE_MAPPING)} platforms")
+    else:
+        print(f"✓ Found admin role with {len(admin_role.platform_permissions)} platform permissions")
+    
     # Create initial user if none exists
     if User.query.count() == 0:
-        initial_user = User(email='julian@norrtek.se')
+        initial_user = User(
+            email='julian@norrtek.se',
+            role_id=admin_role.id
+        )
         initial_user.set_password('testing123')
         db.session.add(initial_user)
         db.session.commit()
-        print("✓ Created initial user: julian@norrtek.se")
+        print("✓ Created initial user: julian@norrtek.se (admin)")
     else:
         print(f"✓ Found {User.query.count()} user(s) in database")
     
@@ -461,8 +526,9 @@ def public_download_firmware(token):
         return response
 
 @app.route('/firmware/manifest/<platform>.json')
+@login_required
 def firmware_manifest(platform):
-    """Generate ESP Web Tools manifest for browser-based flashing"""
+    """Generate ESP Web Tools manifest for browser-based flashing (requires login)"""
     platform = platform.lower()
     original_platform = platform
     
@@ -482,9 +548,10 @@ def firmware_manifest(platform):
     # Get chip family for this platform
     chip_family = PLATFORM_CHIP_FAMILY.get(platform, 'ESP32')
     
-    # Generate fresh download token for the manifest
-    download_token = generate_download_token(platform)
-    firmware_url = url_for('public_download_firmware', token=download_token, _external=True)
+    # Get user from session and generate user-scoped download token for the manifest
+    user_id = session.get('user_id')
+    download_token = generate_user_download_token(user_id, platform, max_age=3600)
+    firmware_url = url_for('user_download_firmware', token=download_token, _external=True)
     
     # Create ESP Web Tools manifest
     manifest = {
@@ -511,6 +578,110 @@ def firmware_manifest(platform):
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
     
     return response
+
+@app.route('/firmware/user-download/<token>')
+def user_download_firmware(token):
+    """User-scoped firmware download endpoint using user-specific signed tokens"""
+    # Verify user token and extract user_id and platform
+    user_id, platform = verify_user_download_token(token)
+    
+    if not user_id or not platform:
+        return jsonify({'error': 'Invalid or expired download token'}), 401
+    
+    # Load user from database
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 401
+    
+    # Check if user has permission to download this platform
+    if not user.can_download_platform(platform):
+        return jsonify({'error': f'You do not have permission to download {platform} firmware'}), 403
+    
+    # Validate platform
+    if platform not in SUPPORTED_PLATFORMS:
+        return jsonify({'error': 'Invalid platform'}), 400
+    
+    version_info = LATEST_VERSIONS.get(platform)
+    
+    if not version_info:
+        return jsonify({'error': 'No firmware available'}), 404
+    
+    # Log the download
+    download_log = DownloadLog(
+        user_id=user_id,
+        platform=platform,
+        firmware_version=version_info.get('version'),
+        ip_address=request.remote_addr,
+        user_agent=request.headers.get('User-Agent')
+    )
+    db.session.add(download_log)
+    db.session.commit()
+    
+    # Check where the firmware is stored
+    storage_location = version_info.get('storage', 'local')
+    
+    if storage_location == 'object_storage':
+        # Download from Object Storage
+        object_path = None
+        try:
+            storage = ObjectStorageService()
+            
+            # Use the full object_path if available
+            object_path = version_info.get('object_path')
+            if not object_path:
+                bucket_name = storage.get_bucket_name()
+                object_path = f"/{bucket_name}/{version_info.get('object_name', FIRMWARES_PREFIX + version_info['filename'])}"
+            
+            # Download as bytes and stream to client
+            firmware_data = storage.download_as_bytes(object_path)
+            
+            response = Response(
+                firmware_data,
+                mimetype='application/octet-stream',
+                headers={
+                    'Content-Disposition': f'attachment; filename="{version_info["filename"]}"',
+                    'Content-Length': str(len(firmware_data)),
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type'
+                }
+            )
+            return response
+        except (ObjectStorageError, ObjectNotFoundError) as e:
+            error_msg = f"Error downloading from Object Storage"
+            if object_path:
+                error_msg += f" ({object_path})"
+            print(f"{error_msg}: {e}")
+            # Try local filesystem as fallback
+            firmware_path = FIRMWARES_DIR / version_info['filename']
+            if firmware_path.exists():
+                response = send_file(
+                    firmware_path,
+                    mimetype='application/octet-stream',
+                    as_attachment=True,
+                    download_name=version_info['filename']
+                )
+                response.headers['Access-Control-Allow-Origin'] = '*'
+                response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+                response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+                return response
+            return jsonify({'error': 'Firmware file not found'}), 404
+    else:
+        # Serve from local filesystem
+        firmware_path = FIRMWARES_DIR / version_info['filename']
+        if not firmware_path.exists():
+            return jsonify({'error': 'Firmware file not found'}), 404
+        
+        response = send_file(
+            firmware_path,
+            mimetype='application/octet-stream',
+            as_attachment=True,
+            download_name=version_info['filename']
+        )
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        return response
 
 @app.route('/api/firmware/<platform>')
 def download_firmware(platform):
@@ -797,14 +968,17 @@ def update_config():
 @app.route('/api/status')
 @login_required
 def status():
-    # Generate fresh public download tokens for each firmware (prevents expiration issues)
+    # Get user from session
+    user_id = session.get('user_id')
+    
+    # Generate fresh user-scoped download tokens for each firmware (prevents expiration issues)
     firmwares_with_tokens = {}
     for platform, fw_data in LATEST_VERSIONS.items():
         if fw_data:
             fw_copy = fw_data.copy()
-            # Generate fresh token valid for 24 hours
-            token = generate_download_token(platform)
-            fw_copy['public_download_url'] = f'/firmware/download/{token}'
+            # Generate fresh user-scoped token valid for 1 hour
+            token = generate_user_download_token(user_id, platform, max_age=3600)
+            fw_copy['public_download_url'] = f'/firmware/user-download/{token}'
             firmwares_with_tokens[platform] = fw_copy
         else:
             firmwares_with_tokens[platform] = None
