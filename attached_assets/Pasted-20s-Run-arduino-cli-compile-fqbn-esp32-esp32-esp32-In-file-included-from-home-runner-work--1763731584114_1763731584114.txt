@@ -1,0 +1,35 @@
+20s
+Run arduino-cli compile --fqbn esp32:esp32:esp32 \
+In file included from /home/runner/work/***/***/firmware/***/ota_update.h:144,
+                 from /home/runner/work/***/***/firmware/***/***.ino:6:
+/home/runner/work/***/***/firmware/***/mqtt_client.h: In function 'void mqttCallback(char*, byte*, unsigned int)':
+/home/runner/work/***/***/firmware/***/mqtt_client.h:134:11: error: 'triggerOTAUpdate' was not declared in this scope
+           triggerOTAUpdate(latestVersion);
+           ^~~~~~~~~~~~~~~~
+
+Error during build: exit status 1
+
+Used library      Version Path                                                                                   
+Adafruit NeoPixel 1.15.2  /home/runner/Arduino/libraries/Adafruit_NeoPixel                                       
+Ticker            2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Ticker          
+WiFi              2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFi            
+WebServer         2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WebServer       
+AutoConnect       1.4.2   /home/runner/Arduino/libraries/AutoConnect                                             
+DNSServer         2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/DNSServer       
+EEPROM            2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/EEPROM          
+PageBuilder       1.5.6   /home/runner/Arduino/libraries/PageBuilder                                             
+FS                2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/FS              
+SPIFFS            2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPIFFS          
+SD                2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SD              
+SPI               2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPI             
+Preferences       2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Preferences     
+ArduinoJson       7.4.2   /home/runner/Arduino/libraries/ArduinoJson                                             
+HTTPClient        2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPClient      
+WiFiClientSecure  2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFiClientSecure
+HTTPUpdate        2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPUpdate      
+Update            2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Update          
+PubSubClient      2.8     /home/runner/Arduino/libraries/PubSubClient                                            
+
+Used platform Version Path                                                        
+esp32:esp32   2.0.14  /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14
+Error: Process completed with exit code 1.
