@@ -635,7 +635,7 @@ def firmware_manifest(platform):
     
     # Generate user-scoped download tokens for the manifest
     firmware_token = generate_user_download_token(user_id, platform, max_age=3600)
-    firmware_url = url_for('user_download_firmware', token=firmware_token, _external=True)
+    firmware_url = url_for('user_download_firmware_file', token=firmware_token, _external=True)
     
     # Determine correct flash offsets based on chip family
     # ESP32 family: firmware goes to 0x10000 (bootloader at 0x0, partition table at 0x8000)
@@ -684,8 +684,8 @@ def firmware_manifest(platform):
     
     return response
 
-@app.route('/firmware/user-download/<token>')
-def user_download_firmware(token):
+@app.route('/firmware/user-download-firmware/<token>')
+def user_download_firmware_file(token):
     """User-scoped firmware download endpoint using user-specific signed tokens"""
     # Verify user token and extract user_id and platform
     user_id, platform = verify_user_download_token(token)
@@ -1353,7 +1353,7 @@ def status():
                 fw_copy = fw_data.copy()
                 # Generate fresh user-scoped token valid for 1 hour
                 token = generate_user_download_token(user_id, platform, max_age=3600)
-                fw_copy['public_download_url'] = f'/firmware/user-download/{token}'
+                fw_copy['public_download_url'] = f'/firmware/user-download-firmware/{token}'
                 fw_copy['can_download'] = True
                 firmwares_with_tokens[platform] = fw_copy
             else:
