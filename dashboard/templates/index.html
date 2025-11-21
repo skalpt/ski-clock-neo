@@ -340,19 +340,31 @@
                     
                     // Render different content based on permission
                     if (canDownload) {
-                        // Build flash buttons based on availability
-                        let flashButtons = `
-                            <esp-web-install-button manifest="/firmware/manifest/${platform}.json?mode=quick">
-                                <button slot="activate" class="flash-btn">⚡ Quick Flash</button>
-                            </esp-web-install-button>
-                        `;
+                        // Build flash button with dropdown for full flash if available
+                        let flashButtons;
                         
                         if (supportsFullFlash) {
-                            flashButtons += `
-                            <esp-web-install-button manifest="/firmware/manifest/${platform}.json?mode=full" style="margin-left: 8px;">
-                                <button slot="activate" class="flash-btn" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);" title="Flash bootloader, partition table, and firmware (for device recovery)">🔧 Full Flash</button>
-                            </esp-web-install-button>
-                        `;
+                            // Split button with dropdown for Quick/Full Flash
+                            flashButtons = `
+                                <div class="split-button-group">
+                                    <esp-web-install-button manifest="/firmware/manifest/${platform}.json?mode=quick">
+                                        <button slot="activate" class="flash-btn flash-btn-main">⚡ Quick Flash</button>
+                                    </esp-web-install-button>
+                                    <button class="flash-btn flash-btn-dropdown" onclick="toggleFlashDropdown(event, '${platform}')" title="Flash options">▼</button>
+                                    <div class="flash-dropdown" id="flash-dropdown-${platform}">
+                                        <esp-web-install-button manifest="/firmware/manifest/${platform}.json?mode=full">
+                                            <button slot="activate" class="flash-dropdown-item">🔧 Full Flash (Recovery)</button>
+                                        </esp-web-install-button>
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            // Single Quick Flash button (no dropdown)
+                            flashButtons = `
+                                <esp-web-install-button manifest="/firmware/manifest/${platform}.json?mode=quick">
+                                    <button slot="activate" class="flash-btn">⚡ Quick Flash</button>
+                                </esp-web-install-button>
+                            `;
                         }
                         
                         return `
@@ -430,6 +442,31 @@
             }
         });
     }
+
+    function toggleFlashDropdown(event, platform) {
+        event.stopPropagation();
+        const dropdown = document.getElementById(`flash-dropdown-${platform}`);
+        const allDropdowns = document.querySelectorAll('.flash-dropdown');
+        
+        // Close all other dropdowns
+        allDropdowns.forEach(d => {
+            if (d !== dropdown) {
+                d.classList.remove('show');
+            }
+        });
+        
+        // Toggle this dropdown
+        dropdown.classList.toggle('show');
+    }
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', (event) => {
+        if (!event.target.closest('.split-button-group')) {
+            document.querySelectorAll('.flash-dropdown').forEach(d => {
+                d.classList.remove('show');
+            });
+        }
+    });
 
     // Handle tab visibility changes to recalculate after backgrounding
     document.addEventListener('visibilitychange', () => {
