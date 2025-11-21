@@ -285,17 +285,20 @@ String base64Encode(const uint8_t* data, uint16_t length) {
   
   uint16_t i = 0;
   while (i < length) {
+    uint16_t remaining = length - i;
+    
     // Read 3 bytes (or less for final block)
-    uint32_t octet_a = i < length ? data[i++] : 0;
-    uint32_t octet_b = i < length ? data[i++] : 0;
-    uint32_t octet_c = i < length ? data[i++] : 0;
+    uint32_t octet_a = data[i++];
+    uint32_t octet_b = remaining > 1 ? data[i++] : 0;
+    uint32_t octet_c = remaining > 2 ? data[i++] : 0;
     
     uint32_t triple = (octet_a << 16) + (octet_b << 8) + octet_c;
     
+    // Output 4 characters (with padding for incomplete blocks)
     encoded += pgm_read_byte(&BASE64_CHARS[(triple >> 18) & 0x3F]);
     encoded += pgm_read_byte(&BASE64_CHARS[(triple >> 12) & 0x3F]);
-    encoded += (i > length + 1) ? '=' : pgm_read_byte(&BASE64_CHARS[(triple >> 6) & 0x3F]);
-    encoded += (i > length) ? '=' : pgm_read_byte(&BASE64_CHARS[triple & 0x3F]);
+    encoded += (remaining > 1) ? pgm_read_byte(&BASE64_CHARS[(triple >> 6) & 0x3F]) : '=';
+    encoded += (remaining > 2) ? pgm_read_byte(&BASE64_CHARS[triple & 0x3F]) : '=';
   }
   
   return encoded;
