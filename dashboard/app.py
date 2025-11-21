@@ -122,6 +122,22 @@ def save_version_to_db(platform, version_info):
         fw.object_path = version_info.get('object_path')
         fw.object_name = version_info.get('object_name')
         fw.local_path = version_info.get('local_path')
+        
+        # Update bootloader fields if provided
+        fw.bootloader_filename = version_info.get('bootloader_filename')
+        fw.bootloader_size = version_info.get('bootloader_size')
+        fw.bootloader_sha256 = version_info.get('bootloader_sha256')
+        fw.bootloader_object_path = version_info.get('bootloader_object_path')
+        fw.bootloader_object_name = version_info.get('bootloader_object_name')
+        fw.bootloader_local_path = version_info.get('bootloader_local_path')
+        
+        # Update partitions fields if provided
+        fw.partitions_filename = version_info.get('partitions_filename')
+        fw.partitions_size = version_info.get('partitions_size')
+        fw.partitions_sha256 = version_info.get('partitions_sha256')
+        fw.partitions_object_path = version_info.get('partitions_object_path')
+        fw.partitions_object_name = version_info.get('partitions_object_name')
+        fw.partitions_local_path = version_info.get('partitions_local_path')
     else:
         # Create new
         fw = FirmwareVersion(
@@ -134,7 +150,23 @@ def save_version_to_db(platform, version_info):
             storage=version_info['storage'],
             object_path=version_info.get('object_path'),
             object_name=version_info.get('object_name'),
-            local_path=version_info.get('local_path')
+            local_path=version_info.get('local_path'),
+            
+            # Bootloader fields
+            bootloader_filename=version_info.get('bootloader_filename'),
+            bootloader_size=version_info.get('bootloader_size'),
+            bootloader_sha256=version_info.get('bootloader_sha256'),
+            bootloader_object_path=version_info.get('bootloader_object_path'),
+            bootloader_object_name=version_info.get('bootloader_object_name'),
+            bootloader_local_path=version_info.get('bootloader_local_path'),
+            
+            # Partitions fields
+            partitions_filename=version_info.get('partitions_filename'),
+            partitions_size=version_info.get('partitions_size'),
+            partitions_sha256=version_info.get('partitions_sha256'),
+            partitions_object_path=version_info.get('partitions_object_path'),
+            partitions_object_name=version_info.get('partitions_object_name'),
+            partitions_local_path=version_info.get('partitions_local_path')
         )
         db.session.add(fw)
     
@@ -395,9 +427,18 @@ def api_index():
 @app.route('/firmware/manifest/<platform>.json')
 @login_required
 def firmware_manifest(platform):
-    """Generate ESP Web Tools manifest for browser-based flashing (requires login and platform permission)"""
+    """Generate ESP Web Tools manifest for browser-based flashing (requires login and platform permission)
+    
+    Query parameters:
+    - mode: 'quick' (firmware only, default) or 'full' (bootloader + partitions + firmware)
+    """
     platform = platform.lower()
     original_platform = platform
+    flash_mode = request.args.get('mode', 'quick').lower()  # Default to quick flash
+    
+    # Validate flash mode
+    if flash_mode not in ['quick', 'full']:
+        return jsonify({'error': 'Invalid flash mode. Use "quick" or "full"'}), 400
     
     # Apply platform firmware mapping for backward compatibility
     if platform in PLATFORM_FIRMWARE_MAPPING:
@@ -423,32 +464,61 @@ def firmware_manifest(platform):
     if not version_info:
         return jsonify({'error': 'No firmware available'}), 404
     
+    # Check if full flash is requested but bootloader/partitions are not available
+    if flash_mode == 'full':
+        has_bootloader = version_info.get('has_bootloader', False)
+        has_partitions = version_info.get('has_partitions', False)
+        
+        if not has_bootloader or not has_partitions:
+            return jsonify({
+                'error': 'Full flash not available for this firmware',
+                'message': 'Bootloader and/or partition table files are missing. Use quick flash mode instead.',
+                'has_bootloader': has_bootloader,
+                'has_partitions': has_partitions
+            }), 400
+    
     # Get chip family for this platform
     chip_family = PLATFORM_CHIP_FAMILY.get(platform, 'ESP32')
     
-    # Generate user-scoped download token for the manifest (user already has permission)
-    download_token = generate_user_download_token(user_id, platform, max_age=3600)
-    firmware_url = url_for('user_download_firmware', token=download_token, _external=True)
+    # Generate user-scoped download tokens for the manifest
+    firmware_token = generate_user_download_token(user_id, platform, max_age=3600)
+    firmware_url = url_for('user_download_firmware', token=firmware_token, _external=True)
     
-    # Determine correct flash offset based on chip family
+    # Determine correct flash offsets based on chip family
     # ESP32 family: firmware goes to 0x10000 (bootloader at 0x0, partition table at 0x8000)
     # ESP8266: firmware goes to 0x0 (different bootloader architecture)
-    flash_offset = 0x10000 if chip_family in ['ESP32', 'ESP32-C3', 'ESP32-S3'] else 0x0
+    is_esp32_family = chip_family in ['ESP32', 'ESP32-C3', 'ESP32-S3']
+    
+    # Build parts list based on flash mode
+    parts = []
+    
+    if flash_mode == 'full' and is_esp32_family:
+        # Full flash: bootloader, partitions, then firmware
+        bootloader_token = generate_user_download_token(user_id, f"{platform}-bootloader", max_age=3600)
+        partitions_token = generate_user_download_token(user_id, f"{platform}-partitions", max_age=3600)
+        
+        bootloader_url = url_for('user_download_bootloader', token=bootloader_token, _external=True)
+        partitions_url = url_for('user_download_partitions', token=partitions_token, _external=True)
+        
+        parts = [
+            {"path": bootloader_url, "offset": 0},        # Bootloader at 0x0
+            {"path": partitions_url, "offset": 0x8000},   # Partition table at 0x8000
+            {"path": firmware_url, "offset": 0x10000}     # Firmware at 0x10000
+        ]
+    else:
+        # Quick flash: firmware only
+        flash_offset = 0x10000 if is_esp32_family else 0x0
+        parts = [{"path": firmware_url, "offset": flash_offset}]
     
     # Create ESP Web Tools manifest
     manifest = {
-        "name": f"Ski Clock Neo - {platform.upper()}",
+        "name": f"Ski Clock Neo - {platform.upper()} ({flash_mode.upper()} Flash)",
         "version": version_info['version'],
         "new_install_prompt_erase": True,
         "builds": [
             {
                 "chipFamily": chip_family,
-                "parts": [
-                    {
-                        "path": firmware_url,
-                        "offset": flash_offset
-                    }
-                ]
+                "parts": parts
             }
         ]
     }
@@ -559,6 +629,170 @@ def user_download_firmware(token):
             mimetype='application/octet-stream',
             as_attachment=True,
             download_name=version_info['filename']
+        )
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        return response
+
+@app.route('/firmware/user-download-bootloader/<token>')
+def user_download_bootloader(token):
+    """User-scoped bootloader download endpoint using user-specific signed tokens"""
+    # Verify user token and extract user_id and platform (with -bootloader suffix)
+    user_id, platform_with_suffix = verify_user_download_token(token)
+    
+    if not user_id or not platform_with_suffix:
+        return jsonify({'error': 'Invalid or expired download token'}), 401
+    
+    # Remove -bootloader suffix to get actual platform
+    platform = platform_with_suffix.replace('-bootloader', '')
+    
+    # Load user from database
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 401
+    
+    # Check if user has permission to download this platform
+    if not user.can_download_platform(platform):
+        return jsonify({'error': f'You do not have permission to download {platform} bootloader'}), 403
+    
+    # Validate platform
+    if platform not in SUPPORTED_PLATFORMS:
+        return jsonify({'error': 'Invalid platform'}), 400
+    
+    version_info = LATEST_VERSIONS.get(platform)
+    
+    if not version_info or not version_info.get('bootloader_filename'):
+        return jsonify({'error': 'Bootloader file not available'}), 404
+    
+    # Check where the bootloader is stored
+    storage_location = version_info.get('storage', 'local')
+    
+    if storage_location == 'object_storage' and version_info.get('bootloader_object_path'):
+        # Download from Object Storage
+        try:
+            storage = ObjectStorageService()
+            firmware_data = storage.download_as_bytes(version_info['bootloader_object_path'])
+            
+            response = Response(
+                firmware_data,
+                mimetype='application/octet-stream',
+                headers={
+                    'Content-Disposition': f'attachment; filename="{version_info["bootloader_filename"]}"',
+                    'Content-Length': str(len(firmware_data)),
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type'
+                }
+            )
+            return response
+        except (ObjectStorageError, ObjectNotFoundError) as e:
+            print(f"Error downloading bootloader from Object Storage: {e}")
+            # Try local filesystem as fallback
+            bootloader_path = FIRMWARES_DIR / version_info['bootloader_filename']
+            if bootloader_path.exists():
+                response = send_file(
+                    bootloader_path,
+                    mimetype='application/octet-stream',
+                    as_attachment=True,
+                    download_name=version_info['bootloader_filename']
+                )
+                response.headers['Access-Control-Allow-Origin'] = '*'
+                return response
+            return jsonify({'error': 'Bootloader file not found'}), 404
+    else:
+        # Serve from local filesystem
+        bootloader_path = FIRMWARES_DIR / version_info['bootloader_filename']
+        if not bootloader_path.exists():
+            return jsonify({'error': 'Bootloader file not found'}), 404
+        
+        response = send_file(
+            bootloader_path,
+            mimetype='application/octet-stream',
+            as_attachment=True,
+            download_name=version_info['bootloader_filename']
+        )
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        return response
+
+@app.route('/firmware/user-download-partitions/<token>')
+def user_download_partitions(token):
+    """User-scoped partitions download endpoint using user-specific signed tokens"""
+    # Verify user token and extract user_id and platform (with -partitions suffix)
+    user_id, platform_with_suffix = verify_user_download_token(token)
+    
+    if not user_id or not platform_with_suffix:
+        return jsonify({'error': 'Invalid or expired download token'}), 401
+    
+    # Remove -partitions suffix to get actual platform
+    platform = platform_with_suffix.replace('-partitions', '')
+    
+    # Load user from database
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 401
+    
+    # Check if user has permission to download this platform
+    if not user.can_download_platform(platform):
+        return jsonify({'error': f'You do not have permission to download {platform} partitions'}), 403
+    
+    # Validate platform
+    if platform not in SUPPORTED_PLATFORMS:
+        return jsonify({'error': 'Invalid platform'}), 400
+    
+    version_info = LATEST_VERSIONS.get(platform)
+    
+    if not version_info or not version_info.get('partitions_filename'):
+        return jsonify({'error': 'Partitions file not available'}), 404
+    
+    # Check where the partitions are stored
+    storage_location = version_info.get('storage', 'local')
+    
+    if storage_location == 'object_storage' and version_info.get('partitions_object_path'):
+        # Download from Object Storage
+        try:
+            storage = ObjectStorageService()
+            firmware_data = storage.download_as_bytes(version_info['partitions_object_path'])
+            
+            response = Response(
+                firmware_data,
+                mimetype='application/octet-stream',
+                headers={
+                    'Content-Disposition': f'attachment; filename="{version_info["partitions_filename"]}"',
+                    'Content-Length': str(len(firmware_data)),
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type'
+                }
+            )
+            return response
+        except (ObjectStorageError, ObjectNotFoundError) as e:
+            print(f"Error downloading partitions from Object Storage: {e}")
+            # Try local filesystem as fallback
+            partitions_path = FIRMWARES_DIR / version_info['partitions_filename']
+            if partitions_path.exists():
+                response = send_file(
+                    partitions_path,
+                    mimetype='application/octet-stream',
+                    as_attachment=True,
+                    download_name=version_info['partitions_filename']
+                )
+                response.headers['Access-Control-Allow-Origin'] = '*'
+                return response
+            return jsonify({'error': 'Partitions file not found'}), 404
+    else:
+        # Serve from local filesystem
+        partitions_path = FIRMWARES_DIR / version_info['partitions_filename']
+        if not partitions_path.exists():
+            return jsonify({'error': 'Partitions file not found'}), 404
+        
+        response = send_file(
+            partitions_path,
+            mimetype='application/octet-stream',
+            as_attachment=True,
+            download_name=version_info['partitions_filename']
         )
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
@@ -689,6 +923,8 @@ def upload_firmware():
         return jsonify({'error': 'No file provided'}), 400
     
     file = request.files['file']
+    bootloader_file = request.files.get('bootloader')  # Optional
+    partitions_file = request.files.get('partitions')  # Optional
     version = request.form.get('version')
     platform = request.form.get('platform', '').lower()
     
@@ -790,6 +1026,90 @@ def upload_firmware():
         version_info['object_name'] = object_name
     elif filepath:
         version_info['local_path'] = str(filepath)
+    
+    # Process bootloader file if provided
+    if bootloader_file and bootloader_file.filename:
+        if not bootloader_file.filename.endswith('.bin'):
+            return jsonify({'error': 'Bootloader file must be a .bin file'}), 400
+        
+        bootloader_filename = f"bootloader-{platform}-{version}.bin"
+        bootloader_object_name = f"{FIRMWARES_PREFIX}{bootloader_filename}"
+        
+        # Read bootloader data
+        bootloader_data = bootloader_file.read()
+        bootloader_size = len(bootloader_data)
+        bootloader_hash = hashlib.sha256(bootloader_data).hexdigest()
+        
+        # Upload bootloader to storage
+        try:
+            if storage_location == 'object_storage':
+                storage = ObjectStorageService()
+                temp_path = FIRMWARES_DIR / bootloader_filename
+                with open(temp_path, 'wb') as f:
+                    f.write(bootloader_data)
+                bootloader_object_path = storage.upload_file(temp_path, bootloader_object_name)
+                temp_path.unlink()
+                
+                version_info['bootloader_filename'] = bootloader_filename
+                version_info['bootloader_size'] = bootloader_size
+                version_info['bootloader_sha256'] = bootloader_hash
+                version_info['bootloader_object_path'] = bootloader_object_path
+                version_info['bootloader_object_name'] = bootloader_object_name
+                print(f"✓ Uploaded bootloader to Object Storage: {bootloader_object_path}")
+            else:
+                bootloader_filepath = FIRMWARES_DIR / bootloader_filename
+                with open(bootloader_filepath, 'wb') as f:
+                    f.write(bootloader_data)
+                
+                version_info['bootloader_filename'] = bootloader_filename
+                version_info['bootloader_size'] = bootloader_size
+                version_info['bootloader_sha256'] = bootloader_hash
+                version_info['bootloader_local_path'] = str(bootloader_filepath)
+                print(f"✓ Saved bootloader to local storage: {bootloader_filepath}")
+        except Exception as e:
+            print(f"⚠ Failed to upload bootloader: {e}")
+    
+    # Process partition table file if provided
+    if partitions_file and partitions_file.filename:
+        if not partitions_file.filename.endswith('.bin'):
+            return jsonify({'error': 'Partitions file must be a .bin file'}), 400
+        
+        partitions_filename = f"partitions-{platform}-{version}.bin"
+        partitions_object_name = f"{FIRMWARES_PREFIX}{partitions_filename}"
+        
+        # Read partitions data
+        partitions_data = partitions_file.read()
+        partitions_size = len(partitions_data)
+        partitions_hash = hashlib.sha256(partitions_data).hexdigest()
+        
+        # Upload partitions to storage
+        try:
+            if storage_location == 'object_storage':
+                storage = ObjectStorageService()
+                temp_path = FIRMWARES_DIR / partitions_filename
+                with open(temp_path, 'wb') as f:
+                    f.write(partitions_data)
+                partitions_object_path = storage.upload_file(temp_path, partitions_object_name)
+                temp_path.unlink()
+                
+                version_info['partitions_filename'] = partitions_filename
+                version_info['partitions_size'] = partitions_size
+                version_info['partitions_sha256'] = partitions_hash
+                version_info['partitions_object_path'] = partitions_object_path
+                version_info['partitions_object_name'] = partitions_object_name
+                print(f"✓ Uploaded partitions to Object Storage: {partitions_object_path}")
+            else:
+                partitions_filepath = FIRMWARES_DIR / partitions_filename
+                with open(partitions_filepath, 'wb') as f:
+                    f.write(partitions_data)
+                
+                version_info['partitions_filename'] = partitions_filename
+                version_info['partitions_size'] = partitions_size
+                version_info['partitions_sha256'] = partitions_hash
+                version_info['partitions_local_path'] = str(partitions_filepath)
+                print(f"✓ Saved partitions to local storage: {partitions_filepath}")
+        except Exception as e:
+            print(f"⚠ Failed to upload partitions: {e}")
     
     # Update in-memory cache
     LATEST_VERSIONS[platform] = version_info

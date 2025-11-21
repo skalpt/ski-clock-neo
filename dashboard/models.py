@@ -122,6 +122,22 @@ class FirmwareVersion(db.Model):
     object_name = db.Column(db.String(128))
     local_path = db.Column(db.String(256))
     
+    # Bootloader files (optional, for full flash support)
+    bootloader_filename = db.Column(db.String(128))
+    bootloader_size = db.Column(db.Integer)
+    bootloader_sha256 = db.Column(db.String(64))
+    bootloader_object_path = db.Column(db.String(256))
+    bootloader_object_name = db.Column(db.String(128))
+    bootloader_local_path = db.Column(db.String(256))
+    
+    # Partition table files (optional, for full flash support)
+    partitions_filename = db.Column(db.String(128))
+    partitions_size = db.Column(db.Integer)
+    partitions_sha256 = db.Column(db.String(64))
+    partitions_object_path = db.Column(db.String(256))
+    partitions_object_name = db.Column(db.String(128))
+    partitions_local_path = db.Column(db.String(256))
+    
     def __repr__(self):
         return f'<FirmwareVersion {self.platform} v{self.version}>'
     
@@ -134,7 +150,10 @@ class FirmwareVersion(db.Model):
             'sha256': self.sha256,
             'uploaded_at': self.uploaded_at.isoformat(),
             'download_url': self.download_url,
-            'storage': self.storage
+            'storage': self.storage,
+            'has_bootloader': bool(self.bootloader_filename),
+            'has_partitions': bool(self.partitions_filename),
+            'supports_full_flash': bool(self.bootloader_filename and self.partitions_filename)
         }
         
         if self.object_path:
@@ -143,6 +162,22 @@ class FirmwareVersion(db.Model):
             result['object_name'] = self.object_name
         if self.local_path:
             result['local_path'] = self.local_path
+        
+        # Include bootloader info if available
+        if self.bootloader_filename:
+            result['bootloader'] = {
+                'filename': self.bootloader_filename,
+                'size': self.bootloader_size,
+                'sha256': self.bootloader_sha256
+            }
+        
+        # Include partition table info if available
+        if self.partitions_filename:
+            result['partitions'] = {
+                'filename': self.partitions_filename,
+                'size': self.partitions_size,
+                'sha256': self.partitions_sha256
+            }
             
         return result
 
