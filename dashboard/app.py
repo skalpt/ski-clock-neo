@@ -59,6 +59,74 @@ config = load_config()
 UPLOAD_API_KEY = config.get('UPLOAD_API_KEY')
 DOWNLOAD_API_KEY = config.get('DOWNLOAD_API_KEY')
 
+# Environment detection (fail-closed: defaults to production)
+def is_production_environment():
+    """Detect environment with fail-closed security posture
+    
+    Returns False (development) ONLY if:
+    - DEV_MODE='true' (explicit development flag)
+    - SAFE_CONFIG_BYPASS='true' (emergency override)
+    - REPL_ID set but REPL_DEPLOYMENT_TYPE not set (Replit workspace)
+    - REPL_DEPLOYMENT_TYPE in {'staging', 'qa', 'dev'} (known non-prod)
+    
+    Otherwise returns True (production), enforcing secure configuration
+    for Docker, bare metal, and unknown cloud deployments.
+    """
+    # Emergency bypass for troubleshooting
+    if os.getenv('SAFE_CONFIG_BYPASS', '').lower() == 'true':
+        return False
+    
+    # Explicit development mode
+    if os.getenv('DEV_MODE', '').lower() == 'true':
+        return False
+    
+    # Replit workspace (not a deployment)
+    if os.getenv('REPL_ID') and not os.getenv('REPL_DEPLOYMENT_TYPE'):
+        return False
+    
+    # Known non-production environments (staging, qa, dev)
+    deployment_type = os.getenv('REPL_DEPLOYMENT_TYPE', '').lower()
+    if deployment_type in {'staging', 'qa', 'dev'}:
+        return False
+    
+    # Default to production (fail closed) for all other environments
+    return True
+
+# Production configuration validation
+def validate_production_config():
+    """Enforce secure configuration in production environments"""
+    is_prod = is_production_environment()
+    
+    # Check for insecure defaults
+    warnings = []
+    
+    if app.secret_key == "a secret key":
+        warnings.append("FLASK_SECRET_KEY is using insecure default")
+    
+    if UPLOAD_API_KEY == 'dev-key-change-in-production':
+        warnings.append("UPLOAD_API_KEY is using development default")
+    
+    if DOWNLOAD_API_KEY == 'dev-download-key':
+        warnings.append("DOWNLOAD_API_KEY is using development default")
+    
+    if warnings:
+        if is_prod:
+            # In production, fail hard to prevent insecure deployments
+            error_msg = "PRODUCTION CONFIGURATION ERROR:\n" + "\n".join(f"  - {issue}" for issue in warnings)
+            print(f"\n{'='*60}")
+            print(error_msg)
+            print(f"{'='*60}\n")
+            raise RuntimeError(error_msg + "\n\nSet proper values via Secrets or environment variables.")
+        else:
+            # In development/staging, just warn
+            for warning in warnings:
+                print(f"⚠ {warning} (development only)")
+    else:
+        env_type = "production" if is_prod else "development"
+        print(f"✓ Configuration validated successfully ({env_type})")
+
+validate_production_config()
+
 # Supported platforms (must match firmware board detection and GitHub Actions)
 SUPPORTED_PLATFORMS = [
     'esp32',      # ESP32 (original)
@@ -69,6 +137,33 @@ SUPPORTED_PLATFORMS = [
     'd1mini',     # Wemos D1 Mini (ESP8266)
     'esp8266'     # Legacy ESP8266 (backward compatibility - aliases to esp12f)
 ]
+
+# Canonical platforms (platforms with database rows, excluding aliases)
+CANONICAL_PLATFORMS = [
+    'esp32',
+    'esp32c3',
+    'esp32s3',
+    'esp12f',
+    'esp01',
+    'd1mini'
+    # NOTE: 'esp8266' is NOT canonical - it's an alias to esp12f
+]
+
+# Helper functions for alias management
+def get_aliases_for_platform(canonical_platform):
+    """Get all alias platforms that map to a canonical platform
+    
+    Args:
+        canonical_platform: Canonical platform name (e.g., 'esp12f')
+    
+    Returns:
+        List of alias platform names (e.g., ['esp8266'])
+    """
+    aliases = []
+    for alias, target in PLATFORM_FIRMWARE_MAPPING.items():
+        if target == canonical_platform and alias not in CANONICAL_PLATFORMS:
+            aliases.append(alias)
+    return aliases
 
 # Platform aliases: Map legacy platform names to specific board firmware
 # Used to serve correct firmware when legacy devices request generic platform
@@ -90,21 +185,72 @@ PLATFORM_CHIP_FAMILY = {
 # In-memory cache of firmware versions (loaded from database)
 LATEST_VERSIONS = {}
 
+def refresh_firmware_cache(platform):
+    """Refresh cache for a specific platform and all its aliases
+    
+    Loads firmware from database and updates LATEST_VERSIONS cache
+    for both the canonical platform and all mapped aliases.
+    
+    Args:
+        platform: Canonical platform name (e.g., 'esp32c3', 'esp12f')
+    """
+    global LATEST_VERSIONS
+    
+    # Load from database
+    fw = FirmwareVersion.query.filter_by(platform=platform).first()
+    
+    if not fw:
+        # Clear canonical platform and all aliases when firmware is missing
+        LATEST_VERSIONS[platform] = None
+        for alias in get_aliases_for_platform(platform):
+            LATEST_VERSIONS[alias] = None
+        return
+    
+    # Update canonical platform
+    version_info = fw.to_dict()
+    LATEST_VERSIONS[platform] = version_info
+    
+    # Update all aliases pointing to this platform dynamically
+    for alias in get_aliases_for_platform(platform):
+        alias_info = version_info.copy()
+        alias_info['platform'] = alias
+        alias_info['download_url'] = f'/api/firmware/{alias}'
+        LATEST_VERSIONS[alias] = alias_info
+
+def refresh_all_firmware_cache():
+    """Refresh cache for all canonical platforms (and their aliases)"""
+    for platform in CANONICAL_PLATFORMS:
+        refresh_firmware_cache(platform)
+
+def get_firmware_version(platform: str) -> Optional[Dict[str, Any]]:
+    """
+    Get firmware version with automatic DB fallback.
+    Checks cache first, falls back to database if cache is empty or platform not found.
+    """
+    # Try cache first
+    version_info = LATEST_VERSIONS.get(platform)
+    
+    # Cache miss - refresh from database
+    if version_info is None:
+        # Resolve alias to canonical platform using PLATFORM_FIRMWARE_MAPPING
+        canonical_platform = PLATFORM_FIRMWARE_MAPPING.get(platform, platform)
+        
+        # Refresh cache for canonical platform (and all its aliases)
+        if canonical_platform in CANONICAL_PLATFORMS:
+            refresh_firmware_cache(canonical_platform)
+            version_info = LATEST_VERSIONS.get(platform)
+    
+    return version_info
+
 def load_versions_from_db():
     """Load all firmware versions from database into memory for fast lookups"""
-    global LATEST_VERSIONS
-    versions = {}
-    for platform in SUPPORTED_PLATFORMS:
-        fw = FirmwareVersion.query.filter_by(platform=platform).first()
-        if fw:
-            versions[platform] = fw.to_dict()
-        else:
-            versions[platform] = None
+    # Use centralized cache refresh to ensure aliases are updated
+    refresh_all_firmware_cache()
     
-    count = sum(1 for v in versions.values() if v is not None)
+    # Count only canonical platforms (exclude aliases to avoid double-counting)
+    count = sum(1 for p in CANONICAL_PLATFORMS if LATEST_VERSIONS.get(p) is not None)
     print(f"✓ Loaded {count} firmware versions from database")
-    LATEST_VERSIONS = versions
-    return versions
+    return LATEST_VERSIONS
 
 def save_version_to_db(platform, version_info):
     """Save or update a firmware version in the database"""
@@ -172,6 +318,9 @@ def save_version_to_db(platform, version_info):
     
     db.session.commit()
     print(f"✓ Saved {platform} v{version_info['version']} to database")
+    
+    # Refresh cache for this platform and all aliases
+    refresh_firmware_cache(platform)
 
 def generate_user_download_token(user_id, platform, max_age=3600):
     """Generate a user-scoped signed token for firmware downloads (default 1-hour expiration)
@@ -371,7 +520,7 @@ def login():
         password = request.form.get('password')
         
         # Check credentials against database
-        user = User.query.filter_by(email=email).first()
+        user = db.session.execute(db.select(User).filter_by(email=email)).scalar_one_or_none()
         
         if user and user.check_password(password):
             session['logged_in'] = True
@@ -444,7 +593,7 @@ def firmware_manifest(platform):
     
     # Get user from session and check permissions BEFORE generating manifest
     user_id = session.get('user_id')
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     
     if not user:
         return jsonify({'error': 'User not found'}), 401
@@ -453,7 +602,7 @@ def firmware_manifest(platform):
     if not user.can_download_platform(platform):
         return jsonify({'error': f'You do not have permission to access {platform} firmware'}), 403
     
-    version_info = LATEST_VERSIONS.get(platform)
+    version_info = get_firmware_version(platform)
     
     if not version_info:
         return jsonify({'error': 'No firmware available'}), 404
@@ -535,7 +684,7 @@ def user_download_firmware(token):
         return jsonify({'error': 'Invalid or expired download token'}), 401
     
     # Load user from database
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     if not user:
         return jsonify({'error': 'User not found'}), 401
     
@@ -547,7 +696,7 @@ def user_download_firmware(token):
     if platform not in SUPPORTED_PLATFORMS:
         return jsonify({'error': 'Invalid platform'}), 400
     
-    version_info = LATEST_VERSIONS.get(platform)
+    version_info = get_firmware_version(platform)
     
     if not version_info:
         return jsonify({'error': 'No firmware available'}), 404
@@ -642,7 +791,7 @@ def user_download_bootloader(token):
     platform = platform_with_suffix.replace('-bootloader', '')
     
     # Load user from database
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     if not user:
         return jsonify({'error': 'User not found'}), 401
     
@@ -654,7 +803,7 @@ def user_download_bootloader(token):
     if platform not in SUPPORTED_PLATFORMS:
         return jsonify({'error': 'Invalid platform'}), 400
     
-    version_info = LATEST_VERSIONS.get(platform)
+    version_info = get_firmware_version(platform)
     
     if not version_info or not version_info.get('bootloader_filename'):
         return jsonify({'error': 'Bootloader file not available'}), 404
@@ -724,7 +873,7 @@ def user_download_partitions(token):
     platform = platform_with_suffix.replace('-partitions', '')
     
     # Load user from database
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     if not user:
         return jsonify({'error': 'User not found'}), 401
     
@@ -736,7 +885,7 @@ def user_download_partitions(token):
     if platform not in SUPPORTED_PLATFORMS:
         return jsonify({'error': 'Invalid platform'}), 400
     
-    version_info = LATEST_VERSIONS.get(platform)
+    version_info = get_firmware_version(platform)
     
     if not version_info or not version_info.get('partitions_filename'):
         return jsonify({'error': 'Partitions file not available'}), 404
@@ -814,7 +963,7 @@ def download_firmware(platform):
             'supported_platforms': SUPPORTED_PLATFORMS
         }), 400
     
-    version_info = LATEST_VERSIONS.get(platform)
+    version_info = get_firmware_version(platform)
     
     if not version_info:
         return jsonify({'error': 'No firmware available'}), 404
@@ -948,7 +1097,7 @@ def upload_firmware():
     except (ValueError, IndexError):
         return jsonify({'error': 'Invalid version format. Use vX.Y.Z'}), 400
     
-    current_version_info = LATEST_VERSIONS.get(platform)
+    current_version_info = get_firmware_version(platform)
     if current_version_info:
         try:
             current_version_code = parse_version(current_version_info['version'])
@@ -1166,7 +1315,7 @@ def update_config():
 def status():
     # Get user from session
     user_id = session.get('user_id')
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     
     if not user:
         return jsonify({'error': 'User not found'}), 401

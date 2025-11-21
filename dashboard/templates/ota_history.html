@@ -1,384 +1,249 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OTA Update History - Ski Clock Neo</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        h1 {
-            color: white;
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
-        }
-        .subtitle {
-            color: rgba(255,255,255,0.8);
-            margin-bottom: 30px;
-        }
-        .header-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-        }
-        .back-btn, .logout-btn {
-            background: rgba(255,255,255,0.2);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: bold;
-            transition: background 0.2s;
-        }
-        .back-btn:hover, .logout-btn:hover {
-            background: rgba(255,255,255,0.3);
-        }
-        .card {
-            background: white;
-            border-radius: 12px;
-            padding: 25px;
-            margin-bottom: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }
-        .filters {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-        }
-        .filter-group label {
-            font-weight: 600;
-            margin-bottom: 5px;
-            color: #333;
-        }
-        .filter-group input,
-        .filter-group select {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 0.9rem;
-        }
-        .filter-actions {
-            display: flex;
-            gap: 10px;
-        }
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        }
-        .btn-secondary {
-            background: #e5e7eb;
-            color: #374151;
-        }
-        .btn-secondary:hover {
-            background: #d1d5db;
-        }
-        .logs-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        .logs-table th,
-        .logs-table td {
-            text-align: left;
-            padding: 12px;
-            border-bottom: 1px solid #eee;
-        }
-        .logs-table th {
-            font-weight: 600;
-            color: #667eea;
-            background: rgba(102, 126, 234, 0.05);
-        }
-        .logs-table tr:hover {
-            background: rgba(102, 126, 234, 0.02);
-        }
-        .status-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 0.85rem;
-            font-weight: 600;
-        }
-        .status-started { background: #fef3c7; color: #92400e; }
-        .status-downloading { background: #dbeafe; color: #1e40af; }
-        .status-success { background: #d1fae5; color: #065f46; }
-        .status-failed { background: #fee2e2; color: #991b1b; }
-        .pagination {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #eee;
-        }
-        .pagination-info {
-            color: #666;
-        }
-        .pagination-controls {
-            display: flex;
-            gap: 10px;
-        }
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: #999;
-        }
-        .progress-bar {
-            width: 100px;
-            height: 8px;
-            background: #e5e7eb;
-            border-radius: 4px;
-            overflow: hidden;
-        }
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #667eea, #764ba2);
-            transition: width 0.3s;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header-bar">
-            <div>
-                <h1>📊 OTA Update History</h1>
-                <p class="subtitle">View and filter firmware update attempts</p>
-            </div>
-            <div style="display: flex; gap: 10px;">
-                <a href="/" class="back-btn">← Back to Dashboard</a>
-                <a href="/logout" class="logout-btn">Logout</a>
-            </div>
-        </div>
+{% extends "base.html" %}
 
-        <div class="card">
-            <h2 style="margin-bottom: 20px;">Filters</h2>
-            <div class="filters">
-                <div class="filter-group">
-                    <label for="device-filter">Device ID</label>
-                    <input type="text" id="device-filter" placeholder="Filter by device...">
-                </div>
-                <div class="filter-group">
-                    <label for="status-filter">Status</label>
-                    <select id="status-filter">
-                        <option value="">All Statuses</option>
-                        <option value="started">Started</option>
-                        <option value="downloading">Downloading</option>
-                        <option value="success">Success</option>
-                        <option value="failed">Failed</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="start-date">Start Date</label>
-                    <input type="date" id="start-date">
-                </div>
-                <div class="filter-group">
-                    <label for="end-date">End Date</label>
-                    <input type="date" id="end-date">
-                </div>
-            </div>
-            <div class="filter-actions">
-                <button class="btn btn-primary" onclick="applyFilters()">Apply Filters</button>
-                <button class="btn btn-secondary" onclick="clearFilters()">Clear All</button>
-            </div>
-        </div>
+{% block title %}OTA Update History - Ski Clock Neo{% endblock %}
 
-        <div class="card">
-            <div id="logs-container">
-                <div class="empty-state">
-                    <p>Loading OTA update history...</p>
-                </div>
-            </div>
+{% block content %}
+<div class="container">
+    <div class="header-bar">
+        <div class="header-content">
+            <h1>⛷️ Ski Clock Neo</h1>
+            <p class="subtitle">OTA Update History</p>
         </div>
+        <a href="/" class="back-link">← Back to Dashboard</a>
     </div>
 
-    <script>
-        let currentOffset = 0;
-        const limit = 50;
+    <div class="card">
+        <h2>📜 Firmware Update Log</h2>
+        
+        <div class="filter-bar">
+            <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+                <label for="device-filter">Device</label>
+                <select id="device-filter" class="device-filter-select">
+                    <option value="">All Devices</option>
+                </select>
+            </div>
+            
+            <div class="form-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
+                <label for="status-filter">Status</label>
+                <select id="status-filter">
+                    <option value="">All Status</option>
+                    <option value="success">Success</option>
+                    <option value="failed">Failed</option>
+                    <option value="in-progress">In Progress</option>
+                </select>
+            </div>
+            
+            <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+                <label for="date-from">From Date</label>
+                <input type="datetime-local" id="date-from" class="date-input">
+            </div>
+            
+            <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+                <label for="date-to">To Date</label>
+                <input type="datetime-local" id="date-to" class="date-input">
+            </div>
+            
+            <div style="display: flex; align-items: flex-end; gap: 10px;">
+                <button onclick="applyFilters()">Apply Filters</button>
+                <button onclick="clearFilters()" style="background: rgba(255,255,255,0.3);">Clear</button>
+            </div>
+        </div>
 
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
+        <div id="ota-history-container">
+            <div class="empty-state">
+                <p>Loading OTA history...</p>
+            </div>
+        </div>
+        
+        <div class="pagination" id="pagination-container"></div>
+    </div>
+</div>
+{% endblock %}
 
-        function formatTimestamp(isoString) {
-            if (!isoString) return 'N/A';
-            const date = new Date(isoString);
-            return date.toLocaleString();
-        }
+{% block extra_scripts %}
+<script>
+    let currentPage = 1;
+    const pageSize = 50;
+    let currentFilters = {};
+    let allDevices = [];
 
-        function formatDuration(seconds) {
-            if (!seconds) return 'N/A';
-            if (seconds < 60) return `${seconds}s`;
-            const minutes = Math.floor(seconds / 60);
-            const secs = Math.round(seconds % 60);
-            return `${minutes}m ${secs}s`;
-        }
-
-        async function loadLogs(offset = 0) {
-            const deviceId = document.getElementById('device-filter').value;
-            const status = document.getElementById('status-filter').value;
-            const startDate = document.getElementById('start-date').value;
-            const endDate = document.getElementById('end-date').value;
-
-            const params = new URLSearchParams({
-                limit: limit,
-                offset: offset
-            });
-
-            if (deviceId) params.append('device_id', deviceId);
-            if (status) params.append('status', status);
-            if (startDate) params.append('start_date', new Date(startDate).toISOString());
-            if (endDate) {
-                const end = new Date(endDate);
-                end.setHours(23, 59, 59, 999);
-                params.append('end_date', end.toISOString());
+    async function loadDevicesList() {
+        try {
+            const response = await fetch('/api/devices');
+            const data = await response.json();
+            
+            if (data.devices && data.devices.length > 0) {
+                allDevices = data.devices.map(d => d.device_id).sort();
+                const select = document.getElementById('device-filter');
+                allDevices.forEach(deviceId => {
+                    const option = document.createElement('option');
+                    option.value = deviceId;
+                    option.textContent = deviceId;
+                    select.appendChild(option);
+                });
             }
-
-            try {
-                const response = await fetch(`/api/ota-logs?${params}`);
-                const data = await response.json();
-
-                renderLogs(data, offset);
-            } catch (error) {
-                console.error('Failed to load OTA logs:', error);
-                document.getElementById('logs-container').innerHTML = `
-                    <div class="empty-state">
-                        <p>Failed to load OTA update history</p>
-                    </div>
-                `;
-            }
+        } catch (error) {
+            console.error('Failed to load devices list:', error);
         }
+    }
 
-        function renderLogs(data, offset) {
-            const container = document.getElementById('logs-container');
-
-            if (data.logs.length === 0) {
+    async function loadOTAHistory(page = 1) {
+        try {
+            let url = `/api/ota-logs?limit=${pageSize}&offset=${(page - 1) * pageSize}`;
+            
+            if (currentFilters.device_id) {
+                url += `&device_id=${encodeURIComponent(currentFilters.device_id)}`;
+            }
+            if (currentFilters.status) {
+                url += `&status=${encodeURIComponent(currentFilters.status)}`;
+            }
+            if (currentFilters.start_date) {
+                url += `&start_date=${encodeURIComponent(currentFilters.start_date)}`;
+            }
+            if (currentFilters.end_date) {
+                url += `&end_date=${encodeURIComponent(currentFilters.end_date)}`;
+            }
+            
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            const container = document.getElementById('ota-history-container');
+            
+            if (!data.logs || data.logs.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
-                        <p>No OTA updates found matching your filters</p>
+                        <p>No OTA updates found</p>
                     </div>
                 `;
+                document.getElementById('pagination-container').innerHTML = '';
                 return;
             }
-
-            const logsHtml = data.logs.map(log => {
-                const safeDeviceId = escapeHtml(log.device_id);
-                const safePlatform = escapeHtml(log.platform);
-                const safeOldVersion = escapeHtml(log.old_version) || 'Unknown';
-                const safeNewVersion = escapeHtml(log.new_version);
-                const safeErrorMsg = escapeHtml(log.error_message);
-
-                return `
-                    <tr>
-                        <td>${formatTimestamp(log.started_at)}</td>
-                        <td>${safeDeviceId}</td>
-                        <td>${safePlatform}</td>
-                        <td>${safeOldVersion} → ${safeNewVersion}</td>
-                        <td><span class="status-badge status-${log.status}">${log.status}</span></td>
-                        <td>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: ${log.download_progress}%"></div>
-                            </div>
-                            ${log.download_progress}%
-                        </td>
-                        <td>${log.duration_seconds ? formatDuration(log.duration_seconds) : 'In progress'}</td>
-                        <td>${log.completed_at ? formatTimestamp(log.completed_at) : '-'}</td>
-                        <td>${safeErrorMsg || '-'}</td>
-                    </tr>
-                `;
-            }).join('');
-
-            const hasNext = (offset + data.count) < data.total;
-            const hasPrev = offset > 0;
-
-            container.innerHTML = `
-                <table class="logs-table">
+            
+            const tableHtml = `
+                <table class="ota-history-table">
                     <thead>
                         <tr>
-                            <th>Started</th>
-                            <th>Device</th>
+                            <th>Timestamp</th>
+                            <th>Device ID</th>
                             <th>Platform</th>
-                            <th>Version</th>
-                            <th>Status</th>
+                            <th>Old Version</th>
+                            <th>New Version</th>
                             <th>Progress</th>
+                            <th>Status</th>
                             <th>Duration</th>
-                            <th>Completed</th>
-                            <th>Error</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${logsHtml}
+                        ${data.logs.map(log => {
+                            const statusClass = log.status === 'success' ? 'success' : log.status === 'failed' ? 'failed' : 'in-progress';
+                            const progressBar = log.status === 'in-progress' ? `
+                                <div class="progress-bar-mini">
+                                    <div class="fill" style="width: ${log.progress}%"></div>
+                                </div>
+                            ` : `${log.progress}%`;
+                            
+                            const duration = log.duration_seconds ? `${log.duration_seconds}s` : '-';
+                            
+                            return `
+                                <tr>
+                                    <td>${new Date(log.started_at).toLocaleString()}</td>
+                                    <td>${escapeHtml(log.device_id)}</td>
+                                    <td>${escapeHtml(log.platform || '-')}</td>
+                                    <td>${escapeHtml(log.old_version || '-')}</td>
+                                    <td>${escapeHtml(log.new_version || '-')}</td>
+                                    <td>${progressBar}</td>
+                                    <td><span class="status-badge ${statusClass}">${log.status}</span></td>
+                                    <td>${duration}</td>
+                                </tr>
+                            `;
+                        }).join('')}
                     </tbody>
                 </table>
-
-                <div class="pagination">
-                    <div class="pagination-info">
-                        Showing ${offset + 1} - ${offset + data.count} of ${data.total} updates
-                    </div>
-                    <div class="pagination-controls">
-                        <button class="btn btn-secondary" onclick="loadLogs(${offset - limit})" ${!hasPrev ? 'disabled' : ''}>
-                            ← Previous
-                        </button>
-                        <button class="btn btn-secondary" onclick="loadLogs(${offset + limit})" ${!hasNext ? 'disabled' : ''}>
-                            Next →
-                        </button>
-                    </div>
+            `;
+            
+            container.innerHTML = tableHtml;
+            
+            // Update pagination
+            updatePagination(data.total, page);
+            
+        } catch (error) {
+            console.error('Failed to load OTA history:', error);
+            const container = document.getElementById('ota-history-container');
+            container.innerHTML = `
+                <div class="empty-state">
+                    <p>Failed to load OTA history</p>
                 </div>
             `;
         }
+    }
 
-        function applyFilters() {
-            currentOffset = 0;
-            loadLogs(0);
+    function updatePagination(total, currentPage) {
+        const totalPages = Math.ceil(total / pageSize);
+        
+        if (totalPages <= 1) {
+            document.getElementById('pagination-container').innerHTML = '';
+            return;
         }
+        
+        let paginationHtml = `
+            <button onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+                ← Previous
+            </button>
+            <span style="padding: 8px 16px; font-weight: bold;">
+                Page ${currentPage} of ${totalPages}
+            </span>
+            <button onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+                Next →
+            </button>
+        `;
+        
+        document.getElementById('pagination-container').innerHTML = paginationHtml;
+    }
 
-        function clearFilters() {
-            document.getElementById('device-filter').value = '';
-            document.getElementById('status-filter').value = '';
-            document.getElementById('start-date').value = '';
-            document.getElementById('end-date').value = '';
-            currentOffset = 0;
-            loadLogs(0);
-        }
+    function goToPage(page) {
+        currentPage = page;
+        loadOTAHistory(page);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
 
-        // Initial load
-        loadLogs(0);
+    function applyFilters() {
+        const deviceId = document.getElementById('device-filter').value;
+        const status = document.getElementById('status-filter').value;
+        const dateFrom = document.getElementById('date-from').value;
+        const dateTo = document.getElementById('date-to').value;
+        
+        currentFilters = {};
+        if (deviceId) currentFilters.device_id = deviceId;
+        if (status) currentFilters.status = status;
+        if (dateFrom) currentFilters.start_date = new Date(dateFrom).toISOString();
+        if (dateTo) currentFilters.end_date = new Date(dateTo).toISOString();
+        
+        currentPage = 1;
+        loadOTAHistory(1);
+    }
 
-        // Auto-refresh every 30 seconds
-        setInterval(() => loadLogs(currentOffset), 30000);
-    </script>
-</body>
-</html>
+    function clearFilters() {
+        document.getElementById('device-filter').value = '';
+        document.getElementById('status-filter').value = '';
+        document.getElementById('date-from').value = '';
+        document.getElementById('date-to').value = '';
+        currentFilters = {};
+        currentPage = 1;
+        loadOTAHistory(1);
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Initial load
+    loadDevicesList();
+    loadOTAHistory(1);
+    
+    // Auto-refresh every 30 seconds
+    setInterval(() => loadOTAHistory(currentPage), 30000);
+</script>
+{% endblock %}
