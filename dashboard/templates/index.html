@@ -394,18 +394,36 @@
                 
                 const rows = Object.entries(data.firmwares)
                     .filter(([_, fw]) => fw !== null)
-                    .map(([platform, fw]) => `
-                        <tr>
-                            <td><strong>${platform.toUpperCase()}</strong></td>
-                            <td><a href="${fw.public_download_url || fw.download_url}" style="color: #667eea; text-decoration: none;">${fw.filename || 'Unknown'}</a></td>
-                            <td>${fw.version || 'Unknown'}</td>
-                            <td>
-                                <esp-web-install-button manifest="/firmware/manifest/${platform}.json">
-                                    <button slot="activate" class="flash-btn">⚡ Flash to Device</button>
-                                </esp-web-install-button>
-                            </td>
-                        </tr>
-                    `).join('');
+                    .map(([platform, fw]) => {
+                        // Check if user has download permission
+                        const canDownload = fw.can_download !== false;
+                        const downloadUrl = fw.public_download_url || fw.download_url || '#';
+                        
+                        // Render different content based on permission
+                        if (canDownload) {
+                            return `
+                                <tr>
+                                    <td><strong>${platform.toUpperCase()}</strong></td>
+                                    <td><a href="${downloadUrl}" style="color: #667eea; text-decoration: none;">${escapeHtml(fw.filename || 'Unknown')}</a></td>
+                                    <td>${escapeHtml(fw.version || 'Unknown')}</td>
+                                    <td>
+                                        <esp-web-install-button manifest="/firmware/manifest/${platform}.json">
+                                            <button slot="activate" class="flash-btn">⚡ Flash to Device</button>
+                                        </esp-web-install-button>
+                                    </td>
+                                </tr>
+                            `;
+                        } else {
+                            return `
+                                <tr style="opacity: 0.5;">
+                                    <td><strong>${platform.toUpperCase()}</strong></td>
+                                    <td>${escapeHtml(fw.filename || 'Unknown')}</td>
+                                    <td>${escapeHtml(fw.version || 'Unknown')}</td>
+                                    <td><span style="color: #999;">No Permission</span></td>
+                                </tr>
+                            `;
+                        }
+                    }).join('');
 
                 tbody.innerHTML = rows || '<tr><td colspan="4" style="text-align: center; color: #999;">No firmware uploaded yet</td></tr>';
             } catch (error) {

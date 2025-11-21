@@ -528,7 +528,7 @@ def public_download_firmware(token):
 @app.route('/firmware/manifest/<platform>.json')
 @login_required
 def firmware_manifest(platform):
-    """Generate ESP Web Tools manifest for browser-based flashing (requires login)"""
+    """Generate ESP Web Tools manifest for browser-based flashing (requires login and platform permission)"""
     platform = platform.lower()
     original_platform = platform
     
@@ -540,6 +540,17 @@ def firmware_manifest(platform):
     if original_platform not in SUPPORTED_PLATFORMS and platform not in SUPPORTED_PLATFORMS:
         return jsonify({'error': 'Invalid platform'}), 400
     
+    # Get user from session and check permissions BEFORE generating manifest
+    user_id = session.get('user_id')
+    user = User.query.get(user_id)
+    
+    if not user:
+        return jsonify({'error': 'User not found'}), 401
+    
+    # Check if user has permission to download this platform
+    if not user.can_download_platform(platform):
+        return jsonify({'error': f'You do not have permission to access {platform} firmware'}), 403
+    
     version_info = LATEST_VERSIONS.get(platform)
     
     if not version_info:
@@ -548,8 +559,7 @@ def firmware_manifest(platform):
     # Get chip family for this platform
     chip_family = PLATFORM_CHIP_FAMILY.get(platform, 'ESP32')
     
-    # Get user from session and generate user-scoped download token for the manifest
-    user_id = session.get('user_id')
+    # Generate user-scoped download token for the manifest (user already has permission)
     download_token = generate_user_download_token(user_id, platform, max_age=3600)
     firmware_url = url_for('user_download_firmware', token=download_token, _external=True)
     
@@ -970,16 +980,29 @@ def update_config():
 def status():
     # Get user from session
     user_id = session.get('user_id')
+    user = User.query.get(user_id)
     
-    # Generate fresh user-scoped download tokens for each firmware (prevents expiration issues)
+    if not user:
+        return jsonify({'error': 'User not found'}), 401
+    
+    # Generate fresh user-scoped download tokens ONLY for platforms the user has permission for
     firmwares_with_tokens = {}
     for platform, fw_data in LATEST_VERSIONS.items():
         if fw_data:
-            fw_copy = fw_data.copy()
-            # Generate fresh user-scoped token valid for 1 hour
-            token = generate_user_download_token(user_id, platform, max_age=3600)
-            fw_copy['public_download_url'] = f'/firmware/user-download/{token}'
-            firmwares_with_tokens[platform] = fw_copy
+            # Check if user has permission to download this platform
+            if user.can_download_platform(platform):
+                fw_copy = fw_data.copy()
+                # Generate fresh user-scoped token valid for 1 hour
+                token = generate_user_download_token(user_id, platform, max_age=3600)
+                fw_copy['public_download_url'] = f'/firmware/user-download/{token}'
+                fw_copy['can_download'] = True
+                firmwares_with_tokens[platform] = fw_copy
+            else:
+                # Include firmware metadata but no download token
+                fw_copy = fw_data.copy()
+                fw_copy['can_download'] = False
+                fw_copy['public_download_url'] = None
+                firmwares_with_tokens[platform] = fw_copy
         else:
             firmwares_with_tokens[platform] = None
     
