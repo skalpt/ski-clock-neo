@@ -59,7 +59,8 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     DEBUG_PRINTLN("Version response received!");
     
     // Simple JSON parsing to extract update_available and latest_version
-    if (message.indexOf("\"update_available\":true") > 0) {
+    // Handle both compact and standard JSON formatting (with/without spaces)
+    if (message.indexOf("\"update_available\": true") > 0 || message.indexOf("\"update_available\":true") > 0) {
       int versionIndex = message.indexOf("\"latest_version\"");
       if (versionIndex > 0) {
         int colonIndex = message.indexOf(":", versionIndex);
@@ -85,14 +86,14 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   if (strcmp(topic, commandTopic.c_str()) == 0) {
     DEBUG_PRINTLN("Command received!");
     
-    // Parse command type from JSON
-    if (message.indexOf("\"command\":\"rollback\"") > 0) {
+    // Parse command type from JSON (handle both compact and standard formatting)
+    if (message.indexOf("\"command\": \"rollback\"") > 0 || message.indexOf("\"command\":\"rollback\"") > 0) {
       DEBUG_PRINTLN("Executing rollback command");
       handleRollbackCommand(message);
-    } else if (message.indexOf("\"command\":\"restart\"") > 0) {
+    } else if (message.indexOf("\"command\": \"restart\"") > 0 || message.indexOf("\"command\":\"restart\"") > 0) {
       DEBUG_PRINTLN("Executing restart command");
       handleRestartCommand();
-    } else if (message.indexOf("\"command\":\"snapshot\"") > 0) {
+    } else if (message.indexOf("\"command\": \"snapshot\"") > 0 || message.indexOf("\"command\":\"snapshot\"") > 0) {
       DEBUG_PRINTLN("Executing snapshot command");
       publishDisplaySnapshot();
     } else {
