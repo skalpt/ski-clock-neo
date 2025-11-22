@@ -1,0 +1,69 @@
+2025-11-22T13:39:34.3774912Z ##[group]Run arduino-cli core update-index
+2025-11-22T13:39:34.3776538Z [36;1marduino-cli core update-index[0m
+2025-11-22T13:39:34.3778380Z [36;1marduino-cli core install esp32:esp32@2.0.14[0m
+2025-11-22T13:39:34.3781290Z [36;1marduino-cli core update-index --additional-urls http://arduino.esp8266.com/stable/package_esp8266com_index.json[0m
+2025-11-22T13:39:34.3785031Z [36;1marduino-cli core install esp8266:esp8266 --additional-urls http://arduino.esp8266.com/stable/package_esp8266com_index.json[0m
+2025-11-22T13:39:34.3828015Z shell: /usr/bin/bash -e {0}
+2025-11-22T13:39:34.3829169Z ##[endgroup]
+2025-11-22T13:39:34.8323044Z 
+2025-11-22T13:39:34.8324743Z Downloading index: library_index.tar.bz2 0 B / 3.59 MiB    0.00%
+2025-11-22T13:39:34.8327580Z Downloading index: library_index.tar.bz2 downloaded
+2025-11-22T13:39:36.0302957Z 
+2025-11-22T13:39:36.0304395Z Downloading index: package_index.tar.bz2 0 B / 90.23 KiB    0.00%
+2025-11-22T13:39:36.0305257Z Downloading index: package_index.tar.bz2 downloaded
+2025-11-22T13:39:36.0816986Z Downloading missing tool builtin:serial-discovery@1.4.3...
+2025-11-22T13:39:36.2613687Z 
+2025-11-22T13:39:36.2614342Z builtin:serial-discovery@1.4.3 0 B / 1.96 MiB    0.00%
+2025-11-22T13:39:36.2614972Z builtin:serial-discovery@1.4.3 downloaded
+2025-11-22T13:39:36.2615501Z Installing builtin:serial-discovery@1.4.3...
+2025-11-22T13:39:36.2904727Z Skipping tool configuration....
+2025-11-22T13:39:36.2905366Z builtin:serial-discovery@1.4.3 installed
+2025-11-22T13:39:36.2906145Z Downloading missing tool builtin:serial-monitor@0.15.0...
+2025-11-22T13:39:36.3897604Z 
+2025-11-22T13:39:36.3898204Z builtin:serial-monitor@0.15.0 0 B / 2.33 MiB    0.00%
+2025-11-22T13:39:36.3898795Z builtin:serial-monitor@0.15.0 downloaded
+2025-11-22T13:39:36.3899371Z Installing builtin:serial-monitor@0.15.0...
+2025-11-22T13:39:36.4274239Z Skipping tool configuration....
+2025-11-22T13:39:36.4274919Z builtin:serial-monitor@0.15.0 installed
+2025-11-22T13:39:36.4277015Z Downloading missing tool builtin:ctags@5.8-arduino11...
+2025-11-22T13:39:36.6043048Z 
+2025-11-22T13:39:36.6043600Z builtin:ctags@5.8-arduino11 0 B / 108.99 KiB    0.00%
+2025-11-22T13:39:36.6044068Z builtin:ctags@5.8-arduino11 downloaded
+2025-11-22T13:39:36.6044518Z Installing builtin:ctags@5.8-arduino11...
+2025-11-22T13:39:36.6194300Z Skipping tool configuration....
+2025-11-22T13:39:36.6194879Z builtin:ctags@5.8-arduino11 installed
+2025-11-22T13:39:36.8329254Z Downloading missing tool builtin:dfu-discovery@0.1.2...
+2025-11-22T13:39:36.8329696Z 
+2025-11-22T13:39:36.8330021Z builtin:dfu-discovery@0.1.2 0 B / 1.65 MiB    0.00%
+2025-11-22T13:39:36.8330596Z builtin:dfu-discovery@0.1.2 downloaded
+2025-11-22T13:39:36.8331076Z Installing builtin:dfu-discovery@0.1.2...
+2025-11-22T13:39:36.8602115Z Skipping tool configuration....
+2025-11-22T13:39:36.8602792Z builtin:dfu-discovery@0.1.2 installed
+2025-11-22T13:39:36.8603530Z Downloading missing tool builtin:mdns-discovery@1.0.12...
+2025-11-22T13:39:37.0685071Z 
+2025-11-22T13:39:37.0685659Z builtin:mdns-discovery@1.0.12 0 B / 3.06 MiB    0.00%
+2025-11-22T13:39:37.0686263Z builtin:mdns-discovery@1.0.12 downloaded
+2025-11-22T13:39:37.0686775Z Installing builtin:mdns-discovery@1.0.12...
+2025-11-22T13:39:37.1151577Z Skipping tool configuration....
+2025-11-22T13:39:37.1152152Z builtin:mdns-discovery@1.0.12 installed
+2025-11-22T13:39:37.4741718Z 
+2025-11-22T13:39:37.9415704Z Downloading index: package_index.tar.bz2 0 B / 90.23 KiB    0.00%
+2025-11-22T13:39:37.9416427Z Downloading index: package_index.tar.bz2 downloaded
+2025-11-22T13:39:37.9416831Z Downloading packages...
+2025-11-22T13:39:38.1352126Z 
+2025-11-22T13:39:38.1352716Z arduino:dfu-util@0.11.0-arduino5 0 B / 2.18 MiB    0.00%
+2025-11-22T13:39:38.1353416Z arduino:dfu-util@0.11.0-arduino5 downloaded
+2025-11-22T13:39:38.2501549Z 
+2025-11-22T13:39:38.2501822Z esp32:esptool_py@4.5.1 0 B / 94.65 KiB    0.00%
+2025-11-22T13:39:38.2502314Z esp32:esptool_py@4.5.1 downloaded
+2025-11-22T13:39:38.4014692Z 
+2025-11-22T13:39:38.6725092Z esp32:mklittlefs@3.0.0-gnu12-dc7f933 0 B / 45.68 KiB    0.00%
+2025-11-22T13:39:38.6726475Z esp32:mklittlefs@3.0.0-gnu12-dc7f933 downloaded
+2025-11-22T13:39:38.6726986Z 
+2025-11-22T13:39:38.7115592Z Error during install: Server responded with: 502 Bad Gateway
+2025-11-22T13:39:38.7116388Z esp32:mkspiffs@0.2.3 0 B / 49.46 KiB    0.00%
+2025-11-22T13:39:38.7116741Z esp32:mkspiffs@0.2.3 downloaded
+2025-11-22T13:39:38.7116935Z 
+2025-11-22T13:39:38.7117150Z esp32:openocd-esp32@v0.12.0-esp32-20230419 0 B / 53.83 KiB    0.00%
+2025-11-22T13:39:38.7118020Z esp32:openocd-esp32@v0.12.0-esp32-20230419 Server responded with: 502 Bad Gateway
+2025-11-22T13:39:38.7173352Z ##[error]Process completed with exit code 1.
