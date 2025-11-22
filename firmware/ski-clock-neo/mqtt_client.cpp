@@ -7,8 +7,6 @@ const uint16_t MQTT_PORT = 8883;  // TLS port for HiveMQ Cloud
 
 // MQTT topics (const arrays with external linkage)
 const char MQTT_TOPIC_HEARTBEAT[] = "skiclock/heartbeat";
-const char MQTT_TOPIC_VERSION_UPDATES[] = "skiclock/version/updates";
-const char MQTT_TOPIC_VERSION_REQUEST[] = "skiclock/version/request";
 const char MQTT_TOPIC_VERSION_RESPONSE[] = "skiclock/version/response";
 const char MQTT_TOPIC_COMMAND[] = "skiclock/command";
 const char MQTT_TOPIC_OTA_START[] = "skiclock/ota/start";

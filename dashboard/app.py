@@ -1270,18 +1270,12 @@ def upload_firmware():
     # Save to database
     save_version_to_db(platform, version_info)
     
-    # Broadcast version update to all devices via MQTT
-    from mqtt_subscriber import broadcast_version_update
-    broadcast_version_update(platform, version)
-    
     # Mirror esp12f firmware to legacy esp8266 alias for monitoring visibility
     if platform == 'esp12f':
         esp8266_info = version_info.copy()
         esp8266_info['download_url'] = '/api/firmware/esp8266'
         LATEST_VERSIONS['esp8266'] = esp8266_info
         save_version_to_db('esp8266', esp8266_info)
-        # Broadcast for alias too
-        broadcast_version_update('esp8266', version)
     
     return jsonify({
         'success': True,

@@ -18,9 +18,7 @@ MQTT_PORT = 8883
 MQTT_USERNAME = os.getenv('MQTT_USERNAME', '')
 MQTT_PASSWORD = os.getenv('MQTT_PASSWORD', '')
 MQTT_TOPIC_HEARTBEAT = "skiclock/heartbeat"
-MQTT_TOPIC_VERSION_REQUEST = "skiclock/version/request"
 MQTT_TOPIC_VERSION_RESPONSE = "skiclock/version/response"
-MQTT_TOPIC_VERSION_UPDATES = "skiclock/version/updates"
 MQTT_TOPIC_OTA_START = "skiclock/ota/start"
 MQTT_TOPIC_OTA_PROGRESS = "skiclock/ota/progress"
 MQTT_TOPIC_OTA_COMPLETE = "skiclock/ota/complete"
@@ -52,18 +50,6 @@ def get_mqtt_client():
     """Get MQTT client for publishing from other modules"""
     return _mqtt_client
 
-def broadcast_version_update(platform: str, version: str):
-    """Broadcast version update to all devices listening"""
-    global _mqtt_client
-    if _mqtt_client and _mqtt_client.is_connected():
-        payload = {
-            'platform': platform,
-            'version': version,
-            'timestamp': datetime.now(timezone.utc).isoformat()
-        }
-        _mqtt_client.publish(MQTT_TOPIC_VERSION_UPDATES, json.dumps(payload), qos=1)
-        print(f"📢 Broadcast version update: {platform} v{version}")
-
 def validate_ip_address(ip: str) -> Optional[str]:
     """
     Validate and sanitize IP address to prevent XSS attacks.
@@ -88,8 +74,6 @@ def on_connect(client, userdata, flags, rc, properties=None):
         print(f"✓ Connected to MQTT broker: {MQTT_HOST}")
         client.subscribe(MQTT_TOPIC_HEARTBEAT)
         print(f"✓ Subscribed to topic: {MQTT_TOPIC_HEARTBEAT}")
-        client.subscribe(MQTT_TOPIC_VERSION_REQUEST)
-        print(f"✓ Subscribed to topic: {MQTT_TOPIC_VERSION_REQUEST}")
         client.subscribe(MQTT_TOPIC_OTA_START)
         print(f"✓ Subscribed to topic: {MQTT_TOPIC_OTA_START}")
         client.subscribe(MQTT_TOPIC_OTA_PROGRESS)
@@ -199,50 +183,6 @@ def handle_heartbeat(client, payload):
                     print(f"⚠ No firmware found for platform '{platform}' (board type: '{board_type}')")
         
         print(f"📡 Heartbeat from {device_id} ({board_type}): v{current_version}, uptime={payload.get('uptime')}s, RSSI={payload.get('rssi')}dBm")
-
-def handle_version_request(client, payload):
-    """Handle device version check requests"""
-    device_id = payload.get('device_id')
-    platform = payload.get('platform')
-    current_version = payload.get('current_version')
-    
-    if not device_id or not platform:
-        print(f"⚠ Invalid version request: missing device_id or platform")
-        return
-    
-    # Get latest version info from app context
-    if _app_context:
-        with _app_context.app_context():
-            # Import here to avoid circular imports
-            from app import get_firmware_version
-            
-            version_info = get_firmware_version(platform)
-            
-            if version_info:
-                latest_version = version_info.get('version', 'Unknown')
-                update_available = latest_version != current_version
-                
-                # Generate session ID only if update is available
-                session_id = None
-                if update_available:
-                    session_id = str(uuid.uuid4())
-                
-                # Publish response to device-specific topic
-                response_topic = f"{MQTT_TOPIC_VERSION_RESPONSE}/{device_id}"
-                response_payload = {
-                    'latest_version': latest_version,
-                    'current_version': current_version,
-                    'update_available': update_available,
-                    'platform': platform
-                }
-                
-                if session_id:
-                    response_payload['session_id'] = session_id
-                
-                client.publish(response_topic, json.dumps(response_payload), qos=1)
-                print(f"📤 Version response sent to {device_id}: {latest_version} (update: {update_available})")
-            else:
-                print(f"⚠ No firmware found for platform: {platform}")
 
 def handle_ota_start(client, payload):
     """Handle OTA update start notification from device"""
@@ -408,8 +348,6 @@ def on_message(client, userdata, msg):
         # Route message to appropriate handler based on topic
         if msg.topic == MQTT_TOPIC_HEARTBEAT:
             handle_heartbeat(client, payload)
-        elif msg.topic == MQTT_TOPIC_VERSION_REQUEST:
-            handle_version_request(client, payload)
         elif msg.topic == MQTT_TOPIC_OTA_START:
             handle_ota_start(client, payload)
         elif msg.topic == MQTT_TOPIC_OTA_PROGRESS:
