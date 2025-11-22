@@ -11,6 +11,9 @@
   #error "This code requires ESP32 or ESP8266"
 #endif
 
+// Override AutoConnect portal URI to use root path instead of /_ac
+#define AUTOCONNECT_URI "/"
+
 #include <AutoConnect.h>
 #include <AutoConnectCredential.h>
 #include "debug.h"
@@ -87,13 +90,6 @@ void setupWiFi() {
   // Apply configuration
   portal.config(config);
   
-  // Add custom root handler to redirect / to /_ac portal
-  // This makes the portal accessible at the device's IP address without needing /_ac path
-  server.on("/", []() {
-    server.sendHeader("Location", "/_ac", true);
-    server.send(302, "text/plain", "Redirecting to configuration portal...");
-  });
-  
   // Start AutoConnect
   // This will:
   // - Try to connect to previously saved networks (in order of signal strength)
@@ -115,7 +111,7 @@ void setupWiFi() {
   DEBUG_PRINT("Portal Password: ");
   DEBUG_PRINTLN(AP_PASSWORD);
   DEBUG_PRINTLN("Portal remains accessible even when connected to WiFi");
-  DEBUG_PRINTLN("Access portal at device IP address (redirects to /_ac)");
+  DEBUG_PRINTLN("Access portal at device IP address (portal path: " AUTOCONNECT_URI ")");
 }
 
 // Update WiFi - call this in loop()
