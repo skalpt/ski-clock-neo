@@ -382,7 +382,7 @@ def publish_command(device_id: str, command: str, **kwargs) -> bool:
     """
     global _mqtt_client
     
-    if not _mqtt_client:
+    if not _mqtt_client or not _mqtt_client.is_connected():
         print(f"✗ Cannot publish command: MQTT client not connected")
         return False
     
