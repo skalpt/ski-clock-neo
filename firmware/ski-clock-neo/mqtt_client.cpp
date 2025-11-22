@@ -25,10 +25,6 @@ const unsigned long HEARTBEAT_INTERVAL = 60000;  // 60 seconds
 Ticker heartbeatTicker;
 bool mqttIsConnected = false;
 
-// Version request timing
-const unsigned long VERSION_REQUEST_INTERVAL = 3600000;  // 1 hour
-Ticker versionRequestTicker;
-
 // Display snapshot timing
 const unsigned long DISPLAY_SNAPSHOT_INTERVAL = 3600000;  // 1 hour
 Ticker displaySnapshotTicker;
@@ -46,12 +42,6 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   
   DEBUG_PRINT("Message: ");
   DEBUG_PRINTLN(message);
-  
-  // Handle version update broadcast notifications
-  if (strcmp(topic, MQTT_TOPIC_VERSION_UPDATES) == 0) {
-    DEBUG_PRINTLN("Version update broadcast received!");
-    publishVersionRequest();
-  }
   
   // Handle device-specific version responses
   String versionResponseTopic = String(MQTT_TOPIC_VERSION_RESPONSE) + "/" + getDeviceID();
@@ -185,11 +175,6 @@ bool connectMQTT() {
     publishHeartbeat();
 
     // Subscribe to topics
-    if (mqttClient.subscribe(MQTT_TOPIC_VERSION_UPDATES)) {
-      DEBUG_PRINT("Subscribed to topic: ");
-      DEBUG_PRINTLN(MQTT_TOPIC_VERSION_UPDATES);
-    }
-    
     String versionResponseTopic = String(MQTT_TOPIC_VERSION_RESPONSE) + "/" + getDeviceID();
     if (mqttClient.subscribe(versionResponseTopic.c_str())) {
       DEBUG_PRINT("Subscribed to topic: ");
@@ -201,11 +186,6 @@ bool connectMQTT() {
       DEBUG_PRINT("Subscribed to topic: ");
       DEBUG_PRINTLN(commandTopic);
     }
-    
-    // Start version request ticker
-    versionRequestTicker.detach();
-    versionRequestTicker.attach_ms(VERSION_REQUEST_INTERVAL, publishVersionRequest);
-    publishVersionRequest();
     
     // Start display snapshot ticker (hourly)
     displaySnapshotTicker.detach();
@@ -245,28 +225,6 @@ void publishHeartbeat() {
     DEBUG_PRINTLN(payload);
   } else {
     DEBUG_PRINTLN("Failed to publish heartbeat");
-  }
-}
-
-// Publish version request message
-void publishVersionRequest() {
-  if (!mqttClient.connected()) {
-    return;
-  }
-  
-  char payload[256];
-  snprintf(payload, sizeof(payload),
-    "{\"device_id\":\"%s\",\"platform\":\"%s\",\"current_version\":\"%s\"}",
-    getDeviceID().c_str(),
-    getPlatform().c_str(),
-    FIRMWARE_VERSION
-  );
-  
-  if (mqttClient.publish(MQTT_TOPIC_VERSION_REQUEST, payload)) {
-    DEBUG_PRINT("Version request published: ");
-    DEBUG_PRINTLN(payload);
-  } else {
-    DEBUG_PRINTLN("Failed to publish version request");
   }
 }
 
@@ -379,7 +337,6 @@ void disconnectMQTT() {
   if (mqttIsConnected) {
     DEBUG_PRINTLN("Disconnecting from MQTT broker...");
     heartbeatTicker.detach();
-    versionRequestTicker.detach();
     displaySnapshotTicker.detach();
     mqttClient.disconnect();
     mqttIsConnected = false;

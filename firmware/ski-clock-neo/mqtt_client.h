@@ -52,10 +52,6 @@ extern const unsigned long HEARTBEAT_INTERVAL;
 extern Ticker heartbeatTicker;
 extern bool mqttIsConnected;
 
-// Version request timing
-extern const unsigned long VERSION_REQUEST_INTERVAL;
-extern Ticker versionRequestTicker;
-
 // Display snapshot timing
 extern const unsigned long DISPLAY_SNAPSHOT_INTERVAL;
 extern Ticker displaySnapshotTicker;
@@ -66,7 +62,6 @@ bool connectMQTT();
 void disconnectMQTT();
 void updateMQTT();
 void publishHeartbeat();
-void publishVersionRequest();
 void publishDisplaySnapshot();
 void mqttCallback(char* topic, byte* payload, unsigned int length);
 void handleRollbackCommand(String message);
