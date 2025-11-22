@@ -1,3 +1,5 @@
+// Include hardware config first to define DISPLAY_ROWS and DISPLAY_BUFFER_SIZE
+#include "display_config.h"
 #include "display.h"
 #include <string.h>
 
@@ -9,6 +11,10 @@ DisplayConfig displayConfig = {0};
 // Text content storage (what should be displayed on each row)
 // Array size is determined by DISPLAY_ROWS from the hardware renderer
 char displayText[DISPLAY_ROWS][MAX_TEXT_LENGTH] = {{0}};
+
+// Event-driven rendering state
+static bool displayDirty = false;
+static RenderCallback renderCallback = nullptr;
 
 // Spinlock for atomic buffer updates (ESP32 only)
 #if defined(ESP32)
@@ -29,13 +35,25 @@ DisplayConfig getDisplayConfig() {
 }
 
 void setText(uint8_t row, const char* text) {
-  if (row >= 2) return;
+  if (row >= displayConfig.rows) return;  // Dynamic row bounds check
+  
+  // Check if text actually changed (avoid unnecessary renders)
+  if (strcmp(displayText[row], text) == 0) {
+    return;  // No change, skip update
+  }
+  
   strncpy(displayText[row], text, MAX_TEXT_LENGTH - 1);
   displayText[row][MAX_TEXT_LENGTH - 1] = '\0';
+  
+  // Mark display as dirty and trigger callback if set
+  displayDirty = true;
+  if (renderCallback != nullptr) {
+    renderCallback();
+  }
 }
 
 const char* getText(uint8_t row) {
-  if (row >= 2) return "";
+  if (row >= displayConfig.rows) return "";  // Dynamic row bounds check
   return displayText[row];
 }
 
@@ -93,4 +111,16 @@ uint16_t getDisplayBufferSize() {
   // Return actual buffer size needed for current configuration (in bytes)
   uint16_t totalPixels = displayConfig.rows * displayConfig.panelsPerRow * displayConfig.panelWidth * displayConfig.panelHeight;
   return (totalPixels + 7) / 8;
+}
+
+bool isDisplayDirty() {
+  return displayDirty;
+}
+
+void clearDirtyFlag() {
+  displayDirty = false;
+}
+
+void setRenderCallback(RenderCallback callback) {
+  renderCallback = callback;
 }

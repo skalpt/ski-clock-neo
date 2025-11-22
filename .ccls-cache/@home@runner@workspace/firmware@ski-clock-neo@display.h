@@ -62,4 +62,26 @@ const uint8_t* getDisplayBuffer();
 // Get display buffer size in bytes
 uint16_t getDisplayBufferSize();
 
+// Event-driven rendering support
+// Check if display needs to be re-rendered
+bool isDisplayDirty();
+
+// Clear the dirty flag (called after rendering)
+void clearDirtyFlag();
+
+// Check if rendering is requested (for main loop polling)
+bool isRenderRequested();
+
+// Clear the render request flag (called after invoking callback)
+void clearRenderRequest();
+
+// Set a callback to be invoked when display needs rendering
+// The callback will NOT be called directly from setText()
+// Instead, the main loop must poll isRenderRequested() and call it
+typedef void (*RenderCallback)();
+void setRenderCallback(RenderCallback callback);
+
+// Get the registered render callback
+RenderCallback getRenderCallback();
+
 #endif

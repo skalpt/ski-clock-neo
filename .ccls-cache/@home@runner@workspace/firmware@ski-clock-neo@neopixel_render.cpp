@@ -12,11 +12,6 @@ Adafruit_NeoPixel* rows = reinterpret_cast<Adafruit_NeoPixel*>(rowsStorage);
 // Internal rendering buffer (hardware-specific, sized exactly for our config)
 uint8_t neopixelRenderBuffer[DISPLAY_BUFFER_SIZE] = {0};
 
-// ESP8266 ticker
-#if defined(ESP8266)
-  Ticker neopixelTicker;
-#endif
-
 // ==================== MAIN RENDERING FUNCTION ====================
 void updateNeoPixels() {
   // Clear internal render buffer
@@ -54,22 +49,10 @@ void updateNeoPixels() {
   
   // Commit complete frame to display library (for MQTT)
   commitBuffer(neopixelRenderBuffer, sizeof(neopixelRenderBuffer));
+  
+  // Clear dirty flag after successful render
+  clearDirtyFlag();
 }
-
-// ==================== FREERTOS TASK (ESP32) ====================
-#if defined(ESP32)
-void neopixelTask(void* parameter) {
-  TickType_t xLastWakeTime = xTaskGetTickCount();
-  const TickType_t xFrequency = pdMS_TO_TICKS(UPDATE_INTERVAL_MS);
-
-  DEBUG_PRINTLN("NeoPixel FreeRTOS task started");
-
-  for(;;) {
-    updateNeoPixels();
-    vTaskDelayUntil(&xLastWakeTime, xFrequency);
-  }
-}
-#endif
 
 // ==================== SETUP FUNCTION ====================
 void setupNeoPixels() {
@@ -93,42 +76,7 @@ void setupNeoPixels() {
     DEBUG_PRINTLN(") initialised.");
   }
   
-  #if defined(ESP32)
-    // ESP32: Use FreeRTOS task for guaranteed timing even during network operations
-    // Priority 2 = higher than networking (default priority 1)
-    // Stack size: 2KB should be plenty for NeoPixel updates
-
-    #if defined(CONFIG_IDF_TARGET_ESP32C3)
-      // ESP32-C3 (single-core RISC-V): Run on Core 0 with high priority
-      xTaskCreate(
-        neopixelTask,           // Task function
-        "NeoPixel",             // Task name
-        2048,                   // Stack size (bytes)
-        NULL,                   // Task parameter
-        2,                      // Priority (2 = higher than default 1)
-        NULL                    // Task handle
-      );
-      DEBUG_PRINTLN("NeoPixel FreeRTOS task started (ESP32-C3: single-core, high priority)");
-    #else
-      // ESP32/ESP32-S3 (dual-core Xtensa): Pin to Core 1 (APP_CPU)
-      // Core 0 handles WiFi/networking, Core 1 handles display
-      xTaskCreatePinnedToCore(
-        neopixelTask,           // Task function
-        "NeoPixel",             // Task name
-        2048,                   // Stack size (bytes)
-        NULL,                   // Task parameter
-        2,                      // Priority
-        NULL,                   // Task handle
-        1                       // Core 1 (APP_CPU_NUM)
-      );
-      DEBUG_PRINTLN("NeoPixel FreeRTOS task started (dual-core: pinned to Core 1)");
-    #endif
-
-  #elif defined(ESP8266)
-    // ESP8266: Use Ticker (no FreeRTOS available)
-    neopixelTicker.attach_ms(UPDATE_INTERVAL_MS, updateNeoPixels);
-    DEBUG_PRINTLN("NeoPixel ticker started (ESP8266 software ticker)");
-  #endif
+  DEBUG_PRINTLN("NeoPixel renderer ready (event-driven, no timers)");
 }
 
 // ==================== UTILITY FUNCTIONS ====================

@@ -5,14 +5,12 @@
 #include <new>              // For placement-new operator
 #include <Adafruit_NeoPixel.h>
 #include "font_5x7.h"
-#include <Ticker.h>
 #include "debug.h"
 #include "display.h"
 
 // ==================== CONSTANTS ====================
 // Display settings
 #define BRIGHTNESS 1                    // 0-255 (keeping dim for development)
-#define UPDATE_INTERVAL_MS 200          // 0.2 second refresh rate
 
 // ==================== GLOBAL STATE ====================
 // Pin array for row initialization
@@ -26,20 +24,10 @@ extern Adafruit_NeoPixel* rows;
 // Internal rendering buffer (hardware-specific, sized exactly for our config)
 extern uint8_t neopixelRenderBuffer[DISPLAY_BUFFER_SIZE];
 
-// ==================== PLATFORM-SPECIFIC DECLARATIONS ====================
-#if defined(ESP8266)
-  extern Ticker neopixelTicker;
-#endif
-
 // ==================== FUNCTION DECLARATIONS ====================
-// Setup and refresh functions
+// Setup and rendering functions (pure, no timers)
 void setupNeoPixels();
-void updateNeoPixels();
-
-// FreeRTOS task (ESP32 only)
-#if defined(ESP32)
-  void neopixelTask(void* parameter);
-#endif
+void updateNeoPixels();  // Call this externally when display needs refresh
 
 // Utility functions
 int charToGlyph(char c);
