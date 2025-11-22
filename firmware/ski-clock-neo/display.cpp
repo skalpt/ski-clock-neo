@@ -39,37 +39,39 @@ DisplayConfig getDisplayConfig() {
 void setText(uint8_t row, const char* text) {
   if (row >= displayConfig.rows) return;  // Dynamic row bounds check
   
-  // Check if text actually changed (avoid unnecessary renders)  
-  // NOTE: strcmp could theoretically race, but worst case is false positive render
-  if (strcmp(displayText[row], text) == 0) {
-    return;  // No change, skip update
-  }
-  
-  // Atomically update text buffer AND increment sequence inside critical section
-  // This prevents updateNeoPixels() from reading torn/partial strings
+  // All operations (compare, write, flag updates) must be atomic
+  // to prevent torn reads from concurrent setText() or snapshotAllText()
   #if defined(ESP32)
     portENTER_CRITICAL(&spinlock);
-    strncpy(displayText[row], text, MAX_TEXT_LENGTH - 1);
-    displayText[row][MAX_TEXT_LENGTH - 1] = '\0';
-    updateSequence++;
-    displayDirty = true;
-    renderRequested = true;
+    // Check if text changed (inside critical section to prevent torn reads)
+    if (strcmp(displayText[row], text) != 0) {
+      strncpy(displayText[row], text, MAX_TEXT_LENGTH - 1);
+      displayText[row][MAX_TEXT_LENGTH - 1] = '\0';
+      updateSequence++;
+      displayDirty = true;
+      renderRequested = true;
+    }
     portEXIT_CRITICAL(&spinlock);
   #elif defined(ESP8266)
     noInterrupts();
-    strncpy(displayText[row], text, MAX_TEXT_LENGTH - 1);
-    displayText[row][MAX_TEXT_LENGTH - 1] = '\0';
-    updateSequence++;
-    displayDirty = true;
-    renderRequested = true;
+    // Check if text changed (inside critical section to prevent torn reads)
+    if (strcmp(displayText[row], text) != 0) {
+      strncpy(displayText[row], text, MAX_TEXT_LENGTH - 1);
+      displayText[row][MAX_TEXT_LENGTH - 1] = '\0';
+      updateSequence++;
+      displayDirty = true;
+      renderRequested = true;
+    }
     interrupts();
   #else
     // Fallback for other platforms (no atomic guarantee)
-    strncpy(displayText[row], text, MAX_TEXT_LENGTH - 1);
-    displayText[row][MAX_TEXT_LENGTH - 1] = '\0';
-    updateSequence++;
-    displayDirty = true;
-    renderRequested = true;
+    if (strcmp(displayText[row], text) != 0) {
+      strncpy(displayText[row], text, MAX_TEXT_LENGTH - 1);
+      displayText[row][MAX_TEXT_LENGTH - 1] = '\0';
+      updateSequence++;
+      displayDirty = true;
+      renderRequested = true;
+    }
   #endif
   
   // NOTE: We do NOT call renderCallback directly here!
@@ -81,6 +83,28 @@ void setText(uint8_t row, const char* text) {
 const char* getText(uint8_t row) {
   if (row >= displayConfig.rows) return "";  // Dynamic row bounds check
   return displayText[row];
+}
+
+void snapshotAllText(char dest[][MAX_TEXT_LENGTH]) {
+  // Atomically copy all row text to prevent torn reads during rendering
+  #if defined(ESP32)
+    portENTER_CRITICAL(&spinlock);
+    for (uint8_t row = 0; row < DISPLAY_ROWS; row++) {
+      strncpy(dest[row], displayText[row], MAX_TEXT_LENGTH);
+    }
+    portEXIT_CRITICAL(&spinlock);
+  #elif defined(ESP8266)
+    noInterrupts();
+    for (uint8_t row = 0; row < DISPLAY_ROWS; row++) {
+      strncpy(dest[row], displayText[row], MAX_TEXT_LENGTH);
+    }
+    interrupts();
+  #else
+    // Fallback for other platforms (no atomic guarantee)
+    for (uint8_t row = 0; row < DISPLAY_ROWS; row++) {
+      strncpy(dest[row], displayText[row], MAX_TEXT_LENGTH);
+    }
+  #endif
 }
 
 void setPixel(uint8_t row, uint16_t x, uint16_t y, bool state) {

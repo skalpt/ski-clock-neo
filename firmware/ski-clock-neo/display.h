@@ -44,7 +44,14 @@ DisplayConfig getDisplayConfig();
 void setText(uint8_t row, const char* text);
 
 // Get text content for a row (called by render libraries)
+// WARNING: Not thread-safe for concurrent reads during setText()
+// Use snapshotAllText() for atomic multi-row reads during rendering
 const char* getText(uint8_t row);
+
+// Atomically snapshot ALL row text into caller-provided buffer
+// dest must be char[DISPLAY_ROWS][MAX_TEXT_LENGTH]
+// This prevents torn reads when setText() and rendering overlap
+void snapshotAllText(char dest[][MAX_TEXT_LENGTH]);
 
 // Set pixel state in buffer (called by render libraries during frame construction)
 void setPixel(uint8_t row, uint16_t x, uint16_t y, bool state);

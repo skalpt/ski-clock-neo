@@ -23,13 +23,18 @@ void updateNeoPixels() {
   // This allows us to detect if setText() was called during render
   uint32_t startSeq = getUpdateSequence();
   
+  // Atomically snapshot all text to prevent torn reads from concurrent setText()
+  // This local buffer is safe to read from during rendering
+  char textSnapshot[DISPLAY_ROWS][MAX_TEXT_LENGTH];
+  snapshotAllText(textSnapshot);
+  
   // Clear internal render buffer
   memset(neopixelRenderBuffer, 0, sizeof(neopixelRenderBuffer));
   
-  // Loop through each row and render
+  // Loop through each row and render from snapshot (not from shared buffer)
   for (uint8_t rowIdx = 0; rowIdx < DISPLAY_ROWS; rowIdx++) {
-    // Read text from display library (set by external firmware/MQTT/etc)
-    const char* displayText = getText(rowIdx);
+    // Read text from local snapshot (safe - no concurrent setText() access)
+    const char* displayText = textSnapshot[rowIdx];
     
     // Clear this row's NeoPixels
     rows[rowIdx].clear();
