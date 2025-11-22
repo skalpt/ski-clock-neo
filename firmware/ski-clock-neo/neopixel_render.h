@@ -10,7 +10,7 @@
 
 // ==================== CONSTANTS ====================
 // Display settings
-#define BRIGHTNESS 1                    // 0-255 (keeping dim for development)
+#define BRIGHTNESS 10                    // 0-255 (keeping dim for development)
 
 // ==================== GLOBAL STATE ====================
 // Pin array for row initialization
