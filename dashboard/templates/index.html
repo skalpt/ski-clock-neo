@@ -196,36 +196,69 @@
                 const statusText = device.status.charAt(0).toUpperCase() + device.status.slice(1);
                 
                 return `
-                <div class="device-card ${statusClass}">
-                    <div class="device-header">
-                        <div>
-                            <span class="status ${statusClass}"></span>
-                            ${safeDeviceId}
+                <div class="device-card-flip-container" data-device-id="${safeDeviceId}">
+                    <div class="device-card-flipper">
+                        <div class="device-card-front">
+                            <div class="device-card ${statusClass}">
+                                <div class="device-header">
+                                    <div>
+                                        <span class="status ${statusClass}"></span>
+                                        ${safeDeviceId}
+                                    </div>
+                                    <span class="badge">${safeBoard}</span>
+                                </div>
+                                <div class="device-info">
+                                    <div><strong>Status:</strong> ${statusText}${device.status === 'degraded' ? ' (unstable connection)' : ''}</div>
+                                    <div><strong>Version:</strong> ${safeVersion}</div>
+                                    <div><strong>Uptime:</strong> ${formatUptime(device.uptime)}</div>
+                                    ${device.ssid ? `<div><strong>WiFi Network:</strong> ${safeSsid}</div>` : ''}
+                                    ${device.ip_address ? `<div><strong>IP Address:</strong> ${device.online && isIPv4(device.ip_address) ? `<a href="http://${encodeURIComponent(device.ip_address)}/" target="_blank" rel="noopener noreferrer" style="color: white; text-decoration: none;" title="Open AutoConnect page (only works if you're on the same network)">${safeIpAddress}</a>` : safeIpAddress}</div>` : ''}
+                                    <div><strong>WiFi Signal:</strong> ${getSignalStrengthIcon(device.rssi)}${device.rssi} dBm</div>
+                                    <div><strong>Free Memory:</strong> ${(device.free_heap / 1024).toFixed(1)} KB</div>
+                                    <div><strong>Last Seen:</strong> <span class="live-timestamp" data-timestamp="${escapeHtml(device.last_seen)}">${formatTimestamp(device.last_seen)}</span></div>
+                                    <div><strong>First Seen:</strong> ${new Date(device.first_seen).toLocaleString()}</div>
+                                </div>
+                                ${otaHtml}
+                                <div class="device-actions">
+                                    <button class="device-btn rollback-btn" data-device-id="${safeDeviceId}" data-action="rollback" ${device.status === 'offline' ? 'disabled title="Device must be online"' : ''}>
+                                        ⏮️ Rollback
+                                    </button>
+                                    <button class="device-btn restart-btn" data-device-id="${safeDeviceId}" data-action="restart" ${device.status === 'offline' ? 'disabled title="Device must be online"' : ''}>
+                                        🔄 Restart
+                                    </button>
+                                    <button class="device-btn delete-btn" data-device-id="${safeDeviceId}" data-action="delete">
+                                        🗑️ Remove
+                                    </button>
+                                    <button class="flip-btn" data-device-id="${safeDeviceId}" data-action="flip">
+                                        📺 Display Preview
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <span class="badge">${safeBoard}</span>
-                    </div>
-                    <div class="device-info">
-                        <div><strong>Status:</strong> ${statusText}${device.status === 'degraded' ? ' (unstable connection)' : ''}</div>
-                        <div><strong>Version:</strong> ${safeVersion}</div>
-                        <div><strong>Uptime:</strong> ${formatUptime(device.uptime)}</div>
-                        ${device.ssid ? `<div><strong>WiFi Network:</strong> ${safeSsid}</div>` : ''}
-                        ${device.ip_address ? `<div><strong>IP Address:</strong> ${device.online && isIPv4(device.ip_address) ? `<a href="http://${encodeURIComponent(device.ip_address)}/" target="_blank" rel="noopener noreferrer" style="color: white; text-decoration: none;" title="Open AutoConnect page (only works if you're on the same network)">${safeIpAddress}</a>` : safeIpAddress}</div>` : ''}
-                        <div><strong>WiFi Signal:</strong> ${getSignalStrengthIcon(device.rssi)}${device.rssi} dBm</div>
-                        <div><strong>Free Memory:</strong> ${(device.free_heap / 1024).toFixed(1)} KB</div>
-                        <div><strong>Last Seen:</strong> <span class="live-timestamp" data-timestamp="${escapeHtml(device.last_seen)}">${formatTimestamp(device.last_seen)}</span></div>
-                        <div><strong>First Seen:</strong> ${new Date(device.first_seen).toLocaleString()}</div>
-                    </div>
-                    ${otaHtml}
-                    <div class="device-actions">
-                        <button class="device-btn rollback-btn" data-device-id="${safeDeviceId}" data-action="rollback" ${device.status === 'offline' ? 'disabled title="Device must be online"' : ''}>
-                            ⏮️ Rollback
-                        </button>
-                        <button class="device-btn restart-btn" data-device-id="${safeDeviceId}" data-action="restart" ${device.status === 'offline' ? 'disabled title="Device must be online"' : ''}>
-                            🔄 Restart
-                        </button>
-                        <button class="device-btn delete-btn" data-device-id="${safeDeviceId}" data-action="delete">
-                            🗑️ Remove
-                        </button>
+                        <div class="device-card-back ${statusClass}" id="display-back-${safeDeviceId}">
+                            <div class="snapshot-info">
+                                <h3 style="margin-bottom: 15px;">Display Snapshot</h3>
+                            </div>
+                            <div id="display-content-${safeDeviceId}">
+                                ${device.display_snapshot ? 
+                                    `<canvas class="display-canvas" id="canvas-${safeDeviceId}" width="256" height="256"></canvas>
+                                     <div class="snapshot-info">
+                                         <div>Size: ${device.display_snapshot.width || 0}x${device.display_snapshot.height || 0} pixels</div>
+                                         <div>Last updated: ${new Date().toLocaleString()}</div>
+                                     </div>` : 
+                                    `<div class="no-snapshot-message">
+                                        <p>No display snapshot available</p>
+                                        <p style="font-size: 0.8rem; margin-top: 10px;">Request a snapshot to see the display</p>
+                                        <button class="snapshot-btn" data-device-id="${safeDeviceId}" data-action="request-snapshot" ${device.status === 'offline' ? 'disabled' : ''}>
+                                            📸 Request Snapshot
+                                        </button>
+                                    </div>`
+                                }
+                            </div>
+                            <button class="flip-btn" data-device-id="${safeDeviceId}" data-action="flip" style="margin-top: 15px;">
+                                ← Back to Info
+                            </button>
+                        </div>
                     </div>
                 </div>
             `;
@@ -234,7 +267,7 @@
             container.innerHTML = `<div class="devices-grid">${devicesHtml}</div>`;
             
             // Attach event listeners to all device action buttons
-            document.querySelectorAll('.device-btn').forEach(btn => {
+            document.querySelectorAll('.device-btn, .flip-btn, .snapshot-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const deviceId = btn.getAttribute('data-device-id');
                     const action = btn.getAttribute('data-action');
@@ -245,8 +278,19 @@
                         rollbackDevice(deviceId);
                     } else if (action === 'restart') {
                         restartDevice(deviceId);
+                    } else if (action === 'flip') {
+                        flipCard(deviceId);
+                    } else if (action === 'request-snapshot') {
+                        requestSnapshot(deviceId);
                     }
                 });
+            });
+            
+            // Render display snapshots on canvases
+            data.devices.forEach(device => {
+                if (device.display_snapshot) {
+                    renderDisplaySnapshot(device.device_id, device.display_snapshot);
+                }
             });
         } catch (error) {
             console.error('Failed to load devices:', error);
@@ -321,6 +365,86 @@
         } catch (error) {
             console.error('Failed to send restart command:', error);
             alert('Failed to send restart command');
+        }
+    }
+
+    function flipCard(deviceId) {
+        const container = document.querySelector(`[data-device-id="${deviceId}"].device-card-flip-container`);
+        if (container) {
+            container.classList.toggle('flipped');
+        }
+    }
+
+    function renderDisplaySnapshot(deviceId, snapshot) {
+        if (!snapshot || !snapshot.pixels) return;
+        
+        const canvas = document.getElementById(`canvas-${deviceId}`);
+        if (!canvas) return;
+        
+        try {
+            // Decode base64 pixel data
+            const pixelData = atob(snapshot.pixels);
+            const width = snapshot.width || 16;
+            const height = snapshot.height || 16;
+            
+            // Set canvas size to actual display size
+            canvas.width = width;
+            canvas.height = height;
+            
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.createImageData(width, height);
+            
+            // Convert bit-packed data to RGBA pixels
+            let pixelIndex = 0;
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const byteIndex = Math.floor(pixelIndex / 8);
+                    const bitIndex = 7 - (pixelIndex % 8);
+                    const byte = pixelData.charCodeAt(byteIndex) || 0;
+                    const isOn = (byte & (1 << bitIndex)) !== 0;
+                    
+                    const i = (y * width + x) * 4;
+                    if (isOn) {
+                        // White pixel
+                        imageData.data[i] = 255;
+                        imageData.data[i + 1] = 255;
+                        imageData.data[i + 2] = 255;
+                        imageData.data[i + 3] = 255;
+                    } else {
+                        // Black pixel
+                        imageData.data[i] = 0;
+                        imageData.data[i + 1] = 0;
+                        imageData.data[i + 2] = 0;
+                        imageData.data[i + 3] = 255;
+                    }
+                    
+                    pixelIndex++;
+                }
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+        } catch (error) {
+            console.error('Failed to render display snapshot:', error);
+        }
+    }
+
+    async function requestSnapshot(deviceId) {
+        try {
+            const response = await fetch(`/api/devices/${deviceId}/snapshot`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                alert(data.message || 'Snapshot request sent to device');
+            } else {
+                alert(`Failed to request snapshot: ${data.error}`);
+            }
+        } catch (error) {
+            console.error('Failed to request snapshot:', error);
+            alert('Failed to request snapshot');
         }
     }
 

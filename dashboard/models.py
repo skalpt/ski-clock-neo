@@ -280,7 +280,8 @@ class Device(db.Model):
             'online': is_online,
             'status': status,
             'degraded': is_degraded,
-            'minutes_since_last_seen': round(minutes_since_last_seen, 1)
+            'minutes_since_last_seen': round(minutes_since_last_seen, 1),
+            'display_snapshot': self.display_snapshot
         }
 
 

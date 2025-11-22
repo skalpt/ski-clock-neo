@@ -725,3 +725,119 @@ h2 {
 body.no-web-serial .flash-column {
     display: none;
 }
+
+/* Card flip animation styles */
+.device-card-flip-container {
+    perspective: 1000px;
+    position: relative;
+    min-height: 400px;
+}
+
+.device-card-flipper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.6s;
+    transform-style: preserve-3d;
+}
+
+.device-card-flip-container.flipped .device-card-flipper {
+    transform: rotateY(180deg);
+}
+
+.device-card-front,
+.device-card-back {
+    position: absolute;
+    width: 100%;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+
+.device-card-front {
+    z-index: 2;
+}
+
+.device-card-back {
+    transform: rotateY(180deg);
+    background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+    border-radius: 8px;
+    padding: 20px;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+}
+
+.device-card-back.offline {
+    background: linear-gradient(135deg, #babfc7 0%, #979ca6 100%);
+}
+
+.device-card-back.degraded {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.flip-btn {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: bold;
+    margin-top: 8px;
+}
+
+.flip-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.display-canvas {
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    background: #000;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+    max-width: 100%;
+    height: auto;
+}
+
+.snapshot-info {
+    margin-top: 15px;
+    text-align: center;
+    font-size: 0.85rem;
+    opacity: 0.8;
+}
+
+.no-snapshot-message {
+    text-align: center;
+    padding: 20px;
+    opacity: 0.7;
+}
+
+.snapshot-btn {
+    background: rgba(59, 130, 246, 0.8);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: bold;
+    margin-top: 10px;
+}
+
+.snapshot-btn:hover {
+    background: rgba(59, 130, 246, 1);
+}
+
+.snapshot-btn:disabled {
+    background: #999;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
