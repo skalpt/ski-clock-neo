@@ -29,6 +29,8 @@ jobs:
           arduino-cli lib install "Adafruit NeoPixel"
           arduino-cli lib install "AutoConnect"
           arduino-cli lib install "PubSubClient"
+          arduino-cli lib install "OneWire"
+          arduino-cli lib install "DallasTemperature"
 
       - name: Generate timestamp version
         id: get_version
