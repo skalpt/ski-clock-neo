@@ -1,0 +1,62 @@
+2025-11-22T13:30:52.8174524Z ##[group]Run arduino-cli compile --fqbn esp32:esp32:esp32 \
+2025-11-22T13:30:52.8175153Z [36;1marduino-cli compile --fqbn esp32:esp32:esp32 \[0m
+2025-11-22T13:30:52.8175605Z [36;1m  --export-binaries \[0m
+2025-11-22T13:30:52.8176036Z [36;1m  --build-property "build.partitions=min_spiffs" \[0m
+2025-11-22T13:30:52.8178126Z [36;1m  --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"***\" -DDOWNLOAD_API_KEY=\"***\" -DFIRMWARE_VERSION=\"2025.11.22.39\" -DMQTT_HOST=\"***\" -DMQTT_USERNAME=\"***\" -DMQTT_PASSWORD=\"***\" -DBOARD_ESP32" \[0m
+2025-11-22T13:30:52.8179639Z [36;1m  --output-dir build/esp32 \[0m
+2025-11-22T13:30:52.8180230Z [36;1m  firmware/***[0m
+2025-11-22T13:30:52.8180690Z [36;1mcp build/esp32/***.ino.bin build/***-esp32.bin[0m
+2025-11-22T13:30:52.8181569Z [36;1mcp build/esp32/***.ino.bootloader.bin build/***-esp32.bootloader.bin || echo "Warning: Bootloader not found for ESP32"[0m
+2025-11-22T13:30:52.8182722Z [36;1mcp build/esp32/***.ino.partitions.bin build/***-esp32.partitions.bin || echo "Warning: Partitions not found for ESP32"[0m
+2025-11-22T13:30:52.8215087Z shell: /usr/bin/bash -e {0}
+2025-11-22T13:30:52.8215394Z ##[endgroup]
+2025-11-22T13:31:21.6789976Z /home/runner/work/***/***/firmware/***/mqtt_client.cpp: In function 'void publishDisplaySnapshot()':
+2025-11-22T13:31:21.6809527Z /home/runner/work/***/***/firmware/***/mqtt_client.cpp:319:28: error: 'struct DisplayConfig' has no member named 'cols'; did you mean 'rows'?
+2025-11-22T13:31:21.6811743Z    if (cfg.rows == 0 || cfg.cols == 0 || cfg.width == 0 || cfg.height == 0) {
+2025-11-22T13:31:21.6815209Z                             ^~~~
+2025-11-22T13:31:21.6816530Z                             rows
+2025-11-22T13:31:21.6817529Z /home/runner/work/***/***/firmware/***/mqtt_client.cpp:319:45: error: 'struct DisplayConfig' has no member named 'width'
+2025-11-22T13:31:21.6818389Z    if (cfg.rows == 0 || cfg.cols == 0 || cfg.width == 0 || cfg.height == 0) {
+2025-11-22T13:31:21.6818896Z                                              ^~~~~
+2025-11-22T13:31:21.6819914Z /home/runner/work/***/***/firmware/***/mqtt_client.cpp:319:63: error: 'struct DisplayConfig' has no member named 'height'
+2025-11-22T13:31:21.6820802Z    if (cfg.rows == 0 || cfg.cols == 0 || cfg.width == 0 || cfg.height == 0) {
+2025-11-22T13:31:21.6821359Z                                                                ^~~~~~
+2025-11-22T13:31:21.6822499Z /home/runner/work/***/***/firmware/***/mqtt_client.cpp:341:48: error: 'struct DisplayConfig' has no member named 'cols'; did you mean 'rows'?
+2025-11-22T13:31:21.6823464Z    snprintf(colsStr, sizeof(colsStr), "%u", cfg.cols);
+2025-11-22T13:31:21.6824130Z                                                 ^~~~
+2025-11-22T13:31:21.6824557Z                                                 rows
+2025-11-22T13:31:21.6825593Z /home/runner/work/***/***/firmware/***/mqtt_client.cpp:342:50: error: 'struct DisplayConfig' has no member named 'width'
+2025-11-22T13:31:21.6826467Z    snprintf(widthStr, sizeof(widthStr), "%u", cfg.width);
+2025-11-22T13:31:21.6827220Z                                                   ^~~~~
+2025-11-22T13:31:21.6828185Z /home/runner/work/***/***/firmware/***/mqtt_client.cpp:343:52: error: 'struct DisplayConfig' has no member named 'height'
+2025-11-22T13:31:21.6829042Z    snprintf(heightStr, sizeof(heightStr), "%u", cfg.height);
+2025-11-22T13:31:21.6829581Z                                                     ^~~~~~
+2025-11-22T13:31:24.2756880Z 
+2025-11-22T13:31:24.4078085Z Error during build: exit status 1
+2025-11-22T13:31:24.4078487Z 
+2025-11-22T13:31:24.4079353Z [92mUsed library[0m      [92mVersion[0m [90mPath[0m                                                                                   
+2025-11-22T13:31:24.4080691Z [93mAdafruit NeoPixel[0m 1.15.2  [90m/home/runner/Arduino/libraries/Adafruit_NeoPixel[0m                                       
+2025-11-22T13:31:24.4081819Z [93mWiFi[0m              2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFi[0m            
+2025-11-22T13:31:24.4083047Z [93mWebServer[0m         2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WebServer[0m       
+2025-11-22T13:31:24.4083921Z [93mAutoConnect[0m       1.4.2   [90m/home/runner/Arduino/libraries/AutoConnect[0m                                             
+2025-11-22T13:31:24.4085073Z [93mDNSServer[0m         2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/DNSServer[0m       
+2025-11-22T13:31:24.4085952Z [93mEEPROM[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/EEPROM[0m          
+2025-11-22T13:31:24.4086817Z [93mPageBuilder[0m       1.5.6   [90m/home/runner/Arduino/libraries/PageBuilder[0m                                             
+2025-11-22T13:31:24.4087660Z [93mFS[0m                2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/FS[0m              
+2025-11-22T13:31:24.4088482Z [93mSPIFFS[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPIFFS[0m          
+2025-11-22T13:31:24.4089320Z [93mSD[0m                2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SD[0m              
+2025-11-22T13:31:24.4090121Z [93mSPI[0m               2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPI[0m             
+2025-11-22T13:31:24.4090966Z [93mPreferences[0m       2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Preferences[0m     
+2025-11-22T13:31:24.4091812Z [93mTicker[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Ticker[0m          
+2025-11-22T13:31:24.4092581Z [93mArduinoJson[0m       7.4.2   [90m/home/runner/Arduino/libraries/ArduinoJson[0m                                             
+2025-11-22T13:31:24.4093391Z [93mHTTPClient[0m        2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPClient[0m      
+2025-11-22T13:31:24.4094402Z [93mWiFiClientSecure[0m  2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFiClientSecure[0m
+2025-11-22T13:31:24.4095333Z [93mHTTPUpdate[0m        2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPUpdate[0m      
+2025-11-22T13:31:24.4096140Z [93mUpdate[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Update[0m          
+2025-11-22T13:31:24.4096924Z [93mPubSubClient[0m      2.8     [90m/home/runner/Arduino/libraries/PubSubClient[0m                                            
+2025-11-22T13:31:24.4097684Z [93mOneWire[0m           2.3.8   [90m/home/runner/Arduino/libraries/OneWire[0m                                                 
+2025-11-22T13:31:24.4098485Z [93mDallasTemperature[0m 4.0.5   [90m/home/runner/Arduino/libraries/DallasTemperature[0m                                       
+2025-11-22T13:31:24.4098929Z 
+2025-11-22T13:31:24.4099396Z [92mUsed platform[0m [92mVersion[0m [90mPath[0m                                                        
+2025-11-22T13:31:24.4128141Z [93mesp32:esp32[0m   2.0.14  [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14[0m
+2025-11-22T13:31:24.4138087Z ##[error]Process completed with exit code 1.

@@ -315,8 +315,12 @@ void publishDisplaySnapshot() {
   // Get display configuration
   DisplayConfig cfg = getDisplayConfig();
   
+  // Calculate total dimensions from panel configuration
+  uint16_t totalWidth = cfg.panelsPerRow * cfg.panelWidth;
+  uint16_t totalHeight = cfg.rows * cfg.panelHeight;
+  
   // Validate configuration before publishing
-  if (cfg.rows == 0 || cfg.cols == 0 || cfg.width == 0 || cfg.height == 0) {
+  if (cfg.rows == 0 || cfg.panelsPerRow == 0 || totalWidth == 0 || totalHeight == 0) {
     DEBUG_PRINTLN("Invalid display configuration, skipping snapshot");
     return;
   }
@@ -338,9 +342,9 @@ void publishDisplaySnapshot() {
   // Format: {"device_id":"xxx","rows":1,"cols":1,"width":16,"height":16,"pixels":"base64data"}
   char rowsStr[8], colsStr[8], widthStr[8], heightStr[8];
   snprintf(rowsStr, sizeof(rowsStr), "%u", cfg.rows);
-  snprintf(colsStr, sizeof(colsStr), "%u", cfg.cols);
-  snprintf(widthStr, sizeof(widthStr), "%u", cfg.width);
-  snprintf(heightStr, sizeof(heightStr), "%u", cfg.height);
+  snprintf(colsStr, sizeof(colsStr), "%u", cfg.panelsPerRow);
+  snprintf(widthStr, sizeof(widthStr), "%u", totalWidth);
+  snprintf(heightStr, sizeof(heightStr), "%u", totalHeight);
   
   String payload = "{\"device_id\":\"" + getDeviceID() + 
                    "\",\"rows\":" + String(rowsStr) +

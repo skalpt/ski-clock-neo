@@ -44,7 +44,14 @@ DisplayConfig getDisplayConfig();
 void setText(uint8_t row, const char* text);
 
 // Get text content for a row (called by render libraries)
+// WARNING: Not thread-safe for concurrent reads during setText()
+// Use snapshotAllText() for atomic multi-row reads during rendering
 const char* getText(uint8_t row);
+
+// Atomically snapshot ALL row text into caller-provided buffer
+// dest must be char[DISPLAY_ROWS][MAX_TEXT_LENGTH]
+// This prevents torn reads when setText() and rendering overlap
+void snapshotAllText(char dest[][MAX_TEXT_LENGTH]);
 
 // Set pixel state in buffer (called by render libraries during frame construction)
 void setPixel(uint8_t row, uint16_t x, uint16_t y, bool state);
@@ -74,6 +81,13 @@ bool isRenderRequested();
 
 // Clear the render request flag (called after invoking callback)
 void clearRenderRequest();
+
+// Get current update sequence number (for detecting concurrent setText() calls)
+uint32_t getUpdateSequence();
+
+// Atomically clear both flags ONLY if sequence hasn't changed since startSeq
+// Returns true if flags were cleared, false if concurrent update detected
+bool clearRenderFlagsIfUnchanged(uint32_t startSeq);
 
 // Set a callback to be invoked when display needs rendering
 // The callback will NOT be called directly from setText()
