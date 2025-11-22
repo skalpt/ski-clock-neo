@@ -41,7 +41,7 @@ void updateNeoPixels() {
     uint32_t red = rows[rowIdx].Color(255, 0, 0);
     
     // Render text using drawTextCentered
-    drawTextCentered(rows[rowIdx], displayText, 0, red, 1);
+    drawTextCentered(rows[rowIdx], displayText, 1, red, 2);
     
     // Copy rendered pixels to internal buffer for this row
     for (uint16_t y = 0; y < ROW_HEIGHT; y++) {
