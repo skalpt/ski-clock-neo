@@ -87,6 +87,13 @@ void setupWiFi() {
   // Apply configuration
   portal.config(config);
   
+  // Add custom root handler to redirect / to /_ac portal
+  // This makes the portal accessible at the device's IP address without needing /_ac path
+  server.on("/", []() {
+    server.sendHeader("Location", "/_ac", true);
+    server.send(302, "text/plain", "Redirecting to configuration portal...");
+  });
+  
   // Start AutoConnect
   // This will:
   // - Try to connect to previously saved networks (in order of signal strength)
@@ -108,6 +115,7 @@ void setupWiFi() {
   DEBUG_PRINT("Portal Password: ");
   DEBUG_PRINTLN(AP_PASSWORD);
   DEBUG_PRINTLN("Portal remains accessible even when connected to WiFi");
+  DEBUG_PRINTLN("Access portal at device IP address (redirects to /_ac)");
 }
 
 // Update WiFi - call this in loop()
