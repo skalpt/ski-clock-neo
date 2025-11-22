@@ -317,8 +317,25 @@ def handle_ota_complete(client, payload):
     """Handle OTA update completion (success or failure) from device"""
     session_id = payload.get('session_id')
     device_id = payload.get('device_id')
-    success = payload.get('success', False)
-    error_message = payload.get('error_message')
+    
+    # Dual-path parser: support both current format (status string) and legacy format (success boolean)
+    status_str = payload.get('status')
+    if status_str is not None:
+        # Current firmware format: {"status": "success"} or {"status": "failed"}
+        success = (status_str == 'success')
+    else:
+        # Legacy format fallback: {"success": true} or {"success": false}
+        success_bool = payload.get('success')
+        if success_bool is not None:
+            success = success_bool
+            print(f"ℹ️  Using legacy success boolean format for device {device_id}")
+        else:
+            # Neither format found - log warning and skip update to preserve existing state
+            print(f"⚠ No status indicator in OTA complete message from {device_id}, payload: {payload}")
+            return
+    
+    # Support both error field names
+    error_message = payload.get('error') or payload.get('error_message')
     
     if _app_context:
         from models import OTAUpdateLog, db
