@@ -163,7 +163,7 @@ def handle_heartbeat(client, payload):
             
             # Check for firmware updates based on board type
             # Map board type to platform using authoritative mapping
-            from app import LATEST_VERSIONS
+            from app import get_firmware_version
             platform = BOARD_TYPE_TO_PLATFORM.get(board_type)
             
             if not platform:
@@ -171,7 +171,8 @@ def handle_heartbeat(client, payload):
                 if board_type != 'Unknown':
                     print(f"⚠ No platform mapping for board type '{board_type}'")
             else:
-                version_info = LATEST_VERSIONS.get(platform)
+                # Use get_firmware_version() which handles cache properly
+                version_info = get_firmware_version(platform)
                 
                 if version_info:
                     latest_version = version_info.get('version', 'Unknown')
@@ -213,9 +214,9 @@ def handle_version_request(client, payload):
     if _app_context:
         with _app_context.app_context():
             # Import here to avoid circular imports
-            from app import LATEST_VERSIONS
+            from app import get_firmware_version
             
-            version_info = LATEST_VERSIONS.get(platform)
+            version_info = get_firmware_version(platform)
             
             if version_info:
                 latest_version = version_info.get('version', 'Unknown')
