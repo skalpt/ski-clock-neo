@@ -1426,7 +1426,7 @@ def rollback_device(device_id):
             'error': 'Device not found'
         }), 404
     
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     target_version = data.get('target_version')
     
     success = publish_command(
