@@ -20,6 +20,7 @@ MQTT_PASSWORD = os.getenv('MQTT_PASSWORD', '')
 MQTT_TOPIC_HEARTBEAT = "skiclock/heartbeat"
 MQTT_TOPIC_VERSION_REQUEST = "skiclock/version/request"
 MQTT_TOPIC_VERSION_RESPONSE = "skiclock/version/response"
+MQTT_TOPIC_VERSION_UPDATES = "skiclock/version/updates"
 MQTT_TOPIC_OTA_START = "skiclock/ota/start"
 MQTT_TOPIC_OTA_PROGRESS = "skiclock/ota/progress"
 MQTT_TOPIC_OTA_COMPLETE = "skiclock/ota/complete"
@@ -28,12 +29,40 @@ MQTT_TOPIC_DISPLAY_SNAPSHOT = "skiclock/display/snapshot"
 
 # Store Flask app instance for database access
 _app_context = None
+# Store MQTT client for publishing from other modules
 _mqtt_client = None
+
+# Map device board types (as reported by firmware) to platform identifiers
+# This ensures all board names resolve correctly to their firmware cache keys
+BOARD_TYPE_TO_PLATFORM = {
+    'ESP32': 'esp32',
+    'ESP32-C3': 'esp32c3',
+    'ESP32-S3': 'esp32s3',
+    'ESP-12F': 'esp12f',
+    'ESP-01': 'esp01',
+    'Wemos D1 Mini': 'd1mini',
+}
 
 def set_app_context(app):
     """Set Flask app context for database operations"""
     global _app_context
     _app_context = app
+
+def get_mqtt_client():
+    """Get MQTT client for publishing from other modules"""
+    return _mqtt_client
+
+def broadcast_version_update(platform: str, version: str):
+    """Broadcast version update to all devices listening"""
+    global _mqtt_client
+    if _mqtt_client and _mqtt_client.is_connected():
+        payload = {
+            'platform': platform,
+            'version': version,
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        }
+        _mqtt_client.publish(MQTT_TOPIC_VERSION_UPDATES, json.dumps(payload), qos=1)
+        print(f"📢 Broadcast version update: {platform} v{version}")
 
 def validate_ip_address(ip: str) -> Optional[str]:
     """
@@ -73,8 +102,10 @@ def on_connect(client, userdata, flags, rc, properties=None):
         print(f"✗ Failed to connect to MQTT broker, return code {rc}")
 
 def handle_heartbeat(client, payload):
-    """Handle device heartbeat messages"""
+    """Handle device heartbeat messages and check for firmware updates"""
     device_id = payload.get('device_id')
+    board_type = payload.get('board', 'Unknown')
+    current_version = payload.get('version', 'Unknown')
     
     if device_id and _app_context:
         # Save to database
@@ -85,8 +116,8 @@ def handle_heartbeat(client, payload):
             
             if device:
                 # Update existing device
-                device.board_type = payload.get('board', device.board_type)
-                device.firmware_version = payload.get('version', device.firmware_version)
+                device.board_type = board_type
+                device.firmware_version = current_version
                 device.last_seen = datetime.now(timezone.utc)
                 device.last_uptime = payload.get('uptime', 0)
                 device.last_rssi = payload.get('rssi', 0)
@@ -98,8 +129,8 @@ def handle_heartbeat(client, payload):
                 # Create new device
                 device = Device(
                     device_id=device_id,
-                    board_type=payload.get('board', 'Unknown'),
-                    firmware_version=payload.get('version', 'Unknown'),
+                    board_type=board_type,
+                    firmware_version=current_version,
                     last_uptime=payload.get('uptime', 0),
                     last_rssi=payload.get('rssi', 0),
                     last_free_heap=payload.get('free_heap', 0),
@@ -108,7 +139,7 @@ def handle_heartbeat(client, payload):
                     ip_address=validate_ip_address(payload.get('ip'))
                 )
                 db.session.add(device)
-                print(f"✨ New device registered: {device_id} ({payload.get('board')})")
+                print(f"✨ New device registered: {device_id} ({board_type})")
             
             # Log heartbeat to history (for degraded status detection)
             heartbeat_log = HeartbeatHistory(
@@ -129,8 +160,44 @@ def handle_heartbeat(client, payload):
             ).delete()
             
             db.session.commit()
+            
+            # Check for firmware updates based on board type
+            # Map board type to platform using authoritative mapping
+            from app import LATEST_VERSIONS
+            platform = BOARD_TYPE_TO_PLATFORM.get(board_type)
+            
+            if not platform:
+                # Log when no matching platform mapping is found
+                if board_type != 'Unknown':
+                    print(f"⚠ No platform mapping for board type '{board_type}'")
+            else:
+                version_info = LATEST_VERSIONS.get(platform)
+                
+                if version_info:
+                    latest_version = version_info.get('version', 'Unknown')
+                    # Normalize versions by removing 'v' prefix for comparison
+                    normalized_current = current_version.lstrip('vV')
+                    normalized_latest = latest_version.lstrip('vV')
+                    update_available = normalized_latest != normalized_current
+                    
+                    if update_available:
+                        # Send version response to notify device of update
+                        session_id = str(uuid.uuid4())
+                        response_topic = f"{MQTT_TOPIC_VERSION_RESPONSE}/{device_id}"
+                        response_payload = {
+                            'latest_version': latest_version,
+                            'current_version': current_version,
+                            'update_available': True,
+                            'platform': platform,
+                            'session_id': session_id
+                        }
+                        client.publish(response_topic, json.dumps(response_payload), qos=1)
+                        print(f"📤 Version response sent to {device_id}: {latest_version} (update: True)")
+                else:
+                    # Log when platform exists in mapping but no firmware in cache
+                    print(f"⚠ No firmware found for platform '{platform}' (board type: '{board_type}')")
         
-        print(f"📡 Heartbeat from {device_id} ({payload.get('board')}): v{payload.get('version')}, uptime={payload.get('uptime')}s, RSSI={payload.get('rssi')}dBm")
+        print(f"📡 Heartbeat from {device_id} ({board_type}): v{current_version}, uptime={payload.get('uptime')}s, RSSI={payload.get('rssi')}dBm")
 
 def handle_version_request(client, payload):
     """Handle device version check requests"""
