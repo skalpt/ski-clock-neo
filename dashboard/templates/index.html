@@ -395,11 +395,12 @@
             const imageData = ctx.createImageData(width, height);
             
             // Convert bit-packed data to RGBA pixels
+            // Firmware uses LSB-first bit ordering: bitIndex = pixelIndex % 8
             let pixelIndex = 0;
             for (let y = 0; y < height; y++) {
                 for (let x = 0; x < width; x++) {
                     const byteIndex = Math.floor(pixelIndex / 8);
-                    const bitIndex = 7 - (pixelIndex % 8);
+                    const bitIndex = pixelIndex % 8;  // LSB-first to match firmware
                     const byte = pixelData.charCodeAt(byteIndex) || 0;
                     const isOn = (byte & (1 << bitIndex)) !== 0;
                     
