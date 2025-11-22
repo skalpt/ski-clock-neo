@@ -5,9 +5,14 @@
 .cache/
 .ccls-cache/
 .breakpoints
+.local/
 replit.nix
 
 # General
 .DS_Store
 *.swp
 *~
+
+# Agent state and blobs
+*.blob
+*.bin
