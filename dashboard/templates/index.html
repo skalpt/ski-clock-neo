@@ -48,9 +48,14 @@
     <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <h2>📊 OTA Update Statistics</h2>
-            <a href="/ota-history" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: bold;">
-                View Full History →
-            </a>
+            <div style="display: flex; gap: 10px;">
+                <a href="/snapshot-debug" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: bold;">
+                    🔍 Snapshot Debug
+                </a>
+                <a href="/ota-history" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: bold;">
+                    View Full History →
+                </a>
+            </div>
         </div>
         <div id="ota-stats-container">
             <div class="empty-state">

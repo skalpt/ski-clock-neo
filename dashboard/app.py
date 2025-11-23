@@ -564,6 +564,12 @@ def ota_history():
     """OTA update history page with filters"""
     return render_template('ota_history.html')
 
+@app.route('/snapshot-debug')
+@login_required
+def snapshot_debug():
+    """Display snapshot debugging page showing row text vs bitmap data"""
+    return render_template('snapshot_debug.html')
+
 @app.route('/api')
 def api_index():
     return jsonify({
