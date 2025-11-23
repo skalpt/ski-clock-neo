@@ -177,9 +177,9 @@ void indexToXY(uint16_t index, uint8_t &x, uint8_t &y) {
   
   // Reverse 90° clockwise rotation (= 90° counter-clockwise)
   // Original transform: tX = localY, tY = localX
-  // Reverse: localX = tY, localY = tX
-  uint8_t localX = tY;
-  uint8_t localY = tX;
+  // Reverse: localX = tX, localY = tY (no swap needed - we already undid serpentine)
+  uint8_t localX = tX;
+  uint8_t localY = tY;
   
   // Convert back to global coordinates
   x = panel * PANEL_WIDTH + localX;
