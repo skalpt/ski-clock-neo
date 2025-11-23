@@ -129,6 +129,10 @@
         }
     }
 
+    // Dynamic refresh interval management
+    let deviceRefreshInterval = null;
+    let currentRefreshRate = 10000; // Default: 10 seconds
+    
     async function loadDevices() {
         try {
             const [devicesResponse, progressResponse] = await Promise.all([
@@ -138,6 +142,9 @@
             
             const data = await devicesResponse.json();
             const otaProgress = await progressResponse.json();
+            
+            // Check if any OTA updates are in progress
+            const hasActiveOTA = Object.keys(otaProgress).length > 0;
             
             const container = document.getElementById('devices-container');
             const statsContainer = document.getElementById('stats-container');
@@ -296,8 +303,29 @@
             
             // Restore flip states for cards that were flipped before refresh
             restoreFlipStates();
+            
+            // Adjust refresh interval based on OTA status
+            adjustRefreshInterval(hasActiveOTA);
         } catch (error) {
             console.error('Failed to load devices:', error);
+        }
+    }
+    
+    function adjustRefreshInterval(hasActiveOTA) {
+        const desiredRate = hasActiveOTA ? 1000 : 10000; // 1s during OTA, 10s otherwise
+        
+        // Only restart interval if rate needs to change
+        if (desiredRate !== currentRefreshRate) {
+            currentRefreshRate = desiredRate;
+            
+            if (deviceRefreshInterval) {
+                clearInterval(deviceRefreshInterval);
+            }
+            
+            deviceRefreshInterval = setInterval(loadDevices, currentRefreshRate);
+            
+            const rateLabel = hasActiveOTA ? '1 second' : '10 seconds';
+            console.log(`🔄 Refresh rate changed to ${rateLabel} (OTA active: ${hasActiveOTA})`);
         }
     }
 
@@ -747,8 +775,10 @@
     // Refresh OTA stats every 30 seconds
     setInterval(loadOTAStats, 30000);
 
-    // Refresh data from server every 10 seconds
-    setInterval(loadDevices, 10000);
+    // Device refresh interval is managed dynamically by adjustRefreshInterval()
+    // based on OTA status (1s during OTA, 10s otherwise)
+    deviceRefreshInterval = setInterval(loadDevices, currentRefreshRate);
+    
     setInterval(loadFirmware, 60000);
 </script>
 {% endblock %}
