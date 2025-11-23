@@ -28,6 +28,7 @@ extern uint8_t neopixelRenderBuffer[DISPLAY_BUFFER_SIZE];
 // Setup and rendering functions (pure, no timers)
 void setupNeoPixels();
 void updateNeoPixels();  // Call this externally when display needs refresh
+void createSnapshotBuffer();  // Create snapshot buffer on-demand for MQTT (with proper transforms)
 
 // Utility functions
 int charToGlyph(char c);
