@@ -29,6 +29,10 @@ MQTT_TOPIC_DISPLAY_SNAPSHOT = "skiclock/display/snapshot"
 _app_context = None
 # Store MQTT client for publishing from other modules
 _mqtt_client = None
+# Shutdown event for graceful termination
+_shutdown_event = None
+# Unique subscriber ID for tracking which thread is sending messages
+_subscriber_id = None
 
 # Map device board types (as reported by firmware) to platform identifiers
 # This ensures all board names resolve correctly to their firmware cache keys
@@ -174,10 +178,11 @@ def handle_heartbeat(client, payload):
                             'current_version': current_version,
                             'update_available': True,
                             'platform': platform,
-                            'session_id': session_id
+                            'session_id': session_id,
+                            'subscriber_id': _subscriber_id  # Track which thread sent this
                         }
                         client.publish(response_topic, json.dumps(response_payload), qos=1)
-                        print(f"📤 Version response sent to {device_id}: {latest_version} (update: True)")
+                        print(f"📤 Version response sent to {device_id}: {latest_version} (update: True) [subscriber: {_subscriber_id}]")
                 else:
                     # Log when platform exists in mapping but no firmware in cache
                     print(f"⚠ No firmware found for platform '{platform}' (board type: '{board_type}')")
@@ -401,7 +406,7 @@ def publish_command(device_id: str, command: str, **kwargs) -> bool:
     Returns:
         True if published successfully, False otherwise
     """
-    global _mqtt_client
+    global _mqtt_client, _subscriber_id
     
     if not _mqtt_client or not _mqtt_client.is_connected():
         print(f"✗ Cannot publish command: MQTT client not connected")
@@ -411,13 +416,14 @@ def publish_command(device_id: str, command: str, **kwargs) -> bool:
     payload = {
         'command': command,
         'timestamp': datetime.now(timezone.utc).isoformat(),
+        'subscriber_id': _subscriber_id,  # Track which thread sent this
         **kwargs
     }
     
     try:
         result = _mqtt_client.publish(topic, json.dumps(payload), qos=1)
         if result.rc == mqtt.MQTT_ERR_SUCCESS:
-            print(f"✓ Published command '{command}' to {device_id}")
+            print(f"✓ Published command '{command}' to {device_id} [subscriber: {_subscriber_id}]")
             return True
         else:
             print(f"✗ Failed to publish command to {device_id}: error code {result.rc}")
@@ -426,12 +432,39 @@ def publish_command(device_id: str, command: str, **kwargs) -> bool:
         print(f"✗ Error publishing command: {e}")
         return False
 
+def stop_mqtt_subscriber():
+    """Gracefully stop MQTT subscriber thread"""
+    global _mqtt_client, _shutdown_event, _subscriber_id
+    
+    if _shutdown_event:
+        print(f"🛑 Signaling MQTT subscriber shutdown (ID: {_subscriber_id})...")
+        _shutdown_event.set()
+    
+    if _mqtt_client:
+        try:
+            _mqtt_client.loop_stop()
+            _mqtt_client.disconnect()
+            print(f"✓ MQTT subscriber stopped (ID: {_subscriber_id})")
+        except Exception as e:
+            print(f"⚠ Error stopping MQTT subscriber: {e}")
+    
+    _mqtt_client = None
+    _shutdown_event = None
+    _subscriber_id = None
+
 def start_mqtt_subscriber():
-    global _mqtt_client
+    global _mqtt_client, _shutdown_event, _subscriber_id
     
     if not MQTT_HOST or not MQTT_USERNAME or not MQTT_PASSWORD:
         print("⚠ MQTT credentials not configured, device monitoring disabled")
         return None
+    
+    # Generate unique subscriber ID for tracking message sources
+    # Format: mqtt-<timestamp>-<random>
+    import time
+    timestamp = int(time.time() * 1000) % 1000000  # Last 6 digits of timestamp
+    random_suffix = str(uuid.uuid4())[:4]
+    _subscriber_id = f"mqtt-{timestamp}-{random_suffix}"
     
     # Generate unique client ID for each instance (prevents collision between dev/prod)
     # Format: SkiClockDashboard-<environment>-<unique_id>
@@ -439,10 +472,14 @@ def start_mqtt_subscriber():
     unique_suffix = str(uuid.uuid4())[:8]
     client_id = f"SkiClockDashboard-{env}-{unique_suffix}"
     
+    # Create shutdown event for graceful termination
+    _shutdown_event = threading.Event()
+    
     print(f"Starting MQTT subscriber...")
     print(f"  Broker: {MQTT_HOST}:{MQTT_PORT}")
     print(f"  Username: {MQTT_USERNAME}")
     print(f"  Client ID: {client_id}")
+    print(f"  Subscriber ID: {_subscriber_id}")
     
     client = mqtt.Client(client_id=client_id, protocol=mqtt.MQTTv311)
     client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
@@ -458,8 +495,10 @@ def start_mqtt_subscriber():
         client.connect(MQTT_HOST, MQTT_PORT, keepalive=60)
         client.loop_start()
         _mqtt_client = client  # Store global reference
-        print("✓ MQTT subscriber started in background thread")
+        print(f"✓ MQTT subscriber started (ID: {_subscriber_id})")
         return client
     except Exception as e:
         print(f"✗ Failed to start MQTT subscriber: {e}")
+        _shutdown_event = None
+        _subscriber_id = None
         return None

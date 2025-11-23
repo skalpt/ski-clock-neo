@@ -500,7 +500,8 @@ with app.app_context():
     # Sync firmware from production on startup (dev environment only)
     sync_firmware_from_production()
 
-from mqtt_subscriber import start_mqtt_subscriber, set_app_context
+from mqtt_subscriber import start_mqtt_subscriber, stop_mqtt_subscriber, set_app_context
+import atexit
 
 # Pass app context to MQTT subscriber for database operations
 set_app_context(app)
@@ -510,6 +511,9 @@ mqtt_client = start_mqtt_subscriber()
 
 # Start production sync thread (dev environment only)
 start_production_sync_thread()
+
+# Register cleanup handler to stop MQTT subscriber on app shutdown
+atexit.register(stop_mqtt_subscriber)
 
 # Authentication decorator
 def login_required(f):
