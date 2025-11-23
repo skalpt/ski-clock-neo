@@ -394,7 +394,24 @@
         flippedCards.forEach(deviceId => {
             const container = document.querySelector(`[data-device-id="${deviceId}"].device-card-flip-container`);
             if (container && !container.classList.contains('flipped')) {
+                const flipper = container.querySelector('.device-card-flipper');
+                
+                // Temporarily disable transitions to prevent animation on restore
+                if (flipper) {
+                    flipper.classList.add('no-transition');
+                }
+                
                 container.classList.add('flipped');
+                
+                // Force reflow to ensure no-transition is applied
+                if (flipper) {
+                    flipper.offsetHeight; // Trigger reflow
+                    
+                    // Re-enable transitions after a brief delay
+                    setTimeout(() => {
+                        flipper.classList.remove('no-transition');
+                    }, 10);
+                }
             }
         });
     }

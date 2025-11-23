@@ -772,6 +772,10 @@ body.no-web-serial .flash-column {
     transform: rotateY(180deg);
 }
 
+.device-card-flipper.no-transition {
+    transition: none !important;
+}
+
 .device-card-front,
 .device-card-back {
     position: absolute;
