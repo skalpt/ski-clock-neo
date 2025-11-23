@@ -282,6 +282,9 @@ void publishDisplaySnapshot() {
     return;
   }
   
+  // Create snapshot buffer from current NeoPixel state (on-demand, only when needed)
+  createSnapshotBuffer();
+  
   // Get display buffer
   const uint8_t* buffer = getDisplayBuffer();
   uint16_t bufferSize = getDisplayBufferSize();
