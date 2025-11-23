@@ -295,8 +295,26 @@ void publishDisplaySnapshot() {
   // Encode buffer to base64
   String base64Data = base64Encode(buffer, bufferSize);
   
+  // Build row_text JSON array
+  String rowTextJson = "[";
+  for (uint8_t i = 0; i < cfg.rows; i++) {
+    const char* text = getText(i);
+    if (i > 0) rowTextJson += ",";
+    
+    // Escape quotes in text for JSON
+    rowTextJson += "\"";
+    for (int j = 0; text[j] != '\0' && j < MAX_TEXT_LENGTH; j++) {
+      if (text[j] == '"' || text[j] == '\\') {
+        rowTextJson += "\\";
+      }
+      rowTextJson += text[j];
+    }
+    rowTextJson += "\"";
+  }
+  rowTextJson += "]";
+  
   // Build JSON payload with safe integer-to-string conversion
-  // Format: {"device_id":"xxx","rows":1,"cols":1,"width":16,"height":16,"pixels":"base64data"}
+  // Format: {"device_id":"xxx","rows":1,"cols":1,"width":16,"height":16,"pixels":"base64data","row_text":["text1","text2"]}
   char rowsStr[8], colsStr[8], widthStr[8], heightStr[8];
   snprintf(rowsStr, sizeof(rowsStr), "%u", cfg.rows);
   snprintf(colsStr, sizeof(colsStr), "%u", cfg.panelsPerRow);
@@ -308,7 +326,8 @@ void publishDisplaySnapshot() {
                    ",\"cols\":" + String(colsStr) +
                    ",\"width\":" + String(widthStr) +
                    ",\"height\":" + String(heightStr) +
-                   ",\"pixels\":\"" + base64Data + "\"}";
+                   ",\"pixels\":\"" + base64Data + "\"" +
+                   ",\"row_text\":" + rowTextJson + "}";
   
   // Check payload size against MQTT buffer
   if (payload.length() > 2000) {
