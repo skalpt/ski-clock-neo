@@ -246,8 +246,8 @@
                             </div>
                             <div id="display-content-${safeDeviceId}">
                                 ${device.display_snapshot ? 
-                                    `<canvas class="display-canvas" id="canvas-${safeDeviceId}" width="256" height="256"></canvas>
-                                     <div class="snapshot-info">
+                                    `<div id="panel-grid-${safeDeviceId}" style="display: grid; grid-template-columns: repeat(3, auto); grid-template-rows: repeat(2, auto); gap: 1px; background: rgba(128, 128, 128, 0.5); padding: 1px; width: fit-content; margin: 0 auto;"></div>
+                                     <div class="snapshot-info" style="margin-top: 15px;">
                                          <div>Size: ${device.display_snapshot.width || 0}x${device.display_snapshot.height || 0} pixels</div>
                                          <div>Last updated: ${new Date().toLocaleString()}</div>
                                      </div>` : 
@@ -383,85 +383,76 @@
     function renderDisplaySnapshot(deviceId, snapshot) {
         if (!snapshot || !snapshot.pixels) return;
         
-        const canvas = document.getElementById(`canvas-${deviceId}`);
-        if (!canvas) return;
+        const grid = document.getElementById(`panel-grid-${deviceId}`);
+        if (!grid) return;
         
         try {
             // Decode base64 pixel data
             const pixelData = atob(snapshot.pixels);
-            const width = snapshot.width || 16;
-            const height = snapshot.height || 16;
+            const width = snapshot.width || 48;
+            const height = snapshot.height || 32;
             const rows = snapshot.rows || 2;
             const cols = snapshot.cols || 3;
             
-            // Set canvas size to actual display size
-            canvas.width = width;
-            canvas.height = height;
-            
-            const ctx = canvas.getContext('2d');
-            const imageData = ctx.createImageData(width, height);
-            
-            // Convert bit-packed data to RGBA pixels
-            // Firmware uses LSB-first bit ordering: bitIndex = pixelIndex % 8
-            let pixelIndex = 0;
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
-                    const byteIndex = Math.floor(pixelIndex / 8);
-                    const bitIndex = pixelIndex % 8;  // LSB-first to match firmware
-                    const byte = pixelData.charCodeAt(byteIndex) || 0;
-                    const isOn = (byte & (1 << bitIndex)) !== 0;
-                    
-                    const i = (y * width + x) * 4;
-                    if (isOn) {
-                        // White pixel
-                        imageData.data[i] = 255;
-                        imageData.data[i + 1] = 255;
-                        imageData.data[i + 2] = 255;
-                        imageData.data[i + 3] = 255;
-                    } else {
-                        // Black pixel
-                        imageData.data[i] = 0;
-                        imageData.data[i + 1] = 0;
-                        imageData.data[i + 2] = 0;
-                        imageData.data[i + 3] = 255;
-                    }
-                    
-                    pixelIndex++;
-                }
-            }
-            
-            ctx.putImageData(imageData, 0, 0);
-            
-            // Draw panel divider lines
             const panelWidth = width / cols;
             const panelHeight = height / rows;
-            
-            ctx.strokeStyle = 'rgba(128, 128, 128, 0.5)';  // Thin grey lines
-            ctx.lineWidth = 1;
-            
-            // Vertical dividers (between columns)
-            for (let col = 1; col < cols; col++) {
-                const x = col * panelWidth;
-                ctx.beginPath();
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x, height);
-                ctx.stroke();
-            }
-            
-            // Horizontal dividers (between rows)
-            for (let row = 1; row < rows; row++) {
-                const y = row * panelHeight;
-                ctx.beginPath();
-                ctx.moveTo(0, y);
-                ctx.lineTo(width, y);
-                ctx.stroke();
-            }
-            
-            // Make canvas display larger on screen
             const scale = 12;  // Scale up for better visibility
-            canvas.style.width = `${width * scale}px`;
-            canvas.style.height = `${height * scale}px`;
-            canvas.style.imageRendering = 'pixelated';
+            
+            // Clear any existing canvases
+            grid.innerHTML = '';
+            
+            // Create a canvas for each panel
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    // Create canvas for this panel
+                    const canvas = document.createElement('canvas');
+                    canvas.width = panelWidth;
+                    canvas.height = panelHeight;
+                    canvas.style.width = `${panelWidth * scale}px`;
+                    canvas.style.height = `${panelHeight * scale}px`;
+                    canvas.style.imageRendering = 'pixelated';
+                    canvas.style.display = 'block';
+                    canvas.style.background = '#000';
+                    
+                    const ctx = canvas.getContext('2d');
+                    const imageData = ctx.createImageData(panelWidth, panelHeight);
+                    
+                    // Extract pixel data for this panel
+                    for (let py = 0; py < panelHeight; py++) {
+                        for (let px = 0; px < panelWidth; px++) {
+                            // Calculate global position
+                            const globalX = col * panelWidth + px;
+                            const globalY = row * panelHeight + py;
+                            const globalPixelIndex = globalY * width + globalX;
+                            
+                            // Get pixel state from bit-packed data
+                            const byteIndex = Math.floor(globalPixelIndex / 8);
+                            const bitIndex = globalPixelIndex % 8;
+                            const byte = pixelData.charCodeAt(byteIndex) || 0;
+                            const isOn = (byte & (1 << bitIndex)) !== 0;
+                            
+                            // Set pixel in panel canvas
+                            const i = (py * panelWidth + px) * 4;
+                            if (isOn) {
+                                // White pixel
+                                imageData.data[i] = 255;
+                                imageData.data[i + 1] = 255;
+                                imageData.data[i + 2] = 255;
+                                imageData.data[i + 3] = 255;
+                            } else {
+                                // Black pixel
+                                imageData.data[i] = 0;
+                                imageData.data[i + 1] = 0;
+                                imageData.data[i + 2] = 0;
+                                imageData.data[i + 3] = 255;
+                            }
+                        }
+                    }
+                    
+                    ctx.putImageData(imageData, 0, 0);
+                    grid.appendChild(canvas);
+                }
+            }
             
         } catch (error) {
             console.error('Failed to render display snapshot:', error);
