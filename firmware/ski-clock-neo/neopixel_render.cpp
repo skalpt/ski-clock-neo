@@ -44,16 +44,18 @@ void updateNeoPixels() {
     drawTextCentered(rows[rowIdx], displayText, 1, red, 2);
     
     // Copy rendered pixels to internal buffer for this row
-    for (uint16_t y = 0; y < ROW_HEIGHT; y++) {
-      for (uint16_t x = 0; x < ROW_WIDTH; x++) {
-        uint16_t idx = xyToIndex(x, y);
-        if (idx < rows[rowIdx].numPixels() && rows[rowIdx].getPixelColor(idx) != 0) {
-          // Calculate pixel index in unified buffer (accounting for row offset)
-          uint16_t pixelIndex = (rowIdx * ROW_WIDTH * ROW_HEIGHT) + (y * ROW_WIDTH) + x;
-          uint16_t byteIndex = pixelIndex / 8;
-          uint8_t bitIndex = pixelIndex % 8;
-          neopixelRenderBuffer[byteIndex] |= (1 << bitIndex);
-        }
+    // Loop through NeoPixel strip indices and reverse-transform to logical coordinates
+    for (uint16_t stripIdx = 0; stripIdx < rows[rowIdx].numPixels(); stripIdx++) {
+      if (rows[rowIdx].getPixelColor(stripIdx) != 0) {
+        // Reverse transformation: strip index → logical (x, y)
+        uint8_t x, y;
+        indexToXY(stripIdx, x, y);
+        
+        // Calculate pixel index in unified buffer (accounting for row offset)
+        uint16_t pixelIndex = (rowIdx * ROW_WIDTH * ROW_HEIGHT) + (y * ROW_WIDTH) + x;
+        uint16_t byteIndex = pixelIndex / 8;
+        uint8_t bitIndex = pixelIndex % 8;
+        neopixelRenderBuffer[byteIndex] |= (1 << bitIndex);
       }
     }
     
@@ -149,6 +151,39 @@ uint16_t xyToIndex(uint8_t x, uint8_t y) {
     // odd row: right→left
     return base + tY * PANEL_HEIGHT + ((PANEL_HEIGHT - 1) - tX);
   }
+}
+
+// Inverse function: convert NeoPixel strip index to logical (x, y) coordinates
+// This reverses all transformations (serpentine, rotation, panel layout)
+void indexToXY(uint16_t index, uint8_t &x, uint8_t &y) {
+  // Determine which panel
+  uint8_t panel = index / (PANEL_WIDTH * PANEL_HEIGHT);
+  
+  // Get local index within the panel
+  uint16_t localIdx = index % (PANEL_WIDTH * PANEL_HEIGHT);
+  
+  // Reverse serpentine to get transformed coordinates (tX, tY)
+  // After rotation, effective width is PANEL_HEIGHT
+  uint8_t tY = localIdx / PANEL_HEIGHT;
+  uint8_t tX;
+  
+  if (tY % 2 == 0) {
+    // even row: was left→right
+    tX = localIdx % PANEL_HEIGHT;
+  } else {
+    // odd row: was right→left, so reverse it
+    tX = (PANEL_HEIGHT - 1) - (localIdx % PANEL_HEIGHT);
+  }
+  
+  // Reverse 90° clockwise rotation (= 90° counter-clockwise)
+  // Original transform: tX = localY, tY = localX
+  // Reverse: localX = tY, localY = tX
+  uint8_t localX = tY;
+  uint8_t localY = tX;
+  
+  // Convert back to global coordinates
+  x = panel * PANEL_WIDTH + localX;
+  y = localY;
 }
 
 void applySmoothScale2x(const uint8_t* glyphData,

@@ -32,6 +32,7 @@ void updateNeoPixels();  // Call this externally when display needs refresh
 // Utility functions
 int charToGlyph(char c);
 uint16_t xyToIndex(uint8_t x, uint8_t y);
+void indexToXY(uint16_t index, uint8_t &x, uint8_t &y);  // Inverse of xyToIndex
 void applySmoothScale2x(const uint8_t* glyphData, uint8_t w0, uint8_t h0, uint8_t out[][20]);
 
 // Drawing primitives
