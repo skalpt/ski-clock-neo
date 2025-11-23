@@ -795,6 +795,22 @@ body.no-web-serial .flash-column {
     background: rgba(255, 255, 255, 0.3);
 }
 
+.flip-icon-btn {
+    background: transparent;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 4px;
+    line-height: 1;
+    transition: transform 0.2s, opacity 0.2s;
+    opacity: 0.7;
+}
+
+.flip-icon-btn:hover {
+    transform: scale(1.15);
+    opacity: 1;
+}
+
 .display-canvas {
     border: 2px solid rgba(255, 255, 255, 0.3);
     border-radius: 4px;

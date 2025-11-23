@@ -210,7 +210,12 @@
                                         <span class="status ${statusClass}"></span>
                                         ${safeDeviceId}
                                     </div>
-                                    <span class="badge">${safeBoard}</span>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="badge">${safeBoard}</span>
+                                        <button class="flip-icon-btn" data-device-id="${safeDeviceId}" data-action="flip" title="View display snapshot">
+                                            🔄
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="device-info">
                                     <div><strong>Status:</strong> ${statusText}${device.status === 'degraded' ? ' (unstable connection)' : ''}</div>
@@ -234,15 +239,15 @@
                                     <button class="device-btn delete-btn" data-device-id="${safeDeviceId}" data-action="delete">
                                         🗑️ Remove
                                     </button>
-                                    <button class="flip-btn" data-device-id="${safeDeviceId}" data-action="flip">
-                                        📺 Display Preview
-                                    </button>
                                 </div>
                             </div>
                         </div>
                         <div class="device-card-back ${statusClass}" id="display-back-${safeDeviceId}">
-                            <div class="snapshot-info">
-                                <h3 style="margin-bottom: 15px;">Display Snapshot</h3>
+                            <div class="snapshot-info" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                                <h3 style="margin: 0;">Display Snapshot</h3>
+                                <button class="flip-icon-btn" data-device-id="${safeDeviceId}" data-action="flip" title="Back to device info">
+                                    🔄
+                                </button>
                             </div>
                             <div id="display-content-${safeDeviceId}">
                                 ${device.display_snapshot ? 
@@ -260,9 +265,6 @@
                                     </div>`
                                 }
                             </div>
-                            <button class="flip-btn" data-device-id="${safeDeviceId}" data-action="flip" style="margin-top: 15px;">
-                                ← Back to Info
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -272,7 +274,7 @@
             container.innerHTML = `<div class="devices-grid">${devicesHtml}</div>`;
             
             // Attach event listeners to all device action buttons
-            document.querySelectorAll('.device-btn, .flip-btn, .snapshot-btn').forEach(btn => {
+            document.querySelectorAll('.device-btn, .flip-btn, .flip-icon-btn, .snapshot-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const deviceId = btn.getAttribute('data-device-id');
                     const action = btn.getAttribute('data-action');
@@ -297,6 +299,9 @@
                     renderDisplaySnapshot(device.device_id, device.display_snapshot);
                 }
             });
+            
+            // Restore flip states for cards that were flipped before refresh
+            restoreFlipStates();
         } catch (error) {
             console.error('Failed to load devices:', error);
         }
@@ -373,11 +378,31 @@
         }
     }
 
+    // Track which cards are currently flipped (persists across refreshes)
+    const flippedCards = new Set();
+
     function flipCard(deviceId) {
         const container = document.querySelector(`[data-device-id="${deviceId}"].device-card-flip-container`);
         if (container) {
             container.classList.toggle('flipped');
+            
+            // Track flip state
+            if (container.classList.contains('flipped')) {
+                flippedCards.add(deviceId);
+            } else {
+                flippedCards.delete(deviceId);
+            }
         }
+    }
+
+    function restoreFlipStates() {
+        // Restore flipped state for all cards that were flipped before refresh
+        flippedCards.forEach(deviceId => {
+            const container = document.querySelector(`[data-device-id="${deviceId}"].device-card-flip-container`);
+            if (container && !container.classList.contains('flipped')) {
+                container.classList.add('flipped');
+            }
+        });
     }
 
     function renderDisplaySnapshot(deviceId, snapshot) {
