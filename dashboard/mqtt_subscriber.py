@@ -149,6 +149,57 @@ def handle_heartbeat(client, payload):
             
             db.session.commit()
             
+            # Check for stuck OTA updates and resolve ALL of them based on version
+            from models import OTAUpdateLog
+            from datetime import timedelta
+            stuck_otas = OTAUpdateLog.query.filter(
+                OTAUpdateLog.device_id == device_id,
+                OTAUpdateLog.status.in_(['started', 'downloading'])
+            ).order_by(OTAUpdateLog.started_at.desc()).all()
+            
+            if stuck_otas:
+                # Normalize current version once
+                normalized_current = current_version.lstrip('vV')
+                now = datetime.now(timezone.utc)
+                # Timeout threshold: 5 minutes of inactivity
+                timeout_threshold = now - timedelta(minutes=5)
+                resolved_count = 0
+                
+                for stuck_ota in stuck_otas:
+                    # Normalize target version for comparison
+                    normalized_target = stuck_ota.new_version.lstrip('vV')
+                    
+                    if normalized_current == normalized_target:
+                        # Success: device is now running the target version
+                        stuck_ota.status = 'success'
+                        stuck_ota.completed_at = now
+                        stuck_ota.download_progress = 100
+                        print(f"✅ OTA resolved via heartbeat (success): {device_id} ({stuck_ota.old_version} → {stuck_ota.new_version})")
+                        resolved_count += 1
+                    else:
+                        # Check if OTA has timed out (>5 min with no progress or old progress)
+                        ota_started_long_ago = stuck_ota.started_at < timeout_threshold
+                        
+                        # If last_progress_at is NULL, check started_at age
+                        # If last_progress_at exists, check its age
+                        has_timed_out = ota_started_long_ago and (
+                            stuck_ota.last_progress_at is None or 
+                            stuck_ota.last_progress_at < timeout_threshold
+                        )
+                        
+                        if has_timed_out:
+                            # Failed: device has different version AND OTA has timed out
+                            stuck_ota.status = 'failed'
+                            stuck_ota.completed_at = now
+                            stuck_ota.error_message = f"Heartbeat shows version {current_version} instead of expected {stuck_ota.new_version} after 5+ minutes of inactivity (resolved via heartbeat)"
+                            print(f"❌ OTA resolved via heartbeat (failed): {device_id} - version mismatch after timeout (expected {stuck_ota.new_version}, got {current_version})")
+                            resolved_count += 1
+                        # else: Active download still in progress, don't resolve yet
+                
+                if resolved_count > 0:
+                    db.session.commit()
+                    print(f"📋 Resolved {resolved_count} stuck OTA update(s) for {device_id}")
+            
             # Check for firmware updates based on board type
             # Map board type to platform using authoritative mapping
             from app import get_firmware_version
@@ -433,6 +484,84 @@ def publish_command(device_id: str, command: str, **kwargs) -> bool:
         print(f"✗ Error publishing command: {e}")
         return False
 
+def ota_timeout_checker():
+    """
+    Background thread that checks for timed-out OTA updates.
+    Runs every minute and fails updates that have been inactive for > 5 minutes.
+    """
+    global _shutdown_event, _app_context
+    
+    print("✓ OTA timeout checker started")
+    
+    while _shutdown_event and not _shutdown_event.is_set():
+        if _app_context:
+            try:
+                from models import OTAUpdateLog, db
+                from datetime import timedelta
+                
+                with _app_context.app_context():
+                    try:
+                        now = datetime.now(timezone.utc)
+                        timeout_threshold = now - timedelta(minutes=5)
+                        
+                        # Find all in-progress OTA updates
+                        in_progress_updates = OTAUpdateLog.query.filter(
+                            OTAUpdateLog.status.in_(['started', 'downloading'])
+                        ).all()
+                        
+                        timed_out_updates = []
+                        
+                        for ota in in_progress_updates:
+                            # OTA has timed out if:
+                            # 1. It was started more than 5 minutes ago AND
+                            # 2. Either no progress was ever received (last_progress_at is NULL)
+                            #    OR last progress was received more than 5 minutes ago
+                            ota_started_long_ago = ota.started_at < timeout_threshold
+                            
+                            has_timed_out = ota_started_long_ago and (
+                                ota.last_progress_at is None or 
+                                ota.last_progress_at < timeout_threshold
+                            )
+                            
+                            if has_timed_out:
+                                timed_out_updates.append(ota)
+                                
+                                # Mark as failed with timeout error
+                                ota.status = 'failed'
+                                ota.completed_at = now
+                                
+                                if ota.last_progress_at:
+                                    ota.error_message = f"OTA update timed out after 5 minutes of inactivity (last activity: {ota.last_progress_at.isoformat()})"
+                                    print(f"⏱️ OTA update timed out: {ota.device_id} ({ota.old_version} → {ota.new_version}) - inactive since {ota.last_progress_at.isoformat()}")
+                                else:
+                                    ota.error_message = f"OTA update timed out after 5 minutes with no progress (started: {ota.started_at.isoformat()})"
+                                    print(f"⏱️ OTA update timed out: {ota.device_id} ({ota.old_version} → {ota.new_version}) - no progress since start")
+                        
+                        if timed_out_updates:
+                            db.session.commit()
+                            print(f"⚠ Marked {len(timed_out_updates)} OTA update(s) as timed out")
+                    
+                    except Exception as e:
+                        # Rollback on error to prevent session poisoning
+                        try:
+                            db.session.rollback()
+                        except:
+                            pass
+                        print(f"✗ Error processing OTA timeouts: {e}")
+                        import traceback
+                        traceback.print_exc()
+            
+            except Exception as e:
+                print(f"✗ Error in OTA timeout checker outer loop: {e}")
+                import traceback
+                traceback.print_exc()
+        
+        # Check every 60 seconds
+        if _shutdown_event:
+            _shutdown_event.wait(60)
+    
+    print("✓ OTA timeout checker stopped")
+
 def stop_mqtt_subscriber():
     """Gracefully stop MQTT subscriber thread"""
     global _mqtt_client, _shutdown_event, _subscriber_id
@@ -496,6 +625,11 @@ def start_mqtt_subscriber():
         client.connect(MQTT_HOST, MQTT_PORT, keepalive=60)
         client.loop_start()
         _mqtt_client = client  # Store global reference
+        
+        # Start OTA timeout checker thread
+        timeout_thread = threading.Thread(target=ota_timeout_checker, daemon=True, name="OTATimeoutChecker")
+        timeout_thread.start()
+        
         print(f"✓ MQTT subscriber started (ID: {_subscriber_id})")
         return client
     except Exception as e:

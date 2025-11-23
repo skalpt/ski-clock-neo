@@ -297,7 +297,7 @@ class OTAUpdateLog(db.Model):
     new_version = db.Column(db.String(32), nullable=False)
     status = db.Column(db.String(16), nullable=False, index=True, default='started')  # 'started', 'downloading', 'success', 'failed'
     started_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
-    last_progress_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)  # Track last activity for timeout detection
+    last_progress_at = db.Column(db.DateTime(timezone=True), nullable=True, index=True)  # Track last activity for timeout detection (NULL until first progress)
     completed_at = db.Column(db.DateTime(timezone=True))
     error_message = db.Column(db.Text)
     download_progress = db.Column(db.Integer, default=0)  # 0-100 percentage
