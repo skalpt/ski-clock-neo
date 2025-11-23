@@ -158,12 +158,11 @@ uint16_t xyToIndex(uint8_t x, uint8_t y) {
   uint8_t localX = x % PANEL_WIDTH;
   uint8_t localY = y;
 
-  // ---- Transform: rotate 90° clockwise, then mirror horizontally ----
-  // Step 1: Rotate 90° clockwise: (x,y) → (y, width-1-x)
-  // Step 2: Flip horizontally: (x,y) → (rotatedWidth-1-x, y)
-  // Combined: tX = PANEL_HEIGHT - 1 - localY, tY = PANEL_WIDTH - 1 - localX
-  uint8_t tX = PANEL_HEIGHT - 1 - localY;
-  uint8_t tY = PANEL_WIDTH - 1 - localX;
+  // ---- Transform: rotate 90° clockwise ----
+  // After 90° rotation: original Y becomes new X, original X becomes new Y
+  // This means: rotated width = PANEL_HEIGHT, rotated height = PANEL_WIDTH
+  uint8_t tX = localY;     // final X (range: 0 to PANEL_HEIGHT-1)
+  uint8_t tY = localX;     // final Y (range: 0 to PANEL_WIDTH-1)
 
   // Panel offset (each panel has PANEL_WIDTH × PANEL_HEIGHT pixels)
   uint16_t base = panel * (PANEL_WIDTH * PANEL_HEIGHT);
@@ -201,11 +200,11 @@ void indexToXY(uint16_t index, uint8_t &x, uint8_t &y) {
     tX = (PANEL_HEIGHT - 1) - (localIdx % PANEL_HEIGHT);
   }
   
-  // Reverse transformations (reverse order: un-flip, then un-rotate)
-  // Forward was: tX = PANEL_HEIGHT - 1 - localY, tY = PANEL_WIDTH - 1 - localX
-  // Reverse: localX = PANEL_WIDTH - 1 - tY, localY = PANEL_HEIGHT - 1 - tX
-  uint8_t localX = PANEL_WIDTH - 1 - tY;
-  uint8_t localY = PANEL_HEIGHT - 1 - tX;
+  // Reverse transformation (undo 90° clockwise rotation)
+  // Forward was: tX = localY, tY = localX
+  // Reverse: localY = tX, localX = tY
+  uint8_t localY = tX;
+  uint8_t localX = tY;
   
   // Convert back to global coordinates
   x = panel * PANEL_WIDTH + localX;
