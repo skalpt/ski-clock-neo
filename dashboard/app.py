@@ -1504,6 +1504,32 @@ def request_snapshot(device_id):
             'error': 'Failed to send snapshot command (MQTT not connected)'
         }), 503
 
+@app.route('/api/devices/<device_id>/snapshots')
+@login_required
+def get_snapshot_history(device_id):
+    """Get display snapshot history for a device"""
+    from models import DisplaySnapshot
+    from sqlalchemy import desc
+    
+    # Get query parameters
+    limit = request.args.get('limit', type=int, default=50)
+    offset = request.args.get('offset', type=int, default=0)
+    
+    # Query snapshots for this device
+    snapshots = DisplaySnapshot.query.filter_by(
+        device_id=device_id
+    ).order_by(desc(DisplaySnapshot.timestamp)).limit(limit).offset(offset).all()
+    
+    # Get total count
+    total_count = DisplaySnapshot.query.filter_by(device_id=device_id).count()
+    
+    return jsonify({
+        'snapshots': [s.to_dict() for s in snapshots],
+        'total_count': total_count,
+        'limit': limit,
+        'offset': offset
+    }), 200
+
 @app.route('/api/ota-logs')
 @login_required
 def ota_logs():
