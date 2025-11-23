@@ -396,7 +396,17 @@
             
             const panelWidth = width / cols;
             const panelHeight = height / rows;
-            const scale = 12;  // Scale up for better visibility
+            
+            // Calculate responsive scale factor based on container width
+            const container = grid.parentElement;
+            const containerWidth = container ? container.clientWidth : 300;
+            const gapPixels = (cols - 1) * 1;  // 1px gaps between panels
+            const paddingPixels = 2;  // Grid padding
+            const availableWidth = containerWidth - gapPixels - paddingPixels - 40;  // 40px safety margin
+            
+            // Calculate max integer scale that fits
+            const maxScaleByWidth = Math.floor(availableWidth / (panelWidth * cols));
+            const scale = Math.max(4, Math.min(12, maxScaleByWidth));  // Clamp between 4 and 12
             
             // Clear any existing canvases
             grid.innerHTML = '';
