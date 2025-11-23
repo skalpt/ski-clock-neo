@@ -318,15 +318,18 @@ def handle_display_snapshot(client, payload):
     
     if device_id and _app_context:
         with _app_context.app_context():
-            from models import Device, db
+            from models import Device, DisplaySnapshot, db
             
             device = Device.query.filter_by(device_id=device_id).first()
             if device:
                 # Store snapshot data (decode from base64 and convert to list of bytes)
                 pixels_base64 = payload.get('pixels', '')
+                row_text = payload.get('row_text', [])
                 
                 try:
                     pixels_bytes = base64.b64decode(pixels_base64)
+                    
+                    # Update device's current snapshot (for card flip view)
                     device.display_snapshot = {
                         'rows': payload.get('rows', 1),
                         'cols': payload.get('cols', 1),
@@ -336,10 +339,28 @@ def handle_display_snapshot(client, payload):
                         'timestamp': datetime.now(timezone.utc).isoformat()
                     }
                     device.last_seen = datetime.now(timezone.utc)
+                    
+                    # Store snapshot in history table for debugging
+                    bitmap_data = {
+                        'pixels': pixels_base64,
+                        'width': payload.get('width', 16),
+                        'height': payload.get('height', 16),
+                        'rows': payload.get('rows', 1),
+                        'cols': payload.get('cols', 1)
+                    }
+                    
+                    snapshot = DisplaySnapshot(
+                        device_id=device_id,
+                        row_text=row_text,
+                        bitmap_data=bitmap_data,
+                        timestamp=datetime.now(timezone.utc)
+                    )
+                    db.session.add(snapshot)
                     db.session.commit()
-                    print(f"📸 Display snapshot updated for {device_id} ({len(pixels_bytes)} bytes)")
+                    
+                    print(f"📸 Display snapshot stored for {device_id} ({len(pixels_bytes)} bytes, {len(row_text)} rows)")
                 except Exception as e:
-                    print(f"✗ Failed to decode display snapshot: {e}")
+                    print(f"✗ Failed to store display snapshot: {e}")
 
 def on_message(client, userdata, msg):
     try:
