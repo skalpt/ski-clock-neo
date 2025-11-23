@@ -253,6 +253,7 @@ def handle_ota_progress(client, payload):
             if log:
                 log.download_progress = progress
                 log.status = 'downloading'
+                log.last_progress_at = datetime.now(timezone.utc)  # Update activity timestamp
                 db.session.commit()
                 print(f"📊 OTA progress: {log.device_id} - {progress}%")
             else:
