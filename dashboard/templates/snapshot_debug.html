@@ -235,6 +235,8 @@
             const pixelData = atob(bitmapData.pixels);
             const width = bitmapData.width || 16;
             const height = bitmapData.height || 16;
+            const rows = bitmapData.rows || 2;
+            const cols = bitmapData.cols || 3;
             
             canvas.width = width;
             canvas.height = height;
@@ -253,8 +255,8 @@
                     const i = (y * width + x) * 4;
                     if (isOn) {
                         imageData.data[i] = 255;
-                        imageData.data[i + 1] = 255;
-                        imageData.data[i + 2] = 255;
+                        imageData.data[i + 1] = 0;
+                        imageData.data[i + 2] = 0;
                         imageData.data[i + 3] = 255;
                     } else {
                         imageData.data[i] = 0;
@@ -269,8 +271,31 @@
             
             ctx.putImageData(imageData, 0, 0);
             
-            canvas.style.width = `${Math.min(width * 4, 400)}px`;
-            canvas.style.height = 'auto';
+            const panelWidth = width / cols;
+            const panelHeight = height / rows;
+            
+            ctx.strokeStyle = 'rgba(0, 150, 255, 0.4)';
+            ctx.lineWidth = 1;
+            
+            for (let col = 1; col < cols; col++) {
+                const x = col * panelWidth;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, height);
+                ctx.stroke();
+            }
+            
+            for (let row = 1; row < rows; row++) {
+                const y = row * panelHeight;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+            
+            const scale = Math.max(8, Math.min(20, 800 / width));
+            canvas.style.width = `${width * scale}px`;
+            canvas.style.height = `${height * scale}px`;
             
         } catch (error) {
             console.error('Failed to render bitmap:', error);
