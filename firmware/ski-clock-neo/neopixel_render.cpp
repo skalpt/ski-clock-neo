@@ -63,9 +63,6 @@ void updateNeoPixels() {
     rows[rowIdx].show();
   }
   
-  // Commit complete frame to display library (for MQTT)
-  commitBuffer(neopixelRenderBuffer, sizeof(neopixelRenderBuffer));
-  
   // Atomically clear both flags ONLY if sequence hasn't changed
   // If setText() was called during rendering, sequence will have incremented
   // and flags will remain set for the drain loop to process
