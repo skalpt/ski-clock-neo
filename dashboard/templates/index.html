@@ -254,7 +254,7 @@
                                     `<div id="panel-grid-${safeDeviceId}" style="display: grid; grid-template-columns: repeat(3, auto); grid-template-rows: repeat(2, auto); gap: 1px; background: rgba(128, 128, 128, 0.5); padding: 1px; width: fit-content; margin: 0 auto;"></div>
                                      <div class="snapshot-info" style="margin-top: 15px;">
                                          <div>Size: ${device.display_snapshot.width || 0}x${device.display_snapshot.height || 0} pixels</div>
-                                         <div>Last updated: ${new Date().toLocaleString()}</div>
+                                         <div>Last updated: ${new Date(device.display_snapshot.timestamp).toLocaleString()}</div>
                                      </div>` : 
                                     `<div class="no-snapshot-message">
                                         <p>No display snapshot available</p>
