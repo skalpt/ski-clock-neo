@@ -218,6 +218,7 @@ class Device(db.Model):
     # Relationships
     ota_update_logs = db.relationship('OTAUpdateLog', back_populates='device', cascade='all, delete-orphan')
     heartbeat_history = db.relationship('HeartbeatHistory', back_populates='device', cascade='all, delete-orphan')
+    display_snapshots = db.relationship('DisplaySnapshot', back_populates='device', cascade='all, delete-orphan')
     
     def __repr__(self):
         return f'<Device {self.device_id} ({self.board_type})>'
@@ -352,3 +353,34 @@ class HeartbeatHistory(db.Model):
     
     def __repr__(self):
         return f'<HeartbeatHistory {self.device_id} at {self.timestamp}>'
+
+
+class DisplaySnapshot(db.Model):
+    __tablename__ = 'display_snapshots'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    device_id = db.Column(db.String(32), db.ForeignKey('devices.device_id'), nullable=False, index=True)
+    timestamp = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
+    row_text = db.Column(db.JSON, nullable=False)  # JSON array: ["row1 text", "row2 text"]
+    bitmap_data = db.Column(db.JSON, nullable=False)  # JSON object: {pixels: "base64...", width: 48, height: 32, rows: 2, cols: 3}
+    
+    # Relationships
+    device = db.relationship('Device', back_populates='display_snapshots')
+    
+    # Index for efficient time-based queries
+    __table_args__ = (
+        db.Index('idx_display_device_timestamp', 'device_id', 'timestamp'),
+    )
+    
+    def __repr__(self):
+        return f'<DisplaySnapshot {self.device_id} at {self.timestamp}>'
+    
+    def to_dict(self):
+        """Convert display snapshot to dictionary"""
+        return {
+            'id': self.id,
+            'device_id': self.device_id,
+            'timestamp': self.timestamp.isoformat(),
+            'row_text': self.row_text,
+            'bitmap_data': self.bitmap_data
+        }
