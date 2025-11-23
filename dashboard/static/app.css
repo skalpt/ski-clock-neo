@@ -279,9 +279,35 @@ h2 {
 .ota-stat-card.failed .value { color: #ef4444; }
 .ota-stat-card.in-progress .value { color: #f59e0b; }
 
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -10px;
+    padding: 0 10px;
+}
+
+.table-responsive::-webkit-scrollbar {
+    height: 8px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background: rgba(102, 126, 234, 0.3);
+    border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+    background: rgba(102, 126, 234, 0.5);
+}
+
 .firmware-table {
     width: 100%;
     border-collapse: collapse;
+    min-width: 600px;
 }
 
 .firmware-table th,
@@ -504,6 +530,7 @@ h2 {
     background: white;
     border-radius: 8px;
     overflow: hidden;
+    min-width: 800px;
 }
 
 .ota-history-table th,
