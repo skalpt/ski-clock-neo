@@ -391,6 +391,8 @@
             const pixelData = atob(snapshot.pixels);
             const width = snapshot.width || 16;
             const height = snapshot.height || 16;
+            const rows = snapshot.rows || 2;
+            const cols = snapshot.cols || 3;
             
             // Set canvas size to actual display size
             canvas.width = width;
@@ -429,6 +431,38 @@
             }
             
             ctx.putImageData(imageData, 0, 0);
+            
+            // Draw panel divider lines
+            const panelWidth = width / cols;
+            const panelHeight = height / rows;
+            
+            ctx.strokeStyle = 'rgba(128, 128, 128, 0.5)';  // Thin grey lines
+            ctx.lineWidth = 1;
+            
+            // Vertical dividers (between columns)
+            for (let col = 1; col < cols; col++) {
+                const x = col * panelWidth;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, height);
+                ctx.stroke();
+            }
+            
+            // Horizontal dividers (between rows)
+            for (let row = 1; row < rows; row++) {
+                const y = row * panelHeight;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+            
+            // Make canvas display larger on screen
+            const scale = 12;  // Scale up for better visibility
+            canvas.style.width = `${width * scale}px`;
+            canvas.style.height = `${height * scale}px`;
+            canvas.style.imageRendering = 'pixelated';
+            
         } catch (error) {
             console.error('Failed to render display snapshot:', error);
         }
