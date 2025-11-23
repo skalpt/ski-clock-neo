@@ -1,6 +1,7 @@
 #include "mqtt_client.h"
-#include "ota_update.h"  // For triggerOTAUpdate
-#include "display.h"     // For display snapshot
+#include "ota_update.h"      // For triggerOTAUpdate
+#include "display.h"         // For display snapshot
+#include "neopixel_render.h" // For createSnapshotBuffer
 
 // MQTT broker port
 const uint16_t MQTT_PORT = 8883;  // TLS port for HiveMQ Cloud
