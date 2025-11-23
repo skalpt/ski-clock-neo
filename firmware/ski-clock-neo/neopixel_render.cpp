@@ -72,6 +72,34 @@ void updateNeoPixels() {
   // because flags stay set if a concurrent setText() occurred
 }
 
+// Create snapshot buffer on-demand (only called when publishing MQTT snapshot)
+// This performs the reverse transform from NeoPixel indices to logical coordinates
+void createSnapshotBuffer() {
+  // Clear buffer
+  memset(neopixelRenderBuffer, 0, sizeof(neopixelRenderBuffer));
+  
+  // Loop through each row and copy current NeoPixel state to logical buffer
+  for (uint8_t rowIdx = 0; rowIdx < DISPLAY_ROWS; rowIdx++) {
+    // Loop through NeoPixel strip indices and reverse-transform to logical coordinates
+    for (uint16_t stripIdx = 0; stripIdx < rows[rowIdx].numPixels(); stripIdx++) {
+      if (rows[rowIdx].getPixelColor(stripIdx) != 0) {
+        // Reverse transformation: strip index → logical (x, y)
+        uint8_t x, y;
+        indexToXY(stripIdx, x, y);
+        
+        // Calculate pixel index in unified buffer (accounting for row offset)
+        uint16_t pixelIndex = (rowIdx * ROW_WIDTH * ROW_HEIGHT) + (y * ROW_WIDTH) + x;
+        uint16_t byteIndex = pixelIndex / 8;
+        uint8_t bitIndex = pixelIndex % 8;
+        neopixelRenderBuffer[byteIndex] |= (1 << bitIndex);
+      }
+    }
+  }
+  
+  // Commit to display library for MQTT publishing
+  commitBuffer(neopixelRenderBuffer, sizeof(neopixelRenderBuffer));
+}
+
 // ==================== SETUP FUNCTION ====================
 void setupNeoPixels() {
   // Initialize display library with actual hardware configuration
