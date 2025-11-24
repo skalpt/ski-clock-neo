@@ -21,7 +21,7 @@ struct DisplayConfig {
 // Display buffer - stores on/off state for each pixel (1 bit per pixel, packed into bytes)
 extern uint8_t displayBuffer[DISPLAY_BUFFER_SIZE];
 extern DisplayConfig displayConfig;
-
+dis
 // Text content for each row (what should be displayed)
 extern char displayText[DISPLAY_ROWS][MAX_TEXT_LENGTH];
 
