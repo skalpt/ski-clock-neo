@@ -4,7 +4,7 @@
 #include <string.h>
 
 #if defined(ESP8266)
-  #include <Ticker.h>
+  #include <TickTwo.h>  // Software ticker (loop-driven, non-ISR, safe for NeoPixel)
 #endif
 
 // Display buffer storage (final rendered output for MQTT)
@@ -29,8 +29,9 @@ static RenderCallback renderCallback = nullptr;
 #if defined(ESP32)
   static TaskHandle_t displayTaskHandle = NULL;
 #elif defined(ESP8266)
-  // ESP8266: Use Ticker for fallback (no FreeRTOS available)
-  static Ticker displayTicker;
+  // ESP8266: Use TickTwo for rendering (loop-driven, non-ISR, safe for NeoPixel)
+  void displayTickerCallback();  // Forward declaration
+  TickTwo displayTicker(displayTickerCallback, 1, 0, MILLIS);  // 1ms, endless (extern in .h)
 #endif
 
 // Rendering task for ESP32 (blocks on task notification, woken immediately when display dirty)
@@ -61,13 +62,18 @@ void displayTask(void* parameter) {
   }
 }
 #elif defined(ESP8266)
-// ESP8266 ticker callback (simulates FreeRTOS task notification)
+// ESP8266 ticker callback (TickTwo, loop-driven, safe for NeoPixel)
 void displayTickerCallback() {
+  // Only render if display is dirty (TickTwo runs continuously at 1ms)
+  if (!isDisplayDirty()) {
+    return;
+  }
+  
   // Drain all pending updates atomically (same logic as FreeRTOS task)
   while (isDisplayDirty()) {
     uint32_t startSeq = getUpdateSequence();
     
-    // Render the display
+    // Render the display (safe: running in loop context, not ISR)
     updateNeoPixels();
     
     // Clear flags atomically - if concurrent update occurred, flags stay set and loop continues
@@ -127,9 +133,9 @@ void initDisplay() {
     #endif
 
   #elif defined(ESP8266)
-    // ESP8266: Ticker is only set up on-demand when display becomes dirty
-    // This simulates FreeRTOS task notification behavior
-    DEBUG_PRINTLN("Display ticker ready (ESP8266 software ticker, on-demand)");
+    // ESP8266: Start TickTwo for continuous polling (loop-driven, non-ISR, safe for NeoPixel)
+    displayTicker.start();
+    DEBUG_PRINTLN("Display ticker started (ESP8266 TickTwo - 1ms, loop-driven)");
   #endif
 
   // NOTE: Display controller initialization (time/date/temp) is handled separately
@@ -178,11 +184,8 @@ void setText(uint8_t row, const char* text) {
       textChanged = true;
     }
     interrupts();
-    
-    // Trigger one-shot ticker to simulate FreeRTOS task notification
-    if (textChanged) {
-      displayTicker.once_ms(0, displayTickerCallback);  // Fire immediately on next tick
-    }
+    // TickTwo runs continuously and checks dirty flag - no trigger needed
+    (void)textChanged;  // Suppress unused warning
     
   #else
     // Fallback for other platforms (no atomic guarantee)

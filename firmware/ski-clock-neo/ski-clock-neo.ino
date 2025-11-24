@@ -69,6 +69,7 @@ void loop() {
   // Update TickTwo software tickers (ESP8266 only - loop-driven, non-ISR, WiFi-safe)
   // ESP32 uses FreeRTOS tasks, so no ticker updates needed
   #if defined(ESP8266)
+    displayTicker.update();             // Display rendering (1ms poll, safe for NeoPixel)
     toggleTicker.update();              // Display time/date toggle (4s)
     temperaturePollTicker.update();     // Temperature poll (30s)
     temperatureReadTicker.update();     // Temperature read delay (750ms)
