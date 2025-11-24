@@ -639,6 +639,12 @@ button {
     background: var(--bg-tertiary);
 }
 
+.firmware-table th:last-child,
+.firmware-table td:last-child {
+    width: 1%;
+    white-space: nowrap;
+}
+
 /* ========================================
    Forms
    ======================================== */
