@@ -1,7 +1,9 @@
 #include "data_temperature.h"
+#include "display_controller.h"  // For updateTemperatureDisplay callback
 #include "debug.h"
 #include <OneWire.h>
 #include <DallasTemperature.h>
+#include <Ticker.h>  // For temperature timing
 
 // Global sensor objects (initialized in initTemperatureData)
 static OneWire* oneWire = nullptr;
@@ -9,6 +11,16 @@ static DallasTemperature* sensors = nullptr;
 static bool initialized = false;
 static float lastTemperature = 0.0;
 static bool lastReadValid = false;
+
+// Temperature timing tickers
+static Ticker temperaturePollTicker;    // 30-second polling ticker
+static Ticker temperatureReadTicker;    // 750ms read delay ticker
+static bool temperatureRequestPending = false;
+static bool firstTemperatureRead = true;
+
+// Forward declarations
+void temperaturePollCallback();
+void temperatureReadCallback();
 
 void initTemperatureData(uint8_t pin) {
   DEBUG_PRINT("Initializing DS18B20 temperature sensor on GPIO ");
@@ -42,7 +54,16 @@ void initTemperatureData(uint8_t pin) {
   // Kick off initial temperature conversion immediately
   // (don't wait 30 seconds for first reading)
   sensors->requestTemperatures();
+  temperatureRequestPending = true;
   DEBUG_PRINTLN("Temperature sensor initialized (non-blocking mode, initial conversion started)");
+  
+  // Start temperature polling ticker (30 seconds)
+  temperaturePollTicker.attach(30.0, temperaturePollCallback);
+  DEBUG_PRINTLN("Temperature poll ticker started (30 seconds)");
+  
+  // Trigger first poll immediately (schedules read after 750ms)
+  temperaturePollCallback();
+  DEBUG_PRINTLN("Initial temperature poll triggered");
 }
 
 void requestTemperature() {
@@ -95,4 +116,34 @@ bool isSensorConnected() {
   }
   
   return (sensors->getDeviceCount() > 0);
+}
+
+// Temperature ticker callbacks (software tickers, not ISR context)
+void temperaturePollCallback() {
+  if (!temperatureRequestPending) {
+    // Request new temperature reading
+    requestTemperature();
+    temperatureRequestPending = true;
+    DEBUG_PRINTLN("Temperature read requested (ticker)");
+    
+    // Schedule read after 750ms
+    temperatureReadTicker.once(0.75, temperatureReadCallback);
+  }
+}
+
+void temperatureReadCallback() {
+  float temp;
+  if (getTemperature(&temp)) {
+    // Update display via callback to display_controller
+    updateTemperatureDisplay();
+    DEBUG_PRINT("Temperature updated: ");
+    DEBUG_PRINTLN(temp);
+    
+    // First read complete
+    if (firstTemperatureRead) {
+      firstTemperatureRead = false;
+      DEBUG_PRINTLN("First temperature read complete");
+    }
+  }
+  temperatureRequestPending = false;
 }

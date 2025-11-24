@@ -4,24 +4,16 @@
 #include "data_temperature.h"
 #include "debug.h"
 
-#include <Ticker.h>  // Used for temperature timing on both ESP32 and ESP8266
-
 #if defined(ESP32)
   #include <freertos/FreeRTOS.h>
   #include <freertos/task.h>
+#elif defined(ESP8266)
+  #include <Ticker.h>  // Only needed for ESP8266 toggle ticker
 #endif
 
 // Controller state
 static DisplayMode currentMode = MODE_NORMAL;
 static volatile bool showingTime = true;  // Toggle: true = time, false = date (volatile for ESP8266 ISR safety)
-
-// Temperature update tracking (using Tickers for cleaner timing)
-static bool temperatureRequestPending = true;  // Initial conversion was started in initTemperatureData
-static bool firstTemperatureRead = true;
-
-// Temperature tickers (used by both ESP32 and ESP8266)
-static Ticker temperaturePollTicker;    // 30-second temperature polling ticker
-static Ticker temperatureReadTicker;    // 750ms temperature read ticker
 
 // Platform-specific task handles and tickers
 #if defined(ESP32)
@@ -34,37 +26,7 @@ static Ticker temperatureReadTicker;    // 750ms temperature read ticker
 void updateRow0();
 void updateRow1();
 
-// Temperature ticker callbacks (software tickers, not ISR context)
-void temperaturePollCallback() {
-  if (!temperatureRequestPending) {
-    // Request new temperature reading
-    requestTemperature();
-    temperatureRequestPending = true;
-    DEBUG_PRINTLN("Temperature read requested (ticker)");
-    
-    // Schedule read after 750ms
-    temperatureReadTicker.once(0.75, temperatureReadCallback);
-  }
-}
-
-void temperatureReadCallback() {
-  float temp;
-  if (getTemperature(&temp)) {
-    updateRow1();
-    DEBUG_PRINT("Temperature updated: ");
-    DEBUG_PRINTLN(temp);
-    
-    // First read complete
-    if (firstTemperatureRead) {
-      firstTemperatureRead = false;
-      DEBUG_PRINTLN("First temperature read complete");
-    }
-  }
-  temperatureRequestPending = false;
-}
-
 // Display controller task (ESP32 only) - handles ONLY the 4-second time/date toggle
-// Temperature timing is handled by Tickers (no contention with display cadence)
 #if defined(ESP32)
 void displayControllerTask(void* parameter) {
   DEBUG_PRINTLN("Display controller FreeRTOS task started");
@@ -193,16 +155,16 @@ void initDisplayController() {
     DEBUG_PRINTLN("Display toggle timer started (ESP8266 Ticker)");
   #endif
   
-  // Start temperature tickers (both ESP32 and ESP8266)
-  // These handle ALL temperature timing - no contention with display task
-  temperaturePollTicker.attach(30.0, temperaturePollCallback);  // Poll every 30 seconds
-  DEBUG_PRINTLN("Temperature poll ticker started (30 seconds)");
-  
-  // Trigger first temperature poll immediately (requests conversion and schedules read)
-  temperaturePollCallback();
-  DEBUG_PRINTLN("Initial temperature poll triggered");
-  
   DEBUG_PRINTLN("Display controller initialized");
+  
+  // Initialize data libraries LAST - allows display to show immediately during boot
+  // Time library: NTP sync for Sweden timezone (CET/CEST)
+  initTimeData();
+  
+  // Temperature library: DS18B20 sensor with automatic 30-second polling
+  // Temperature library owns ALL temperature timing (tickers, callbacks)
+  // Calls updateTemperatureDisplay() callback when value changes
+  initTemperatureData(TEMP_SENSOR_PIN);
 }
 
 void setDisplayMode(DisplayMode mode) {
