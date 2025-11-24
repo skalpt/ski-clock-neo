@@ -4,11 +4,11 @@
 #include "data_temperature.h"
 #include "debug.h"
 
+#include <Ticker.h>  // Used for temperature timing on both ESP32 and ESP8266
+
 #if defined(ESP32)
   #include <freertos/FreeRTOS.h>
   #include <freertos/task.h>
-#elif defined(ESP8266)
-  #include <Ticker.h>
 #endif
 
 // Controller state
@@ -16,42 +16,47 @@ static DisplayMode currentMode = MODE_NORMAL;
 static volatile bool showingTime = true;  // Toggle: true = time, false = date (volatile for ESP8266 ISR safety)
 static bool initialized = false;
 
-// Temperature update tracking
-static uint32_t lastTempRequest = 0;
-static const uint32_t TEMP_UPDATE_INTERVAL = 30000;  // 30 seconds
+// Temperature update tracking (using Tickers for cleaner timing)
 static bool tempRequestPending = true;  // Initial conversion was started in initTemperatureData
 static bool firstTempRead = true;
 
-// FreeRTOS task handle (ESP32 only)
+// FreeRTOS task handle and Tickers
 #if defined(ESP32)
   static TaskHandle_t controllerTaskHandle = nullptr;
+  static Ticker tempPollTicker;    // 30-second temperature polling ticker
+  static Ticker tempReadTicker;    // 750ms temperature read ticker
 #elif defined(ESP8266)
   // ESP8266: Fallback using Ticker with flag-polling pattern
   static Ticker toggleTicker;
+  static Ticker tempPollTicker;    // 30-second temperature polling ticker
+  static Ticker tempReadTicker;    // 750ms temperature read ticker
   static volatile bool updatePending = false;
 #endif
+
+// Temperature ticker flags (set by ISR, cleared by main loop)
+static volatile bool tempPollRequested = false;
+static volatile bool tempReadRequested = false;
 
 // Forward declarations
 void updateRow0();
 void updateRow1();
 
-// Display controller task - handles content scheduling independently of main loop
-// This ensures display updates are deterministic and not blocked by network operations
+// Temperature ticker callbacks (ISR-safe, just set flags)
+void IRAM_ATTR tempPollCallback() {
+  tempPollRequested = true;
+}
+
+void IRAM_ATTR tempReadCallback() {
+  tempReadRequested = true;
+}
+
+// Display controller task (ESP32 only) - handles ONLY the 4-second time/date toggle
+// Temperature timing is handled by Tickers (no contention with display cadence)
 #if defined(ESP32)
 void displayControllerTask(void* parameter) {
   DEBUG_PRINTLN("Display controller FreeRTOS task started");
-  
-  // Wait for initial temperature conversion (started in initTemperatureData)
-  vTaskDelay(pdMS_TO_TICKS(750));
-  float temp;
-  if (getTemperature(&temp)) {
-    updateRow1();
-    DEBUG_PRINT("Initial temperature: ");
-    DEBUG_PRINTLN(temp);
-  }
-  firstTempRead = false;
-  tempRequestPending = false;
-  lastTempRequest = millis();
+  DEBUG_PRINTLN("Task focus: 4-second time/date toggle only");
+  DEBUG_PRINTLN("Temperature timing handled by Tickers (no contention)");
   
   TickType_t lastWakeTime = xTaskGetTickCount();
   const TickType_t toggleInterval = pdMS_TO_TICKS(4000);  // 4 seconds for time/date toggle
@@ -62,27 +67,9 @@ void displayControllerTask(void* parameter) {
     vTaskDelayUntil(&lastWakeTime, toggleInterval);
     
     // Update time/date display (toggle every 4 seconds)
+    // This is the ONLY job of this task - deterministic display cadence
     showingTime = !showingTime;
     updateRow0();
-    
-    // Check if it's time to update temperature (every 30 seconds)
-    uint32_t now = millis();
-    if (!tempRequestPending && (now - lastTempRequest >= TEMP_UPDATE_INTERVAL)) {
-      requestTemperature();
-      tempRequestPending = true;
-      lastTempRequest = now;
-      DEBUG_PRINTLN("Temperature read requested");
-      
-      // Wait 750ms for temperature conversion, then read
-      vTaskDelay(pdMS_TO_TICKS(750));
-      float temp;
-      if (getTemperature(&temp)) {
-        updateRow1();
-        DEBUG_PRINT("Temperature updated: ");
-        DEBUG_PRINTLN(temp);
-      }
-      tempRequestPending = false;
-    }
   }
 }
 #elif defined(ESP8266)
@@ -164,35 +151,35 @@ void initDisplayController() {
   updateRow0();
   updateRow1();
   
-  // Create FreeRTOS task for content scheduling (ESP32) or Ticker (ESP8266)
+  // Create FreeRTOS task for display toggle (ESP32) or Ticker (ESP8266)
   #if defined(ESP32)
-    // ESP32: Use dedicated FreeRTOS task for deterministic timing
-    // Priority 2 (same as renderer) ensures content scheduling isn't blocked by network I/O
-    // Stack size: 3KB for time/date/temperature formatting
+    // ESP32: Use dedicated FreeRTOS task for deterministic 4-second time/date toggle
+    // Priority 2 (same as renderer) ensures display cadence isn't blocked by network I/O
+    // Stack size: 2KB (minimal - only handles time/date toggle)
     
     #if defined(CONFIG_IDF_TARGET_ESP32C3)
       // ESP32-C3 (single-core RISC-V): Run on Core 0 with priority 2
       xTaskCreate(
         displayControllerTask,      // Task function
         "DispCtrl",                 // Task name
-        3072,                       // Stack size (bytes)
+        2048,                       // Stack size (bytes) - reduced, no temp logic
         NULL,                       // Task parameter
         2,                          // Priority (2 = same as renderer)
         &controllerTaskHandle       // Task handle
       );
-      DEBUG_PRINTLN("Display controller FreeRTOS task created (ESP32-C3: single-core, priority 2)");
+      DEBUG_PRINTLN("Display controller FreeRTOS task created (ESP32-C3: 4s toggle only)");
     #else
       // ESP32/ESP32-S3 (dual-core Xtensa): Pin to Core 1 (APP_CPU, same as renderer)
       xTaskCreatePinnedToCore(
         displayControllerTask,      // Task function
         "DispCtrl",                 // Task name
-        3072,                       // Stack size (bytes)
+        2048,                       // Stack size (bytes) - reduced, no temp logic
         NULL,                       // Task parameter
         2,                          // Priority (2 = same as renderer)
         &controllerTaskHandle,      // Task handle
         1                           // Core 1 (APP_CPU_NUM)
       );
-      DEBUG_PRINTLN("Display controller FreeRTOS task created (dual-core: pinned to Core 1, priority 2)");
+      DEBUG_PRINTLN("Display controller FreeRTOS task created (dual-core: 4s toggle only)");
     #endif
     
   #elif defined(ESP8266)
@@ -200,6 +187,15 @@ void initDisplayController() {
     toggleTicker.attach(4.0, toggleTimerCallback);  // 4 seconds
     DEBUG_PRINTLN("Display toggle timer started (ESP8266 Ticker)");
   #endif
+  
+  // Start temperature tickers (both ESP32 and ESP8266)
+  // These handle ALL temperature timing - no contention with display task
+  tempPollTicker.attach(30.0, tempPollCallback);  // Poll every 30 seconds
+  DEBUG_PRINTLN("Temperature poll ticker started (30 seconds)");
+  
+  // Initial temperature read (conversion already started in initTemperatureData)
+  tempReadTicker.once(0.75, tempReadCallback);  // Read after 750ms
+  DEBUG_PRINTLN("Initial temperature read scheduled (750ms)");
   
   DEBUG_PRINTLN("Display controller initialized");
 }
@@ -225,55 +221,48 @@ void forceDisplayUpdate() {
 }
 
 void updateDisplayController() {
-  #if defined(ESP32)
-    // ESP32: Controller runs in dedicated FreeRTOS task, main loop does nothing
-    // All content scheduling (time/date/temperature) handled independently
-    return;
-  #elif defined(ESP8266)
-    // ESP8266: Fallback to flag-based polling (no true FreeRTOS task support)
-    if (!initialized) return;
-    
-    // Handle deferred update from timer callback
+  if (!initialized) return;
+  
+  // ESP8266: Handle deferred display update from timer callback
+  #if defined(ESP8266)
     if (updatePending) {
       updatePending = false;
       updateRow0();  // Safe to call here (not in timer/ISR context)
     }
+  #endif
+  
+  // Handle temperature polling ticker (both ESP32 and ESP8266)
+  // Tickers set flags in ISR context, we handle the heavy work here
+  if (tempPollRequested) {
+    tempPollRequested = false;
     
-    uint32_t now = millis();
-    
-    // Handle initial temperature read (conversion started in initTemperatureData)
-    if (firstTempRead && now >= 750) {
-      float temp;
-      if (getTemperature(&temp)) {
-        updateRow1();
-        DEBUG_PRINT("Initial temperature: ");
-        DEBUG_PRINTLN(temp);
-      }
-      firstTempRead = false;
-      tempRequestPending = false;
-      lastTempRequest = now;
-      DEBUG_PRINTLN("First temperature read complete");
-    }
-    
-    // Handle temperature sensor updates (non-blocking)
-    if (!firstTempRead && !tempRequestPending && (now - lastTempRequest >= TEMP_UPDATE_INTERVAL)) {
+    if (!tempRequestPending) {
       // Request new temperature reading
       requestTemperature();
       tempRequestPending = true;
-      lastTempRequest = now;
-      DEBUG_PRINTLN("Temperature read requested");
+      DEBUG_PRINTLN("Temperature read requested (ticker)");
+      
+      // Schedule read after 750ms
+      tempReadTicker.once(0.75, tempReadCallback);
     }
+  }
+  
+  // Handle temperature read ticker (both ESP32 and ESP8266)
+  if (tempReadRequested) {
+    tempReadRequested = false;
     
-    // After ~750ms, read the temperature value
-    if (!firstTempRead && tempRequestPending && (now - lastTempRequest >= 750)) {
-      float temp;
-      if (getTemperature(&temp)) {
-        // Temperature updated, refresh row 1
-        updateRow1();
-        DEBUG_PRINT("Temperature updated: ");
-        DEBUG_PRINTLN(temp);
+    float temp;
+    if (getTemperature(&temp)) {
+      updateRow1();
+      DEBUG_PRINT("Temperature updated: ");
+      DEBUG_PRINTLN(temp);
+      
+      // First read complete
+      if (firstTempRead) {
+        firstTempRead = false;
+        DEBUG_PRINTLN("First temperature read complete");
       }
-      tempRequestPending = false;
     }
-  #endif
+    tempRequestPending = false;
+  }
 }
