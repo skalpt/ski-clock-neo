@@ -14,7 +14,6 @@
 // Controller state
 static DisplayMode currentMode = MODE_NORMAL;
 static volatile bool showingTime = true;  // Toggle: true = time, false = date (volatile for ESP8266 ISR safety)
-static bool initialized = false;
 
 // Temperature update tracking (using Tickers for cleaner timing)
 static bool temperatureRequestPending = true;  // Initial conversion was started in initTemperatureData
@@ -96,8 +95,6 @@ void toggleTimerCallback() {
 #endif
 
 void updateRow0() {
-  if (!initialized) return;
-  
   // Check if NTP is synced before attempting to display time/date
   if (!isTimeSynced()) {
     // NTP not synced yet, show placeholder
@@ -138,8 +135,6 @@ void updateRow0() {
 }
 
 void updateRow1() {
-  if (!initialized) return;
-  
   char buffer[32];
   
   // Row 1: Always shows temperature
@@ -155,9 +150,6 @@ void updateRow1() {
 
 void initDisplayController() {
   DEBUG_PRINTLN("Initializing display controller");
-  
-  // Mark as initialized FIRST so update functions can run
-  initialized = true;
   
   // Start with time display
   showingTime = true;
