@@ -20,17 +20,16 @@ static bool initialized = false;
 static bool temperatureRequestPending = true;  // Initial conversion was started in initTemperatureData
 static bool firstTemperatureRead = true;
 
-// FreeRTOS task handle and Tickers
+// Temperature tickers (used by both ESP32 and ESP8266)
+static Ticker temperaturePollTicker;    // 30-second temperature polling ticker
+static Ticker temperatureReadTicker;    // 750ms temperature read ticker
+
+// Platform-specific task handles and tickers
 #if defined(ESP32)
-  static TaskHandle_t controllerTaskHandle = nullptr;
-  static Ticker temperaturePollTicker;    // 30-second temperature polling ticker
-  static Ticker temperatureReadTicker;    // 750ms temperature read ticker
+  static TaskHandle_t controllerTaskHandle = nullptr;  // For 4-second display toggle
 #elif defined(ESP8266)
-  // ESP8266: Fallback using Ticker with flag-polling pattern for display toggle
-  static Ticker toggleTicker;
-  static Ticker temperaturePollTicker;    // 30-second temperature polling ticker
-  static Ticker temperatureReadTicker;    // 750ms temperature read ticker
-  static volatile bool updatePending = false;  // For display toggle only
+  static Ticker toggleTicker;                          // For 4-second display toggle
+  static volatile bool updatePending = false;          // For display toggle only
 #endif
 
 // Forward declarations
