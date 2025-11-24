@@ -29,7 +29,6 @@ static Ticker temperatureReadTicker;    // 750ms temperature read ticker
   static TaskHandle_t controllerTaskHandle = nullptr;  // For 4-second display toggle
 #elif defined(ESP8266)
   static Ticker toggleTicker;                          // For 4-second display toggle
-  static volatile bool updatePending = false;          // For display toggle only
 #endif
 
 // Forward declarations
@@ -88,12 +87,11 @@ void displayControllerTask(void* parameter) {
   }
 }
 #elif defined(ESP8266)
-// ESP8266 timer callback (ISR context, flag-based deferral required)
-void IRAM_ATTR toggleTimerCallback() {
-  // ESP8266: Ticker runs in ISR context, CANNOT call heavy functions!
-  // Just toggle state and set flag - main loop will handle the update
+// ESP8266 timer callback (software ticker, not ISR - safe to call functions directly)
+void toggleTimerCallback() {
+  // Toggle display and update immediately
   showingTime = !showingTime;
-  updatePending = true;
+  updateRow0();
 }
 #endif
 
@@ -236,17 +234,9 @@ void forceDisplayUpdate() {
 }
 
 void updateDisplayController() {
-  if (!initialized) return;
-  
-  // ESP8266 only: Handle deferred display update from timer callback
-  // Temperature updates are handled directly in ticker callbacks (no flags needed)
-  #if defined(ESP8266)
-    if (updatePending) {
-      updatePending = false;
-      updateRow0();  // Safe to call here (not in ISR context)
-    }
-  #endif
-  
-  // ESP32: Nothing to do - FreeRTOS task handles display, tickers handle temperature
-  // This function is effectively a no-op on ESP32
+  // Both ESP32 and ESP8266: Nothing to do in main loop
+  // ESP32: FreeRTOS task handles display toggle
+  // ESP8266: Ticker handles display toggle directly
+  // Temperature: Both use tickers with direct callbacks
+  // This function is effectively a no-op, kept for API compatibility
 }
