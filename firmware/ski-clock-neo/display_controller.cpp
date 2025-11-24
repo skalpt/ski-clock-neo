@@ -8,7 +8,7 @@
   #include <freertos/FreeRTOS.h>
   #include <freertos/task.h>
 #elif defined(ESP8266)
-  #include <Ticker.h>  // Only needed for ESP8266 toggle ticker
+  #include <TickTwo.h>  // Software ticker (loop-driven, non-ISR, WiFi-safe)
 #endif
 
 // Controller state
@@ -19,7 +19,9 @@ static volatile bool showingTime = true;  // Toggle: true = time, false = date (
 #if defined(ESP32)
   static TaskHandle_t controllerTaskHandle = nullptr;  // For 4-second display toggle
 #elif defined(ESP8266)
-  static Ticker toggleTicker;                          // For 4-second display toggle
+  // Software ticker (loop-driven, non-ISR, safe for setText)
+  void toggleTimerCallback();  // Forward declaration
+  static TickTwo toggleTicker(toggleTimerCallback, 4000, 0, MILLIS);  // 4s, endless, millis resolution
 #endif
 
 // Forward declarations
@@ -150,9 +152,9 @@ void initDisplayController(uint8_t temperatureSensorPin) {
     #endif
     
   #elif defined(ESP8266)
-    // ESP8266: Fallback to Ticker with flag-polling (no true FreeRTOS)
-    toggleTicker.attach(4.0, toggleTimerCallback);  // 4 seconds
-    DEBUG_PRINTLN("Display toggle timer started (ESP8266 Ticker)");
+    // ESP8266: Software ticker (loop-driven, non-ISR, WiFi-safe)
+    toggleTicker.start();
+    DEBUG_PRINTLN("Display toggle timer started (ESP8266 TickTwo - loop-driven)");
   #endif
   
   DEBUG_PRINTLN("Display controller initialized");
@@ -190,4 +192,12 @@ void forceDisplayUpdate() {
 void updateTemperatureDisplay() {
   // Called by data_temperature library when temperature changes
   updateRow1();
+}
+
+void updateDisplayController() {
+  // ESP8266: Update software tickers (loop-driven, non-ISR)
+  // ESP32: No-op (uses FreeRTOS tasks)
+  #if defined(ESP8266)
+    toggleTicker.update();
+  #endif
 }

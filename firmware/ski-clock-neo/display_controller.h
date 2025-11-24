@@ -29,4 +29,8 @@ void forceDisplayUpdate();
 // Updates row 1 with new temperature reading
 void updateTemperatureDisplay();
 
+// Update function for ESP8266 software tickers (must be called in loop)
+// ESP32 uses FreeRTOS tasks, so this is a no-op
+void updateDisplayController();
+
 #endif

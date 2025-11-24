@@ -3,7 +3,12 @@
 #include "debug.h"
 #include <OneWire.h>
 #include <DallasTemperature.h>
-#include <Ticker.h>  // For temperature timing
+
+#if defined(ESP32)
+  #include <Ticker.h>  // ESP32: Software ticker (loop-driven)
+#elif defined(ESP8266)
+  #include <TickTwo.h>  // ESP8266: Software ticker (loop-driven, non-ISR, WiFi-safe)
+#endif
 
 // Global sensor objects (initialized in initTemperatureData)
 static OneWire* oneWire = nullptr;
@@ -12,15 +17,21 @@ static bool initialized = false;
 static float lastTemperature = 0.0;
 static bool lastReadValid = false;
 
-// Temperature timing tickers
-static Ticker temperaturePollTicker;    // 30-second polling ticker
-static Ticker temperatureReadTicker;    // 750ms read delay ticker
+// Temperature timing - platform specific
+#if defined(ESP32)
+  // ESP32: Use standard Ticker (loop-driven software ticker)
+  static Ticker temperaturePollTicker;
+  static Ticker temperatureReadTicker;
+#elif defined(ESP8266)
+  // ESP8266: Use TickTwo (loop-driven, non-ISR, WiFi-safe)
+  void temperaturePollCallback();  // Forward declaration
+  void temperatureReadCallback();  // Forward declaration
+  static TickTwo temperaturePollTicker(temperaturePollCallback, 30000, 0, MILLIS);  // 30s, endless
+  static TickTwo temperatureReadTicker(temperatureReadCallback, 750, 1, MILLIS);  // 750ms, once
+#endif
+
 static bool temperatureRequestPending = false;
 static bool firstTemperatureRead = true;
-
-// Forward declarations
-void temperaturePollCallback();
-void temperatureReadCallback();
 
 void initTemperatureData(uint8_t pin) {
   DEBUG_PRINT("Initializing DS18B20 temperature sensor on GPIO ");
@@ -51,9 +62,14 @@ void initTemperatureData(uint8_t pin) {
   
   initialized = true;
   
-  // Start temperature polling ticker (30 seconds)
-  temperaturePollTicker.attach(30.0, temperaturePollCallback);
-  DEBUG_PRINTLN("Temperature poll ticker started (30 seconds)");
+  // Start temperature polling ticker (30 seconds) - platform specific
+  #if defined(ESP32)
+    temperaturePollTicker.attach(30.0, temperaturePollCallback);
+    DEBUG_PRINTLN("Temperature poll ticker started (ESP32 Ticker - 30s)");
+  #elif defined(ESP8266)
+    temperaturePollTicker.start();
+    DEBUG_PRINTLN("Temperature poll ticker started (ESP8266 TickTwo - 30s, loop-driven)");
+  #endif
   
   // Trigger first poll immediately (requests conversion and schedules read after 750ms)
   // Clear flag first to ensure callback executes
@@ -114,8 +130,9 @@ bool isSensorConnected() {
   return (sensors->getDeviceCount() > 0);
 }
 
-// Temperature ticker callbacks (software tickers, not ISR context)
-// These are safe to call setText() since software tickers run in loop() context
+// Temperature ticker callbacks (software tickers, loop-driven, safe for setText)
+// ESP32: Software ticker (loop-driven via Ticker library)
+// ESP8266: TickTwo (loop-driven, non-ISR, WiFi-safe)
 void temperaturePollCallback() {
   if (!temperatureRequestPending) {
     // Request new temperature reading
@@ -123,12 +140,11 @@ void temperaturePollCallback() {
     temperatureRequestPending = true;
     DEBUG_PRINTLN("Temperature read requested (ticker)");
     
-    // Schedule read after 750ms
-    // Platform-specific ticker API (ESP32 uses seconds, ESP8266 uses milliseconds)
+    // Schedule read after 750ms - platform specific
     #if defined(ESP32)
       temperatureReadTicker.once(0.75f, temperatureReadCallback);  // 0.75 seconds
     #elif defined(ESP8266)
-      temperatureReadTicker.once_ms(750, temperatureReadCallback);  // 750 milliseconds
+      temperatureReadTicker.start();  // TickTwo: start 750ms one-shot timer
     #endif
   }
 }
@@ -153,4 +169,13 @@ void temperatureReadCallback() {
   
   // Always clear flag to allow next poll (ensures recovery from failed reads)
   temperatureRequestPending = false;
+}
+
+void updateTemperatureData() {
+  // ESP8266: Update software tickers (loop-driven, non-ISR, WiFi-safe)
+  // ESP32: No-op (standard Ticker is loop-driven automatically)
+  #if defined(ESP8266)
+    temperaturePollTicker.update();
+    temperatureReadTicker.update();
+  #endif
 }

@@ -18,6 +18,7 @@ const uint8_t DISPLAY_PINS[DISPLAY_ROWS] = {4, 3};  // Row 1: GPIO4, Row 2: GPIO
 #include "led_indicator.h"
 #include "display.h"
 #include "display_controller.h"
+#include "data_temperature.h"  // For updateTemperatureData() on ESP8266
 #include "button.h"
 #include "wifi_config.h"
 #include "mqtt_client.h"
@@ -64,4 +65,11 @@ void loop() {
   
   // Update button state (debouncing and callbacks)
   updateButton();
+  
+  // Update software tickers (ESP8266 only - loop-driven, non-ISR, WiFi-safe)
+  // ESP32 uses FreeRTOS tasks, so these are no-ops
+  #if defined(ESP8266)
+    updateDisplayController();  // Time/date toggle ticker
+    updateTemperatureData();    // Temperature poll/read tickers
+  #endif
 }

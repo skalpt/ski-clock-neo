@@ -69,6 +69,7 @@ jobs:
           retry arduino-cli lib install "PubSubClient"
           retry arduino-cli lib install "OneWire"
           retry arduino-cli lib install "DallasTemperature"
+          retry arduino-cli lib install "TickTwo"
 
       - name: Generate timestamp version
         id: get_version
