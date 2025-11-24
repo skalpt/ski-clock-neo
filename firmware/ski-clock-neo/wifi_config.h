@@ -14,10 +14,13 @@
 #include <AutoConnect.h>
 #include <AutoConnectCredential.h>
 #include "debug.h"
+#include "device_info.h"
 
 // Configuration constants
-const char* AP_SSID = "SkiClock-Setup";
 const char* AP_PASSWORD = "configure";
+
+// Device-specific SSID (generated dynamically in setupWiFi)
+char AP_SSID[32];  // Buffer for dynamic SSID (e.g., "SkiClockNeo-abcdef123456")
 
 // AutoConnect objects
 #if defined(ESP32)
@@ -47,6 +50,13 @@ body {
 // Initialize AutoConnect with robust configuration
 void setupWiFi() {
   DEBUG_PRINTLN("Initializing WiFi with AutoConnect...");
+
+  // Generate device-specific AP SSID
+  String deviceID = getDeviceID();
+  snprintf(AP_SSID, sizeof(AP_SSID), "SkiClockNeo-%s", deviceID.c_str());
+  
+  DEBUG_PRINT("Generated AP SSID: ");
+  DEBUG_PRINTLN(AP_SSID);
 
   // Configure AutoConnect behavior
   config.apid = AP_SSID;
