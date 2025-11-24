@@ -224,3 +224,8 @@ void forceDisplayUpdate() {
   updateRow0();
   updateRow1();
 }
+
+void updateTemperatureDisplay() {
+  // Called by data_temperature library when temperature changes
+  updateRow1();
+}

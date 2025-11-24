@@ -24,4 +24,8 @@ DisplayMode getDisplayMode();
 // Useful after WiFi reconnection or manual refresh
 void forceDisplayUpdate();
 
+// Called by data_temperature when temperature value changes
+// Updates row 1 with new temperature reading
+void updateTemperatureDisplay();
+
 #endif
