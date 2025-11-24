@@ -118,7 +118,7 @@ void setupMQTT() {
 // Connect to MQTT broker
 bool connectMQTT() {
   if (mqttClient.connected()) {
-    ledStatusPattern(LED_PATTERN_CONNETED);
+    setConnectivityState(true, true);  // WiFi + MQTT both connected
     return true;
   }
   
@@ -135,7 +135,7 @@ bool connectMQTT() {
   // Attempt connection
   if (mqttClient.connect(clientId.c_str(), MQTT_USERNAME, MQTT_PASSWORD)) {
     DEBUG_PRINTLN("MQTT broker connected!");
-    ledStatusPattern(LED_PATTERN_CONNECTED);
+    setConnectivityState(true, true);  // WiFi + MQTT both connected
     mqttIsConnected = true;
 
     // Start heartbeat ticker
@@ -165,7 +165,7 @@ bool connectMQTT() {
   } else {
     DEBUG_PRINT("MQTT broker connection failed, rc=");
     DEBUG_PRINTLN(mqttClient.state());
-    ledStatusPattern(LED_PATTERN_MQTT_DISCONNECTED);
+    setConnectivityState(true, false);  // WiFi connected, MQTT disconnected
     mqttIsConnected = false;
     return false;
   }
@@ -331,7 +331,7 @@ void disconnectMQTT() {
     heartbeatTicker.detach();
     displaySnapshotTicker.detach();
     mqttClient.disconnect();
-    ledStatusPattern(LED_PATTERN_MQTT_DISCONNECTED);
+    setConnectivityState(WiFi.status() == WL_CONNECTED, false);  // Update LED based on WiFi status, MQTT disconnected
     mqttIsConnected = false;
   }
 }
