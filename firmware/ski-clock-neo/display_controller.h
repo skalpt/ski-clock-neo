@@ -10,7 +10,8 @@ enum DisplayMode {
 };
 
 // Initialize display controller
-// Must be called after initTimeData() and initTemperatureData()
+// Initializes time/temperature data libraries at the end
+// Display shows immediately, then data libraries init in background
 void initDisplayController();
 
 // Set display mode (normal or timer mode)
@@ -22,9 +23,5 @@ DisplayMode getDisplayMode();
 // Force immediate update of all display rows
 // Useful after WiFi reconnection or manual refresh
 void forceDisplayUpdate();
-
-// Update function (must be called regularly from loop)
-// Handles temperature sensor updates and other periodic tasks
-void updateDisplayController();
 
 #endif

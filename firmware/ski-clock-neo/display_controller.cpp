@@ -224,11 +224,3 @@ void forceDisplayUpdate() {
   updateRow0();
   updateRow1();
 }
-
-void updateDisplayController() {
-  // Both ESP32 and ESP8266: Nothing to do in main loop
-  // ESP32: FreeRTOS task handles display toggle
-  // ESP8266: Ticker handles display toggle directly
-  // Temperature: Both use tickers with direct callbacks
-  // This function is effectively a no-op, kept for API compatibility
-}
