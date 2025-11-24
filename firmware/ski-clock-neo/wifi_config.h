@@ -149,31 +149,31 @@ void updateWiFi() {
   // - Multiple credential management
 }
 
-// WiFi event handlers
+// WiFi event handlers - update connectivity state for centralized LED management
 #if defined(ESP32)
   void onWiFiConnected(WiFiEvent_t event, WiFiEventInfo_t info) {
-    ledStatusPattern(LED_PATTERN_MQTT_DISCONNECTED);
     DEBUG_PRINTLN("WiFi connected, connecting to MQTT...");
+    setConnectivityState(true, false);  // WiFi=connected, MQTT=disconnected
     connectMQTT();
   }
 
   void onWiFiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info) {
     DEBUG_PRINTLN("WiFi disconnected, stopping MQTT...");
     disconnectMQTT();
-    ledStatusPattern(LED_PATTERN_WIFI_DISCONNECTED);
-}
+    setConnectivityState(false, false);  // WiFi=disconnected, MQTT=disconnected
+  }
 #elif defined(ESP8266)
   void onWiFiConnected(const WiFiEventStationModeGotIP& event) {
-    ledStatusPattern(LED_PATTERN_MQTT_DISCONNECTED);
     DEBUG_PRINTLN("WiFi connected, connecting to MQTT...");
+    setConnectivityState(true, false);  // WiFi=connected, MQTT=disconnected
     connectMQTT();
   }
 
   void onWiFiDisconnected(const WiFiEventStationModeDisconnected& event) {
     DEBUG_PRINTLN("WiFi disconnected, stopping MQTT...");
     disconnectMQTT();
-    ledStatusPattern(LED_PATTERN_WIFI_DISCONNECTED);
-}
+    setConnectivityState(false, false);  // WiFi=disconnected, MQTT=disconnected
+  }
 #endif
 
 #endif
