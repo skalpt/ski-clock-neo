@@ -40,7 +40,7 @@
                 </thead>
                 <tbody id="firmware-body">
                     <tr>
-                        <td colspan="3" class="muted-text" style="text-align: center;">Loading...</td>
+                        <td colspan="3" class="muted-text text-center">Loading...</td>
                     </tr>
                 </tbody>
             </table>
@@ -48,7 +48,7 @@
     </div>
 
     <div class="card">
-        <div class="flex-between" style="margin-bottom: 15px;">
+        <div class="flex-between mb-15">
             <h2>📊 OTA Update Statistics</h2>
             <div class="flex-gap">
                 <a href="/snapshot-debug" class="action-link secondary">
@@ -153,7 +153,7 @@
                 container.innerHTML = `
                     <div class="empty-state">
                         <p>${data.mqtt_enabled ? 'No devices connected yet' : 'MQTT monitoring not configured'}</p>
-                        <p class="muted-text" style="font-size: 0.9rem; margin-top: 10px;">
+                        <p class="muted-text small-text-margin">
                             ${data.mqtt_enabled ? 'Devices will appear here when they send heartbeats' : 'Configure MQTT credentials to enable device monitoring'}
                         </p>
                     </div>
@@ -191,7 +191,7 @@
                             🔄 Updating: ${escapeHtml(ota.old_version || 'Unknown')} → ${escapeHtml(ota.new_version)}
                         </div>
                         <div class="ota-progress-bar">
-                            <div class="ota-progress-fill" style="width: ${ota.progress}%"></div>
+                            <div class="ota-progress-fill" data-progress="${ota.progress}"></div>
                             <div class="ota-progress-text">${ota.progress}%</div>
                         </div>
                     </div>
@@ -211,7 +211,7 @@
                                         <span class="status ${statusClass}"></span>
                                         ${safeDeviceId}
                                     </div>
-                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                    <div class="flex-align-center">
                                         <span class="badge">${safeBoard}</span>
                                         <button class="flip-icon-btn" data-device-id="${safeDeviceId}" data-action="flip" title="View display snapshot">
                                             🔄
@@ -245,30 +245,30 @@
                         </div>
                         <div class="device-card-back ${statusClass}" id="display-back-${safeDeviceId}">
                             <div class="device-header">
-                                <div style="display: flex; align-items: center; gap: 8px;">
+                                <div class="flex-align-center">
                                     <span class="status ${statusClass}"></span>
                                     ${safeDeviceId}
                                 </div>
-                                <div style="display: flex; align-items: center; gap: 8px;">
+                                <div class="flex-align-center">
                                     <span class="badge">${safeBoard}</span>
                                     <button class="flip-icon-btn" data-device-id="${safeDeviceId}" data-action="flip" title="Back to device info">
                                         🔄
                                     </button>
                                 </div>
                             </div>
-                            <div style="text-align: center; margin-top: 15px; margin-bottom: 15px;">
-                                <h3 style="margin: 0; font-size: 1.1rem; font-weight: bold;">Display Snapshot</h3>
+                            <div class="text-center-margin">
+                                <h3 class="snapshot-heading">Display Snapshot</h3>
                             </div>
                             <div id="display-content-${safeDeviceId}">
                                 ${device.display_snapshot ? 
-                                    `<div id="panel-grid-${safeDeviceId}" style="display: grid; grid-template-columns: repeat(3, auto); grid-template-rows: repeat(2, auto); gap: 1px; background: rgba(128, 128, 128, 0.5); padding: 1px; width: fit-content; margin: 0 auto;"></div>
-                                     <div class="snapshot-info" style="margin-top: 15px;">
+                                    `<div id="panel-grid-${safeDeviceId}" class="panel-grid"></div>
+                                     <div class="snapshot-info">
                                          <div>Size: ${device.display_snapshot.width || 0}x${device.display_snapshot.height || 0} pixels</div>
                                          <div>Last updated: ${new Date(device.display_snapshot.timestamp).toLocaleString()}</div>
                                      </div>` : 
                                     `<div class="no-snapshot-message">
                                         <p>No display snapshot available</p>
-                                        <p style="font-size: 0.8rem; margin-top: 10px;">Request a snapshot to see the display</p>
+                                        <p class="small-muted-text">Request a snapshot to see the display</p>
                                         <button class="snapshot-btn" data-device-id="${safeDeviceId}" data-action="request-snapshot" ${device.status === 'offline' ? 'disabled' : ''}>
                                             📸 Request Snapshot
                                         </button>
@@ -302,6 +302,9 @@
                     }
                 });
             });
+            
+            // Update all progress bar widths from data attributes
+            updateProgressBars();
             
             // Render display snapshots on canvases
             data.devices.forEach(device => {
@@ -596,7 +599,7 @@
                                         <button class="flash-dropdown-item" onclick="switchFlashMode('${platform}', 'full')" data-mode="full">
                                             <span class="flash-btn-icon">🔧</span> Full Flash (Recovery)
                                         </button>
-                                        <button class="flash-dropdown-item" onclick="switchFlashMode('${platform}', 'quick')" data-mode="quick" style="display: none;">
+                                        <button class="flash-dropdown-item is-hidden" onclick="switchFlashMode('${platform}', 'quick')" data-mode="quick">
                                             <span class="flash-btn-icon">⚡</span> Quick Flash
                                         </button>
                                     </div>
@@ -628,7 +631,7 @@
                         `;
                     } else {
                         return `
-                            <tr style="opacity: 0.5;">
+                            <tr class="opacity-50">
                                 <td><strong>${platform.toUpperCase()}</strong></td>
                                 <td>${escapeHtml(fw.filename || 'Unknown')}</td>
                                 <td>${escapeHtml(fw.version || 'Unknown')}</td>
@@ -638,10 +641,17 @@
                     }
                 }).join('');
 
-            tbody.innerHTML = rows || '<tr><td colspan="4" class="muted-text" style="text-align: center;">No firmware uploaded yet</td></tr>';
+            tbody.innerHTML = rows || '<tr><td colspan="4" class="muted-text text-center">No firmware uploaded yet</td></tr>';
         } catch (error) {
             console.error('Failed to load firmware:', error);
         }
+    }
+
+    function updateProgressBars() {
+        document.querySelectorAll('[data-progress]').forEach(element => {
+            const progress = element.getAttribute('data-progress');
+            element.style.width = `${progress}%`;
+        });
     }
 
     function formatUptime(seconds) {

@@ -20,14 +20,14 @@
         </p>
         
         <div class="filter-bar">
-            <div class="form-group" style="flex: 1; min-width: 300px; margin-bottom: 0;">
+            <div class="form-group flex-1 min-width-300 mb-0">
                 <label for="device-filter">Select Device</label>
                 <select id="device-filter" class="device-filter-select" onchange="loadSnapshots()">
                     <option value="">-- Select a device --</option>
                 </select>
             </div>
             
-            <div class="form-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
+            <div class="form-group flex-1 min-width-150 mb-0">
                 <label for="limit-filter">Show</label>
                 <select id="limit-filter" onchange="loadSnapshots()">
                     <option value="10">Last 10</option>
@@ -121,7 +121,7 @@
         const rowText = snapshot.row_text || [];
         const bitmap = snapshot.bitmap_data || {};
         
-        let rowTextHtml = '<ul style="margin: 0; padding-left: 20px;">';
+        let rowTextHtml = '<ul class="list-reset">';
         rowText.forEach((text, index) => {
             rowTextHtml += `<li><strong>Row ${index}:</strong> "${text}"</li>`;
         });

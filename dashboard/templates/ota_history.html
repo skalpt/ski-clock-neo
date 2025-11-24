@@ -16,14 +16,14 @@
         <h2>📜 Firmware Update Log</h2>
         
         <div class="filter-bar">
-            <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+            <div class="form-group flex-1 min-width-200 mb-0">
                 <label for="device-filter">Device</label>
                 <select id="device-filter" class="device-filter-select">
                     <option value="">All Devices</option>
                 </select>
             </div>
             
-            <div class="form-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
+            <div class="form-group flex-1 min-width-150 mb-0">
                 <label for="status-filter">Status</label>
                 <select id="status-filter">
                     <option value="">All Status</option>
@@ -33,17 +33,17 @@
                 </select>
             </div>
             
-            <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+            <div class="form-group flex-1 min-width-200 mb-0">
                 <label for="date-from">From Date</label>
                 <input type="datetime-local" id="date-from" class="date-input">
             </div>
             
-            <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+            <div class="form-group flex-1 min-width-200 mb-0">
                 <label for="date-to">To Date</label>
                 <input type="datetime-local" id="date-to" class="date-input">
             </div>
             
-            <div style="display: flex; align-items: flex-end; gap: 10px;">
+            <div class="flex-align-end">
                 <button onclick="applyFilters()">Apply Filters</button>
                 <button onclick="clearFilters()" class="button-secondary">Clear</button>
             </div>
@@ -139,7 +139,7 @@
                             const statusClass = log.status === 'success' ? 'success' : log.status === 'failed' ? 'failed' : 'in-progress';
                             const progressBar = log.status === 'in-progress' ? `
                                 <div class="progress-bar-mini">
-                                    <div class="fill" style="width: ${log.download_progress}%"></div>
+                                    <div class="fill" data-progress="${log.download_progress}"></div>
                                 </div>
                             ` : `${log.download_progress}%`;
                             
@@ -164,6 +164,9 @@
             `;
             
             container.innerHTML = tableHtml;
+            
+            // Update all progress bar widths from data attributes
+            updateProgressBars();
             
             // Update pagination
             updatePagination(data.total, page);
@@ -191,7 +194,7 @@
             <button onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
                 ← Previous
             </button>
-            <span style="padding: 8px 16px; font-weight: bold;">
+            <span class="pagination-text">
                 Page ${currentPage} of ${totalPages}
             </span>
             <button onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
@@ -206,6 +209,13 @@
         currentPage = page;
         loadOTAHistory(page);
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function updateProgressBars() {
+        document.querySelectorAll('[data-progress]').forEach(element => {
+            const progress = element.getAttribute('data-progress');
+            element.style.width = `${progress}%`;
+        });
     }
 
     function applyFilters() {
