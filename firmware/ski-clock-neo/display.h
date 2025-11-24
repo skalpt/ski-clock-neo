@@ -3,17 +3,10 @@
 
 #include <Arduino.h>
 
-// Import hardware configuration (defines DISPLAY_ROWS, DISPLAY_BUFFER_SIZE, etc.)
-#include "display_config.h"
-
-// Sanity checks to ensure config was loaded correctly
-#ifndef DISPLAY_ROWS
-  #error "DISPLAY_ROWS must be defined in display_config.h"
-#endif
-
-#ifndef DISPLAY_BUFFER_SIZE
-  #error "DISPLAY_BUFFER_SIZE must be defined in display_config.h"
-#endif
+// Calculate total dimensions
+#define ROW_WIDTH (PANELS_PER_ROW * PANEL_WIDTH)
+#define ROW_HEIGHT PANEL_HEIGHT
+#define DISPLAY_BUFFER_SIZE ((DISPLAY_ROWS * ROW_WIDTH * ROW_HEIGHT) / 8) // Bit-packed: (rows * width * height) / 8 bits per byte
 
 #define MAX_TEXT_LENGTH 32
 
@@ -26,12 +19,10 @@ struct DisplayConfig {
 };
 
 // Display buffer - stores on/off state for each pixel (1 bit per pixel, packed into bytes)
-// Size is determined by DISPLAY_BUFFER_SIZE from the hardware renderer
 extern uint8_t displayBuffer[DISPLAY_BUFFER_SIZE];
 extern DisplayConfig displayConfig;
 
 // Text content for each row (what should be displayed)
-// Array size is determined by DISPLAY_ROWS from the hardware renderer
 extern char displayText[DISPLAY_ROWS][MAX_TEXT_LENGTH];
 
 // Initialize display system with panel configuration

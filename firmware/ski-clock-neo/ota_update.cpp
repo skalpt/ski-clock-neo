@@ -1,5 +1,6 @@
 #include "ota_update.h"
-#include "mqtt_client.h"  // For MQTT topics and mqttClient
+#include "led_indicator.h"   // For LED status patterns when entering/existing OTA mode
+#include "mqtt_client.h"     // For MQTT topics and mqttClient
 
 // Global state
 bool otaUpdateInProgress = false;
@@ -75,6 +76,8 @@ bool performOTAUpdate(String version) {
     publishOTAComplete(false, "WiFi not connected");
     return false;
   }
+
+  setLedPattern(LED_OTA_PROGRESS); // Set LED indicator to OTA mode
   
   String binaryUrl = String(UPDATE_SERVER_URL) + "/api/firmware/" + getPlatform();
   
@@ -91,6 +94,7 @@ bool performOTAUpdate(String version) {
   
   publishOTAStart(version);
   
+  setLedPattern(LED_OTA_PROGRESS);
   otaUpdateInProgress = true;
   
 #if defined(ESP32)
@@ -112,6 +116,7 @@ bool performOTAUpdate(String version) {
       DEBUG_PRINTLN("Failed to begin HTTP connection");
       publishOTAComplete(false, "Failed to begin HTTP connection");
       delete secureClientPtr;
+      setLedPattern(LED_CONNECTED);
       otaUpdateInProgress = false;
       return false;
     }
@@ -123,6 +128,7 @@ bool performOTAUpdate(String version) {
       DEBUG_PRINTLN("Failed to begin HTTP connection");
       publishOTAComplete(false, "Failed to begin HTTP connection");
       delete plainClientPtr;
+      setLedPattern(LED_CONNECTED);
       otaUpdateInProgress = false;
       return false;
     }
@@ -141,6 +147,7 @@ bool performOTAUpdate(String version) {
     http.end();
     if (secureClientPtr) delete secureClientPtr;
     if (plainClientPtr) delete plainClientPtr;
+    setLedPattern(LED_CONNECTED);
     otaUpdateInProgress = false;
     return false;
   }
@@ -155,6 +162,7 @@ bool performOTAUpdate(String version) {
     http.end();
     if (secureClientPtr) delete secureClientPtr;
     if (plainClientPtr) delete plainClientPtr;
+    setLedPattern(LED_CONNECTED);
     otaUpdateInProgress = false;
     return false;
   }
@@ -166,6 +174,7 @@ bool performOTAUpdate(String version) {
     http.end();
     if (secureClientPtr) delete secureClientPtr;
     if (plainClientPtr) delete plainClientPtr;
+    setLedPattern(LED_CONNECTED);
     otaUpdateInProgress = false;
     return false;
   }
@@ -190,6 +199,7 @@ bool performOTAUpdate(String version) {
         http.end();
         if (secureClientPtr) delete secureClientPtr;
     if (plainClientPtr) delete plainClientPtr;
+        setLedPattern(LED_CONNECTED);
         otaUpdateInProgress = false;
         return false;
       }
@@ -218,6 +228,7 @@ bool performOTAUpdate(String version) {
     http.end();
     if (secureClientPtr) delete secureClientPtr;
     if (plainClientPtr) delete plainClientPtr;
+    setLedPattern(LED_CONNECTED);
     otaUpdateInProgress = false;
     return false;
   }
@@ -234,6 +245,8 @@ bool performOTAUpdate(String version) {
       return true;
     } else {
       DEBUG_PRINTLN("Update not finished");
+      setLedPattern(LED_CONNECTED);
+      otaUpdateInProgress = false;
       publishOTAComplete(false, "Update not finished");
     }
   } else {
@@ -246,6 +259,7 @@ bool performOTAUpdate(String version) {
   http.end();
   if (secureClientPtr) delete secureClientPtr;
   if (plainClientPtr) delete plainClientPtr;
+  setLedPattern(LED_CONNECTED);
   otaUpdateInProgress = false;
   return false;
   
@@ -268,6 +282,7 @@ bool performOTAUpdate(String version) {
       DEBUG_PRINTLN("Failed to begin HTTP connection");
       publishOTAComplete(false, "Failed to begin HTTP connection");
       delete secureClientPtr;
+      setLedPattern(LED_CONNECTED);
       otaUpdateInProgress = false;
       return false;
     }
@@ -279,6 +294,7 @@ bool performOTAUpdate(String version) {
       DEBUG_PRINTLN("Failed to begin HTTP connection");
       publishOTAComplete(false, "Failed to begin HTTP connection");
       delete plainClientPtr;
+      setLedPattern(LED_CONNECTED);
       otaUpdateInProgress = false;
       return false;
     }
@@ -297,6 +313,7 @@ bool performOTAUpdate(String version) {
     http.end();
     if (secureClientPtr) delete secureClientPtr;
     if (plainClientPtr) delete plainClientPtr;
+    setLedPattern(LED_CONNECTED);
     otaUpdateInProgress = false;
     return false;
   }
@@ -311,6 +328,7 @@ bool performOTAUpdate(String version) {
     http.end();
     if (secureClientPtr) delete secureClientPtr;
     if (plainClientPtr) delete plainClientPtr;
+    setLedPattern(LED_CONNECTED);
     otaUpdateInProgress = false;
     return false;
   }
@@ -322,6 +340,7 @@ bool performOTAUpdate(String version) {
     http.end();
     if (secureClientPtr) delete secureClientPtr;
     if (plainClientPtr) delete plainClientPtr;
+    setLedPattern(LED_CONNECTED);
     otaUpdateInProgress = false;
     return false;
   }
@@ -346,6 +365,7 @@ bool performOTAUpdate(String version) {
         http.end();
         if (secureClientPtr) delete secureClientPtr;
     if (plainClientPtr) delete plainClientPtr;
+        setLedPattern(LED_CONNECTED);
         otaUpdateInProgress = false;
         return false;
       }
@@ -374,6 +394,7 @@ bool performOTAUpdate(String version) {
     http.end();
     if (secureClientPtr) delete secureClientPtr;
     if (plainClientPtr) delete plainClientPtr;
+    setLedPattern(LED_CONNECTED);
     otaUpdateInProgress = false;
     return false;
   }
@@ -402,6 +423,7 @@ bool performOTAUpdate(String version) {
   http.end();
   if (secureClientPtr) delete secureClientPtr;
   if (plainClientPtr) delete plainClientPtr;
+  setLedPattern(LED_CONNECTED);
   otaUpdateInProgress = false;
   return false;
 #endif
@@ -436,19 +458,4 @@ void triggerOTAUpdate(String newVersion) {
   } else {
     DEBUG_PRINTLN("Firmware is up to date");
   }
-}
-
-// Initialize OTA updates
-void setupOTA() {
-  DEBUG_PRINTLN("OTA Update initialized (MQTT-triggered)");
-  DEBUG_PRINT("Current firmware version: ");
-  DEBUG_PRINTLN(FIRMWARE_VERSION);
-  DEBUG_PRINT("Update server: ");
-  DEBUG_PRINTLN(UPDATE_SERVER_URL);
-  
-  #if defined(ESP32)
-    const esp_partition_t *running = esp_ota_get_running_partition();
-    DEBUG_PRINT("Running partition: ");
-    DEBUG_PRINTLN(running->label);
-  #endif
 }

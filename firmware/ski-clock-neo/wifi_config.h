@@ -13,8 +13,10 @@
 
 #include <AutoConnect.h>
 #include <AutoConnectCredential.h>
+#include "device_info.h"   // For getDeviceID()
+#include "led_indicator.h" // For LED status patterns when WiFi connection state changes
+#include "mqtt_client.h"   // For MQTT connection management when WiFi connection state changes
 #include "debug.h"
-#include "device_info.h"
 
 // Configuration constants
 const char* AP_PASSWORD = "configure";
@@ -47,8 +49,18 @@ body {
 }
 )";
 
-// Initialize AutoConnect with robust configuration
-void setupWiFi() {
+// Initialize AutoConnect with configuration
+void initWiFi() {
+  // Register WiFi event handlers
+  DEBUG_PRINTLN("Registering WiFi connection event handlers...");
+  #if defined(ESP32)
+    WiFi.onEvent(onWiFiConnected, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);
+    WiFi.onEvent(onWiFiDisconnected, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
+  #elif defined(ESP8266)
+    static WiFiEventHandler gotIpHandler = WiFi.onStationModeGotIP(onWiFiConnected);
+    static WiFiEventHandler disconnectedHandler = WiFi.onStationModeDisconnected(onWiFiDisconnected);
+  #endif
+  
   DEBUG_PRINTLN("Initializing WiFi with AutoConnect...");
 
   // Generate device-specific AP SSID
@@ -61,7 +73,7 @@ void setupWiFi() {
   // Configure AutoConnect behavior
   config.apid = AP_SSID;
   config.psk = AP_PASSWORD;
-  config.title = "⛷️ Ski Clock Setup";
+  config.title = "⛷️ Ski Clock Neo Setup";
 
   // KEY FEATURES for your requirements:
 
@@ -79,9 +91,6 @@ void setupWiFi() {
 
   // Configure portal timeout (0 = never timeout)
   config.portalTimeout = 0;  // Portal always available
-
-  // Set host name for mDNS (bonjour)
-  config.hostName = "ski-clock-neo";
 
   // Configure items in the AutoConnect menu
   config.menuItems = AC_MENUITEM_CONFIGNEW | AC_MENUITEM_OPENSSIDS | AC_MENUITEM_RESET | AC_MENUITEM_DEVINFO | AC_MENUITEM_DELETESSID;
@@ -140,30 +149,31 @@ void updateWiFi() {
   // - Multiple credential management
 }
 
-// Check if WiFi is currently connected
-bool isWiFiConnected() {
-  return WiFi.status() == WL_CONNECTED;
-}
-
-// Get WiFi status as string
-String getWiFiStatus() {
-  if (WiFi.status() == WL_CONNECTED) {
-    return "Connected: " + WiFi.localIP().toString() + " (" + WiFi.SSID() + ")";
-  } else {
-    return "Disconnected - Portal Active";
+// WiFi event handlers
+#if defined(ESP32)
+  void onWiFiConnected(WiFiEvent_t event, WiFiEventInfo_t info) {
+    ledStatusPattern(LED_PATTERN_MQTT_DISCONNECTED);
+    DEBUG_PRINTLN("WiFi connected, connecting to MQTT...");
+    connectMQTT();
   }
-}
 
-// Get number of stored credentials
-int getStoredNetworkCount() {
-  AutoConnectCredential credential;
-  return credential.entries();
+  void onWiFiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info) {
+    DEBUG_PRINTLN("WiFi disconnected, stopping MQTT...");
+    disconnectMQTT();
+    ledStatusPattern(LED_PATTERN_WIFI_DISCONNECTED);
 }
+#elif defined(ESP8266)
+  void onWiFiConnected(const WiFiEventStationModeGotIP& event) {
+    ledStatusPattern(LED_PATTERN_MQTT_DISCONNECTED);
+    DEBUG_PRINTLN("WiFi connected, connecting to MQTT...");
+    connectMQTT();
+  }
 
-// Force disconnect and show portal (for manual network switching)
-void openConfigPortal() {
-  WiFi.disconnect();
-  DEBUG_PRINTLN("Portal opened for manual configuration");
+  void onWiFiDisconnected(const WiFiEventStationModeDisconnected& event) {
+    DEBUG_PRINTLN("WiFi disconnected, stopping MQTT...");
+    disconnectMQTT();
+    ledStatusPattern(LED_PATTERN_WIFI_DISCONNECTED);
 }
+#endif
 
 #endif

@@ -10,10 +10,10 @@
 
 // ==================== GLOBAL STATE ====================
 // Pin array for row initialization
-extern const uint8_t NEOPIXEL_PINS[DISPLAY_ROWS];
+extern const uint8_t DISPLAY_PINS[DISPLAY_ROWS];
 
 // Static storage buffer for NeoPixel objects (no heap allocation)
-// We'll use placement-new to construct them in setup()
+// We'll use placement-new to construct them in initNeoPixels()
 extern alignas(Adafruit_NeoPixel) uint8_t rowsStorage[DISPLAY_ROWS * sizeof(Adafruit_NeoPixel)];
 extern Adafruit_NeoPixel* rows;
 
@@ -22,7 +22,7 @@ extern uint8_t neopixelRenderBuffer[DISPLAY_BUFFER_SIZE];
 
 // ==================== FUNCTION DECLARATIONS ====================
 // Setup and rendering functions (pure, no timers)
-void setupNeoPixels();
+void initNeoPixels();
 void updateNeoPixels();  // Call this externally when display needs refresh
 void createSnapshotBuffer();  // Create snapshot buffer on-demand for MQTT (with proper transforms)
 

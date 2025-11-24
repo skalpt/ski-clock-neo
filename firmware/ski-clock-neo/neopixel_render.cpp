@@ -98,14 +98,11 @@ void createSnapshotBuffer() {
 }
 
 // ==================== SETUP FUNCTION ====================
-void setupNeoPixels() {
-  // Initialize display library with actual hardware configuration
-  initDisplayBuffer(DISPLAY_ROWS, PANELS_PER_ROW, PANEL_WIDTH, PANEL_HEIGHT);
-  
+void initNeoPixels() {  
   // Use placement-new to construct NeoPixel objects in loop (dynamic, no heap!)
   for (uint8_t i = 0; i < DISPLAY_ROWS; i++) {
     // Construct Adafruit_NeoPixel at rows[i] using placement-new
-    new (&rows[i]) Adafruit_NeoPixel(ROW_WIDTH * ROW_HEIGHT, NEOPIXEL_PINS[i], NEO_GRB + NEO_KHZ800);
+    new (&rows[i]) Adafruit_NeoPixel(ROW_WIDTH * ROW_HEIGHT, DISPLAY_PINS[i], NEO_GRB + NEO_KHZ800);
     
     // Initialize the hardware
     rows[i].begin();
@@ -115,7 +112,7 @@ void setupNeoPixels() {
     DEBUG_PRINT("NeoPixel row ");
     DEBUG_PRINT(i + 1);
     DEBUG_PRINT(" (GPIO ");
-    DEBUG_PRINT(NEOPIXEL_PINS[i]);
+    DEBUG_PRINT(DISPLAY_PINS[i]);
     DEBUG_PRINTLN(") initialised.");
   }
   

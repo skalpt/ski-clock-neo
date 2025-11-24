@@ -1,15 +1,13 @@
-// Include hardware config first to define DISPLAY_ROWS and DISPLAY_BUFFER_SIZE
-#include "display_config.h"
 #include "display.h"
+#include "display_controller.h"
+#include "neopixel_render.h"
 #include <string.h>
 
 // Display buffer storage (final rendered output for MQTT)
-// Size is determined by DISPLAY_BUFFER_SIZE from the hardware renderer
 uint8_t displayBuffer[DISPLAY_BUFFER_SIZE] = {0};
 DisplayConfig displayConfig = {0};
 
 // Text content storage (what should be displayed on each row)
-// Array size is determined by DISPLAY_ROWS from the hardware renderer
 char displayText[DISPLAY_ROWS][MAX_TEXT_LENGTH] = {{0}};
 
 // Event-driven rendering state  
@@ -23,13 +21,19 @@ static RenderCallback renderCallback = nullptr;
   portMUX_TYPE spinlock = portMUX_INITIALIZER_UNLOCKED;
 #endif
 
-void initDisplayBuffer(uint8_t rows, uint8_t panelsPerRow, uint8_t panelWidth, uint8_t panelHeight) {
-  displayConfig.rows = rows;
-  displayConfig.panelsPerRow = panelsPerRow;
-  displayConfig.panelWidth = panelWidth;
-  displayConfig.panelHeight = panelHeight;
-  
+void initDisplay() {
+  // Initialize display buffer with actual hardware configuration
+  displayConfig.rows = DISPLAY_ROWS;
+  displayConfig.panelsPerRow = PANELS_PER_ROW;
+  displayConfig.panelWidth = PANEL_WIDTH;
+  displayConfig.panelHeight = PANEL_HEIGHT;
   clearDisplayBuffer();
+
+  // Initialize hardware renderer
+  initNeoPixels();
+
+  // Start the display controller
+  initDisplayController();
 }
 
 DisplayConfig getDisplayConfig() {
@@ -77,7 +81,7 @@ void setText(uint8_t row, const char* text) {
   // NOTE: We do NOT call renderCallback directly here!
   // Calling heavy rendering functions from setText() is dangerous
   // because setText() can be called from ISR/timer/MQTT contexts.
-  // Instead, the main loop polls isRenderRequested() and calls the callback.
+  // Instead, we update the display using a FreeRTOS task.
 }
 
 const char* getText(uint8_t row) {

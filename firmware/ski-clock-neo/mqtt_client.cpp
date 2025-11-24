@@ -1,7 +1,7 @@
 #include "mqtt_client.h"
-#include "ota_update.h"      // For triggerOTAUpdate
-#include "display.h"         // For display snapshot
-#include "neopixel_render.h" // For createSnapshotBuffer
+#include "led_indicator.h"   // For LED status patterns when MQTT connection state changes
+#include "ota_update.h"      // For triggering an OTA update
+#include "display.h"         // For sending the display snapshot
 
 // MQTT broker port
 const uint16_t MQTT_PORT = 8883;  // TLS port for HiveMQ Cloud
@@ -91,29 +91,6 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   }
 }
 
-// WiFi event handlers for automatic MQTT lifecycle management
-#if defined(ESP32)
-  void onWiFiConnected(WiFiEvent_t event, WiFiEventInfo_t info) {
-    DEBUG_PRINTLN("WiFi connected, connecting to MQTT...");
-    connectMQTT();
-  }
-  
-  void onWiFiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info) {
-    DEBUG_PRINTLN("WiFi disconnected, stopping MQTT...");
-    disconnectMQTT();
-  }
-#elif defined(ESP8266)
-  void onWiFiConnected(const WiFiEventStationModeGotIP& event) {
-    DEBUG_PRINTLN("WiFi connected, connecting to MQTT...");
-    connectMQTT();
-  }
-  
-  void onWiFiDisconnected(const WiFiEventStationModeDisconnected& event) {
-    DEBUG_PRINTLN("WiFi disconnected, stopping MQTT...");
-    disconnectMQTT();
-  }
-#endif
-
 // Initialize MQTT connection
 void setupMQTT() {
   DEBUG_PRINTLN("Initializing MQTT client...");
@@ -136,20 +113,12 @@ void setupMQTT() {
   if (WiFi.status() == WL_CONNECTED) {
     connectMQTT();
   }
-
-  // Register WiFi event handlers
-  #if defined(ESP32)
-    WiFi.onEvent(onWiFiConnected, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);
-    WiFi.onEvent(onWiFiDisconnected, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
-  #elif defined(ESP8266)
-    static WiFiEventHandler gotIpHandler = WiFi.onStationModeGotIP(onWiFiConnected);
-    static WiFiEventHandler disconnectedHandler = WiFi.onStationModeDisconnected(onWiFiDisconnected);
-  #endif
 }
 
 // Connect to MQTT broker
 bool connectMQTT() {
   if (mqttClient.connected()) {
+    ledStatusPattern(LED_PATTERN_CONNETED);
     return true;
   }
   
@@ -166,6 +135,7 @@ bool connectMQTT() {
   // Attempt connection
   if (mqttClient.connect(clientId.c_str(), MQTT_USERNAME, MQTT_PASSWORD)) {
     DEBUG_PRINTLN("MQTT broker connected!");
+    ledStatusPattern(LED_PATTERN_CONNECTED);
     mqttIsConnected = true;
 
     // Start heartbeat ticker
@@ -195,6 +165,7 @@ bool connectMQTT() {
   } else {
     DEBUG_PRINT("MQTT broker connection failed, rc=");
     DEBUG_PRINTLN(mqttClient.state());
+    ledStatusPattern(LED_PATTERN_MQTT_DISCONNECTED);
     mqttIsConnected = false;
     return false;
   }
@@ -360,6 +331,7 @@ void disconnectMQTT() {
     heartbeatTicker.detach();
     displaySnapshotTicker.detach();
     mqttClient.disconnect();
+    ledStatusPattern(LED_PATTERN_MQTT_DISCONNECTED);
     mqttIsConnected = false;
   }
 }
@@ -369,8 +341,7 @@ void updateMQTT() {
   // Check for connection loss
   if (mqttIsConnected && !mqttClient.connected()) {
     DEBUG_PRINTLN("MQTT connection lost unexpectedly, cleaning up...");
-    heartbeatTicker.detach();
-    mqttIsConnected = false;
+    disconnectMQTT();
   }
   
   // Attempt reconnection
