@@ -1,0 +1,178 @@
+Arduino: 1.8.15 (Mac OS X), Board: "ESP32C3 Dev Module, Disabled, Enabled, Minimal SPIFFS (1.9MB APP with OTA/190KB SPIFFS), 160MHz (WiFi), QIO, 80MHz, 4MB (32Mb), 921600, Warn, Disabled"
+
+In file included from /Users/julian/Documents/Arduino/libraries/OneWire/OneWire.cpp:144:
+/Users/julian/Documents/Arduino/libraries/OneWire/util/OneWire_direct_gpio.h: In function 'uint32_t directRead(uint32_t)':
+/Users/julian/Documents/Arduino/libraries/OneWire/util/OneWire_direct_gpio.h:131:25: error: no match for 'operator>>' (operand types are 'volatile gpio_dev_s::<unnamed union>' and 'uint32_t' {aka 'long unsigned int'})
+         return (GPIO.in >> pin) & 0x1;
+                 ~~~~~~~~^~~~~~
+In file included from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/soc/esp32c3/include/soc/dport_access.h:19,
+                 from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/hal/esp32c3/include/hal/cpu_ll.h:11,
+                 from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/hal/include/hal/cpu_hal.h:16,
+                 from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/esp_hw_support/include/esp_cpu.h:14,
+                 from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/esp_hw_support/include/soc/cpu.h:14,
+                 from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/esp_hw_support/include/soc/spinlock.h:11,
+                 from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/freertos/port/riscv/include/freertos/portmacro.h:38,
+                 from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/freertos/include/freertos/portable.h:51,
+                 from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/freertos/include/freertos/FreeRTOS.h:63,
+                 from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/cores/esp32/Arduino.h:33,
+                 from /Users/julian/Documents/Arduino/libraries/OneWire/OneWire.cpp:142:
+/Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/esp_common/include/esp_attr.h:128:34: note: candidate: 'constexpr touch_pad_intr_mask_t operator>>(touch_pad_intr_mask_t, int)'
+ FORCE_INLINE_ATTR constexpr TYPE operator>> (TYPE a, int b) { return (TYPE)((INT_TYPE)a >> b); } \
+                                  ^~~~~~~~
+/Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/esp_common/include/esp_attr.h:136:29: note: in expansion of macro 'FLAG_ATTR_IMPL'
+ #define FLAG_ATTR_U32(TYPE) FLAG_ATTR_IMPL(TYPE, uint32_t)
+                             ^~~~~~~~~~~~~~
+/Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/esp_common/include/esp_attr.h:137:19: note: in expansion of macro 'FLAG_ATTR_U32'
+ #define FLAG_ATTR FLAG_ATTR_U32
+                   ^~~~~~~~~~~~~
+/Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/hal/include/hal/touch_sensor_types.h:168:1: note: in expansion of macro 'FLAG_ATTR'
+ FLAG_ATTR(touch_pad_intr_mask_t)
+ ^~~~~~~~~
+/Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/esp_common/include/esp_attr.h:128:34: note:   no known conversion for argument 1 from 'volatile gpio_dev_s::<unnamed union>' to 'touch_pad_intr_mask_t'
+ FORCE_INLINE_ATTR constexpr TYPE operator>> (TYPE a, int b) { return (TYPE)((INT_TYPE)a >> b); } \
+                                  ^~~~~~~~
+/Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/esp_common/include/esp_attr.h:136:29: note: in expansion of macro 'FLAG_ATTR_IMPL'
+ #define FLAG_ATTR_U32(TYPE) FLAG_ATTR_IMPL(TYPE, uint32_t)
+                             ^~~~~~~~~~~~~~
+/Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/esp_common/include/esp_attr.h:137:19: note: in expansion of macro 'FLAG_ATTR_U32'
+ #define FLAG_ATTR FLAG_ATTR_U32
+                   ^~~~~~~~~~~~~
+/Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/hal/include/hal/touch_sensor_types.h:168:1: note: in expansion of macro 'FLAG_ATTR'
+ FLAG_ATTR(touch_pad_intr_mask_t)
+ ^~~~~~~~~
+In file included from /Users/julian/Documents/Arduino/libraries/OneWire/OneWire.cpp:144:
+/Users/julian/Documents/Arduino/libraries/OneWire/util/OneWire_direct_gpio.h:133:22: error: 'gpio_dev_t' {aka 'volatile struct gpio_dev_s'} has no member named 'in1'; did you mean 'in'?
+         return (GPIO.in1.val >> (pin - 32)) & 0x1;
+                      ^~~
+                      in
+/Users/julian/Documents/Arduino/libraries/OneWire/util/OneWire_direct_gpio.h: In function 'void directWriteLow(uint32_t)':
+/Users/julian/Documents/Arduino/libraries/OneWire/util/OneWire_direct_gpio.h:142:44: error: no match for 'operator=' (operand types are 'volatile gpio_dev_s::<unnamed union>' and 'uint32_t' {aka 'long unsigned int'})
+         GPIO.out_w1tc = ((uint32_t)1 << pin);
+                                            ^
+In file included from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/soc/include/soc/gpio_periph.h:18,
+                 from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/hal/include/hal/gpio_types.h:17,
+                 from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/esp_hw_support/include/esp_sleep.h:13,
+                 from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/cores/esp32/esp32-hal.h:33,
+                 from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/cores/esp32/Arduino.h:36,
+                 from /Users/julian/Documents/Arduino/libraries/OneWire/OneWire.cpp:142:
+/Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/soc/esp32c3/include/soc/gpio_struct.h:37:11: note: candidate: 'gpio_dev_s::<unnamed union>& gpio_dev_s::<unnamed union>::operator=(const gpio_dev_s::<unnamed union>&)'
+     union {
+           ^
+/Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/soc/esp32c3/include/soc/gpio_struct.h:37:11: note:   no known conversion for argument 1 from 'uint32_t' {aka 'long unsigned int'} to 'const gpio_dev_s::<unnamed union>&'
+/Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/soc/esp32c3/include/soc/gpio_struct.h:37:11: note: candidate: 'gpio_dev_s::<unnamed union>& gpio_dev_s::<unnamed union>::operator=(gpio_dev_s::<unnamed union>&&)'
+/Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/soc/esp32c3/include/soc/gpio_struct.h:37:11: note:   no known conversion for argument 1 from 'uint32_t' {aka 'long unsigned int'} to 'gpio_dev_s::<unnamed union>&&'
+In file included from /Users/julian/Documents/Arduino/libraries/OneWire/OneWire.cpp:144:
+/Users/julian/Documents/Arduino/libraries/OneWire/util/OneWire_direct_gpio.h:144:14: error: 'gpio_dev_t' {aka 'volatile struct gpio_dev_s'} has no member named 'out1_w1tc'; did you mean 'out_w1tc'?
+         GPIO.out1_w1tc.val = ((uint32_t)1 << (pin - 32));
+              ^~~~~~~~~
+              out_w1tc
+/Users/julian/Documents/Arduino/libraries/OneWire/util/OneWire_direct_gpio.h: In function 'void directWriteHigh(uint32_t)':
+/Users/julian/Documents/Arduino/libraries/OneWire/util/OneWire_direct_gpio.h:151:44: error: no match for 'operator=' (operand types are 'volatile gpio_dev_s::<unnamed union>' and 'uint32_t' {aka 'long unsigned int'})
+         GPIO.out_w1ts = ((uint32_t)1 << pin);
+                                            ^
+In file included from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/soc/include/soc/gpio_periph.h:18,
+                 from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/hal/include/hal/gpio_types.h:17,
+                 from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/esp_hw_support/include/esp_sleep.h:13,
+                 from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/cores/esp32/esp32-hal.h:33,
+                 from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/cores/esp32/Arduino.h:36,
+                 from /Users/julian/Documents/Arduino/libraries/OneWire/OneWire.cpp:142:
+/Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/soc/esp32c3/include/soc/gpio_struct.h:30:11: note: candidate: 'gpio_dev_s::<unnamed union>& gpio_dev_s::<unnamed union>::operator=(const gpio_dev_s::<unnamed union>&)'
+     union {
+           ^
+/Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/soc/esp32c3/include/soc/gpio_struct.h:30:11: note:   no known conversion for argument 1 from 'uint32_t' {aka 'long unsigned int'} to 'const gpio_dev_s::<unnamed union>&'
+/Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/soc/esp32c3/include/soc/gpio_struct.h:30:11: note: candidate: 'gpio_dev_s::<unnamed union>& gpio_dev_s::<unnamed union>::operator=(gpio_dev_s::<unnamed union>&&)'
+/Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/soc/esp32c3/include/soc/gpio_struct.h:30:11: note:   no known conversion for argument 1 from 'uint32_t' {aka 'long unsigned int'} to 'gpio_dev_s::<unnamed union>&&'
+In file included from /Users/julian/Documents/Arduino/libraries/OneWire/OneWire.cpp:144:
+/Users/julian/Documents/Arduino/libraries/OneWire/util/OneWire_direct_gpio.h:153:14: error: 'gpio_dev_t' {aka 'volatile struct gpio_dev_s'} has no member named 'out1_w1ts'; did you mean 'out_w1ts'?
+         GPIO.out1_w1ts.val = ((uint32_t)1 << (pin - 32));
+              ^~~~~~~~~
+              out_w1ts
+/Users/julian/Documents/Arduino/libraries/OneWire/util/OneWire_direct_gpio.h: In function 'void directModeInput(uint32_t)':
+/Users/julian/Documents/Arduino/libraries/OneWire/util/OneWire_direct_gpio.h:161:26: error: 'rtc_gpio_desc' was not declared in this scope
+         uint32_t rtc_reg(rtc_gpio_desc[pin].reg);
+                          ^~~~~~~~~~~~~
+/Users/julian/Documents/Arduino/libraries/OneWire/util/OneWire_direct_gpio.h:161:26: note: suggested alternative: 'rtc_gpio_mode_t'
+         uint32_t rtc_reg(rtc_gpio_desc[pin].reg);
+                          ^~~~~~~~~~~~~
+                          rtc_gpio_mode_t
+/Users/julian/Documents/Arduino/libraries/OneWire/util/OneWire_direct_gpio.h:170:51: error: no match for 'operator=' (operand types are 'volatile gpio_dev_s::<unnamed union>' and 'uint32_t' {aka 'long unsigned int'})
+             GPIO.enable_w1tc = ((uint32_t)1 << pin);
+                                                   ^
+In file included from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/soc/include/soc/gpio_periph.h:18,
+                 from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/hal/include/hal/gpio_types.h:17,
+                 from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/esp_hw_support/include/esp_sleep.h:13,
+                 from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/cores/esp32/esp32-hal.h:33,
+                 from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/cores/esp32/Arduino.h:36,
+                 from /Users/julian/Documents/Arduino/libraries/OneWire/OneWire.cpp:142:
+/Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/soc/esp32c3/include/soc/gpio_struct.h:68:11: note: candidate: 'gpio_dev_s::<unnamed union>& gpio_dev_s::<unnamed union>::operator=(const gpio_dev_s::<unnamed union>&)'
+     union {
+           ^
+/Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/soc/esp32c3/include/soc/gpio_struct.h:68:11: note:   no known conversion for argument 1 from 'uint32_t' {aka 'long unsigned int'} to 'const gpio_dev_s::<unnamed union>&'
+/Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/soc/esp32c3/include/soc/gpio_struct.h:68:11: note: candidate: 'gpio_dev_s::<unnamed union>& gpio_dev_s::<unnamed union>::operator=(gpio_dev_s::<unnamed union>&&)'
+/Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/soc/esp32c3/include/soc/gpio_struct.h:68:11: note:   no known conversion for argument 1 from 'uint32_t' {aka 'long unsigned int'} to 'gpio_dev_s::<unnamed union>&&'
+In file included from /Users/julian/Documents/Arduino/libraries/OneWire/OneWire.cpp:144:
+/Users/julian/Documents/Arduino/libraries/OneWire/util/OneWire_direct_gpio.h:172:18: error: 'gpio_dev_t' {aka 'volatile struct gpio_dev_s'} has no member named 'enable1_w1tc'; did you mean 'enable_w1tc'?
+             GPIO.enable1_w1tc.val = ((uint32_t)1 << (pin - 32));
+                  ^~~~~~~~~~~~
+                  enable_w1tc
+In file included from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/cores/esp32/Arduino.h:36,
+                 from /Users/julian/Documents/Arduino/libraries/OneWire/OneWire.cpp:142:
+/Users/julian/Documents/Arduino/libraries/OneWire/util/OneWire_direct_gpio.h:178:38: error: 'esp32_gpioMux' was not declared in this scope
+         ESP_REG(DR_REG_IO_MUX_BASE + esp32_gpioMux[pin].reg) = pinFunction;
+                                      ^~~~~~~~~~~~~
+/Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/cores/esp32/esp32-hal.h:77:47: note: in definition of macro 'ESP_REG'
+ #define ESP_REG(addr) *((volatile uint32_t *)(addr))
+                                               ^~~~
+In file included from /Users/julian/Documents/Arduino/libraries/OneWire/OneWire.cpp:144:
+/Users/julian/Documents/Arduino/libraries/OneWire/util/OneWire_direct_gpio.h: In function 'void directModeOutput(uint32_t)':
+/Users/julian/Documents/Arduino/libraries/OneWire/util/OneWire_direct_gpio.h:189:26: error: 'rtc_gpio_desc' was not declared in this scope
+         uint32_t rtc_reg(rtc_gpio_desc[pin].reg);
+                          ^~~~~~~~~~~~~
+/Users/julian/Documents/Arduino/libraries/OneWire/util/OneWire_direct_gpio.h:189:26: note: suggested alternative: 'rtc_gpio_mode_t'
+         uint32_t rtc_reg(rtc_gpio_desc[pin].reg);
+                          ^~~~~~~~~~~~~
+                          rtc_gpio_mode_t
+/Users/julian/Documents/Arduino/libraries/OneWire/util/OneWire_direct_gpio.h:198:51: error: no match for 'operator=' (operand types are 'volatile gpio_dev_s::<unnamed union>' and 'uint32_t' {aka 'long unsigned int'})
+             GPIO.enable_w1ts = ((uint32_t)1 << pin);
+                                                   ^
+In file included from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/soc/include/soc/gpio_periph.h:18,
+                 from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/hal/include/hal/gpio_types.h:17,
+                 from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/esp_hw_support/include/esp_sleep.h:13,
+                 from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/cores/esp32/esp32-hal.h:33,
+                 from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/cores/esp32/Arduino.h:36,
+                 from /Users/julian/Documents/Arduino/libraries/OneWire/OneWire.cpp:142:
+/Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/soc/esp32c3/include/soc/gpio_struct.h:61:11: note: candidate: 'gpio_dev_s::<unnamed union>& gpio_dev_s::<unnamed union>::operator=(const gpio_dev_s::<unnamed union>&)'
+     union {
+           ^
+/Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/soc/esp32c3/include/soc/gpio_struct.h:61:11: note:   no known conversion for argument 1 from 'uint32_t' {aka 'long unsigned int'} to 'const gpio_dev_s::<unnamed union>&'
+/Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/soc/esp32c3/include/soc/gpio_struct.h:61:11: note: candidate: 'gpio_dev_s::<unnamed union>& gpio_dev_s::<unnamed union>::operator=(gpio_dev_s::<unnamed union>&&)'
+/Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/tools/sdk/esp32c3/include/soc/esp32c3/include/soc/gpio_struct.h:61:11: note:   no known conversion for argument 1 from 'uint32_t' {aka 'long unsigned int'} to 'gpio_dev_s::<unnamed union>&&'
+In file included from /Users/julian/Documents/Arduino/libraries/OneWire/OneWire.cpp:144:
+/Users/julian/Documents/Arduino/libraries/OneWire/util/OneWire_direct_gpio.h:200:18: error: 'gpio_dev_t' {aka 'volatile struct gpio_dev_s'} has no member named 'enable1_w1ts'; did you mean 'enable_w1ts'?
+             GPIO.enable1_w1ts.val = ((uint32_t)1 << (pin - 32));
+                  ^~~~~~~~~~~~
+                  enable_w1ts
+In file included from /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/cores/esp32/Arduino.h:36,
+                 from /Users/julian/Documents/Arduino/libraries/OneWire/OneWire.cpp:142:
+/Users/julian/Documents/Arduino/libraries/OneWire/util/OneWire_direct_gpio.h:206:38: error: 'esp32_gpioMux' was not declared in this scope
+         ESP_REG(DR_REG_IO_MUX_BASE + esp32_gpioMux[pin].reg) = pinFunction;
+                                      ^~~~~~~~~~~~~
+/Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/cores/esp32/esp32-hal.h:77:47: note: in definition of macro 'ESP_REG'
+ #define ESP_REG(addr) *((volatile uint32_t *)(addr))
+                                               ^~~~
+Multiple libraries were found for "WiFi.h"
+ Used: /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/libraries/WiFi
+ Not used: /Applications/Arduino.app/Contents/Java/libraries/WiFi
+Multiple libraries were found for "SD.h"
+ Used: /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/libraries/SD
+ Not used: /Applications/Arduino.app/Contents/Java/libraries/SD
+Multiple libraries were found for "Ticker.h"
+ Used: /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/libraries/Ticker
+ Not used: /Users/julian/Documents/Arduino/libraries/Ticker
+exit status 1
+Error compiling for board ESP32C3 Dev Module.
+
+
+This report would have more information with
+"Show verbose output during compilation"
+option enabled in File -> Preferences.

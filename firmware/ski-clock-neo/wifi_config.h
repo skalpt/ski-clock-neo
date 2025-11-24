@@ -11,9 +11,6 @@
   #error "This code requires ESP32 or ESP8266"
 #endif
 
-// Override AutoConnect portal URI to use root path instead of /_ac
-#define AUTOCONNECT_URI "/"
-
 #include <AutoConnect.h>
 #include <AutoConnectCredential.h>
 #include "debug.h"
@@ -55,7 +52,7 @@ void setupWiFi() {
   config.apid = AP_SSID;
   config.psk = AP_PASSWORD;
   config.title = "⛷️ Ski Clock Setup";
-  config.homeUri = "/";  // Default AutoConnect home page
+  config.homeUri = "/_ac";  // AutoConnect portal home page
   config.bootUri = AC_ONBOOTURI_HOME;  // Redirect to homeUri on captive portal boot
   
   // KEY FEATURES for your requirements:
@@ -105,13 +102,20 @@ void setupWiFi() {
     DEBUG_PRINTLN("WiFi connection failed - portal active");
   }
   
+  // Add redirect from root "/" to AutoConnect portal "/_ac"
+  // This makes it easier for users browsing to the device IP directly
+  server.on("/", HTTP_GET, []() {
+    server.sendHeader("Location", "/_ac", true);
+    server.send(302, "text/plain", "Redirecting to portal...");
+  });
+  
   DEBUG_PRINTLN("AutoConnect portal is running");
   DEBUG_PRINT("Portal SSID: ");
   DEBUG_PRINTLN(AP_SSID);
   DEBUG_PRINT("Portal Password: ");
   DEBUG_PRINTLN(AP_PASSWORD);
   DEBUG_PRINTLN("Portal remains accessible even when connected to WiFi");
-  DEBUG_PRINTLN("Access portal at device IP address (portal path: " AUTOCONNECT_URI ")");
+  DEBUG_PRINTLN("Access portal at device IP address (redirects / to /_ac)");
 }
 
 // Update WiFi - call this in loop()
