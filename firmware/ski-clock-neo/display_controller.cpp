@@ -17,6 +17,12 @@ static volatile bool showingTime = true;  // Toggle: true = time, false = date (
 static bool initialized = false;
 
 // ESP8266 ISR safety: flag for deferred updates (ISR cannot call heavy functions)
+// NOTE: This timer-flag-polling pattern is intentional and optimal for low-frequency content updates.
+// The display_controller schedules WHAT to show (content generation), while display.cpp handles
+// rendering (immediate NeoPixel updates via dedicated FreeRTOS task). No additional task is needed
+// here because: (1) timer callbacks run in ISR context and can't call setText() directly,
+// (2) content updates are low-frequency (4s time/date, 30s temperature), and (3) rendering latency
+// is already <1ms via the display.cpp FreeRTOS task. This separation of concerns is by design.
 static volatile bool updatePending = false;
 
 // Temperature update tracking
