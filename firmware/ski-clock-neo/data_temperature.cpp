@@ -26,8 +26,8 @@ static bool lastReadValid = false;
   // ESP8266: Use TickTwo (loop-driven, non-ISR, WiFi-safe)
   void temperaturePollCallback();  // Forward declaration
   void temperatureReadCallback();  // Forward declaration
-  static TickTwo temperaturePollTicker(temperaturePollCallback, 30000, 0, MILLIS);  // 30s, endless
-  static TickTwo temperatureReadTicker(temperatureReadCallback, 750, 1, MILLIS);  // 750ms, once
+  TickTwo temperaturePollTicker(temperaturePollCallback, 30000, 0, MILLIS);  // 30s, endless (extern in .h)
+  TickTwo temperatureReadTicker(temperatureReadCallback, 750, 1, MILLIS);  // 750ms, once (extern in .h)
 #endif
 
 static bool temperatureRequestPending = false;
@@ -169,13 +169,4 @@ void temperatureReadCallback() {
   
   // Always clear flag to allow next poll (ensures recovery from failed reads)
   temperatureRequestPending = false;
-}
-
-void updateTemperatureData() {
-  // ESP8266: Update software tickers (loop-driven, non-ISR, WiFi-safe)
-  // ESP32: No-op (standard Ticker is loop-driven automatically)
-  #if defined(ESP8266)
-    temperaturePollTicker.update();
-    temperatureReadTicker.update();
-  #endif
 }

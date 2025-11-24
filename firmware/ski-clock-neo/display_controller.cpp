@@ -21,7 +21,7 @@ static volatile bool showingTime = true;  // Toggle: true = time, false = date (
 #elif defined(ESP8266)
   // Software ticker (loop-driven, non-ISR, safe for setText)
   void toggleTimerCallback();  // Forward declaration
-  static TickTwo toggleTicker(toggleTimerCallback, 4000, 0, MILLIS);  // 4s, endless, millis resolution
+  TickTwo toggleTicker(toggleTimerCallback, 4000, 0, MILLIS);  // 4s, endless, millis resolution (extern in .h)
 #endif
 
 // Forward declarations
@@ -192,12 +192,4 @@ void forceDisplayUpdate() {
 void updateTemperatureDisplay() {
   // Called by data_temperature library when temperature changes
   updateRow1();
-}
-
-void updateDisplayController() {
-  // ESP8266: Update software tickers (loop-driven, non-ISR)
-  // ESP32: No-op (uses FreeRTOS tasks)
-  #if defined(ESP8266)
-    toggleTicker.update();
-  #endif
 }
