@@ -1329,7 +1329,7 @@ body.no-web-serial .flash-column {
     margin: 0;
     font-size: 1.1rem;
     font-weight: bold;
-    color: var(--text-primary);
+    color: inherit;
 }
 
 .snapshot-info {
