@@ -806,6 +806,16 @@ body.no-web-serial .flash-column {
     left: 0;
 }
 
+.device-card-back .device-header {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    margin: 0;
+    width: auto;
+    justify-content: space-between;
+}
+
 .device-card-back.offline {
     background: linear-gradient(135deg, #babfc7 0%, #979ca6 100%);
 }
