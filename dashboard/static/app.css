@@ -812,8 +812,12 @@ body.no-web-serial .flash-column {
     left: 20px;
     right: 20px;
     margin: 0;
-    width: auto;
+    width: calc(100% - 40px);
+    font-weight: bold;
+    font-size: 1.1rem;
+    display: flex;
     justify-content: space-between;
+    align-items: center;
 }
 
 .device-card-back.offline {

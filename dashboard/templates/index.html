@@ -245,10 +245,19 @@
                         </div>
                         <div class="device-card-back ${statusClass}" id="display-back-${safeDeviceId}">
                             <div class="device-header">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="status ${statusClass}"></span>
+                                    ${safeDeviceId}
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="badge">${safeBoard}</span>
+                                    <button class="flip-icon-btn" data-device-id="${safeDeviceId}" data-action="flip" title="Back to device info">
+                                        🔄
+                                    </button>
+                                </div>
+                            </div>
+                            <div style="text-align: center; margin-top: 50px; margin-bottom: 15px;">
                                 <h3 style="margin: 0; font-size: 1.1rem; font-weight: bold;">Display Snapshot</h3>
-                                <button class="flip-icon-btn" data-device-id="${safeDeviceId}" data-action="flip" title="Back to device info">
-                                    🔄
-                                </button>
                             </div>
                             <div id="display-content-${safeDeviceId}">
                                 ${device.display_snapshot ? 
