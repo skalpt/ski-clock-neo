@@ -17,37 +17,37 @@ static volatile bool showingTime = true;  // Toggle: true = time, false = date (
 static bool initialized = false;
 
 // Temperature update tracking (using Tickers for cleaner timing)
-static bool tempRequestPending = true;  // Initial conversion was started in initTemperatureData
-static bool firstTempRead = true;
+static bool temperatureRequestPending = true;  // Initial conversion was started in initTemperatureData
+static bool firstTemperatureRead = true;
 
 // FreeRTOS task handle and Tickers
 #if defined(ESP32)
   static TaskHandle_t controllerTaskHandle = nullptr;
-  static Ticker tempPollTicker;    // 30-second temperature polling ticker
-  static Ticker tempReadTicker;    // 750ms temperature read ticker
+  static Ticker temperaturePollTicker;    // 30-second temperature polling ticker
+  static Ticker temperatureReadTicker;    // 750ms temperature read ticker
 #elif defined(ESP8266)
   // ESP8266: Fallback using Ticker with flag-polling pattern
   static Ticker toggleTicker;
-  static Ticker tempPollTicker;    // 30-second temperature polling ticker
-  static Ticker tempReadTicker;    // 750ms temperature read ticker
+  static Ticker temperaturePollTicker;    // 30-second temperature polling ticker
+  static Ticker temperatureReadTicker;    // 750ms temperature read ticker
   static volatile bool updatePending = false;
 #endif
 
 // Temperature ticker flags (set by ISR, cleared by main loop)
-static volatile bool tempPollRequested = false;
-static volatile bool tempReadRequested = false;
+static volatile bool temperaturePollRequested = false;
+static volatile bool temperatureReadRequested = false;
 
 // Forward declarations
 void updateRow0();
 void updateRow1();
 
 // Temperature ticker callbacks (ISR-safe, just set flags)
-void IRAM_ATTR tempPollCallback() {
-  tempPollRequested = true;
+void IRAM_ATTR temperaturePollCallback() {
+  temperaturePollRequested = true;
 }
 
-void IRAM_ATTR tempReadCallback() {
-  tempReadRequested = true;
+void IRAM_ATTR temperatureReadCallback() {
+  temperatureReadRequested = true;
 }
 
 // Display controller task (ESP32 only) - handles ONLY the 4-second time/date toggle
@@ -190,11 +190,11 @@ void initDisplayController() {
   
   // Start temperature tickers (both ESP32 and ESP8266)
   // These handle ALL temperature timing - no contention with display task
-  tempPollTicker.attach(30.0, tempPollCallback);  // Poll every 30 seconds
+  temperaturePollTicker.attach(30.0, temperaturePollCallback);  // Poll every 30 seconds
   DEBUG_PRINTLN("Temperature poll ticker started (30 seconds)");
   
   // Initial temperature read (conversion already started in initTemperatureData)
-  tempReadTicker.once(0.75, tempReadCallback);  // Read after 750ms
+  temperatureReadTicker.once(0.75, temperatureReadCallback);  // Read after 750ms
   DEBUG_PRINTLN("Initial temperature read scheduled (750ms)");
   
   DEBUG_PRINTLN("Display controller initialized");
@@ -233,23 +233,23 @@ void updateDisplayController() {
   
   // Handle temperature polling ticker (both ESP32 and ESP8266)
   // Tickers set flags in ISR context, we handle the heavy work here
-  if (tempPollRequested) {
-    tempPollRequested = false;
+  if (temperaturePollRequested) {
+    temperaturePollRequested = false;
     
-    if (!tempRequestPending) {
+    if (!temperatureRequestPending) {
       // Request new temperature reading
       requestTemperature();
-      tempRequestPending = true;
+      temperatureRequestPending = true;
       DEBUG_PRINTLN("Temperature read requested (ticker)");
       
       // Schedule read after 750ms
-      tempReadTicker.once(0.75, tempReadCallback);
+      temperatureReadTicker.once(0.75, temperatureReadCallback);
     }
   }
   
   // Handle temperature read ticker (both ESP32 and ESP8266)
-  if (tempReadRequested) {
-    tempReadRequested = false;
+  if (temperatureReadRequested) {
+    temperatureReadRequested = false;
     
     float temp;
     if (getTemperature(&temp)) {
@@ -258,11 +258,11 @@ void updateDisplayController() {
       DEBUG_PRINTLN(temp);
       
       // First read complete
-      if (firstTempRead) {
-        firstTempRead = false;
+      if (firstTemperatureRead) {
+        firstTemperatureRead = false;
         DEBUG_PRINTLN("First temperature read complete");
       }
     }
-    tempRequestPending = false;
+    temperatureRequestPending = false;
   }
 }
