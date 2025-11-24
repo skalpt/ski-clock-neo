@@ -423,9 +423,9 @@ button {
 
 .logout-btn,
 .back-link {
-    background: rgba(255, 255, 255, 0.15);
-    color: white;
-    border: 2px solid rgba(255, 255, 255, 0.3);
+    background: var(--button-secondary-bg);
+    color: var(--button-secondary-text);
+    border: 2px solid var(--border-color);
     padding: 0.625rem 1.25rem;
     border-radius: var(--radius-md);
     font-weight: 600;
@@ -433,14 +433,13 @@ button {
     transition: all var(--transition-base);
     text-decoration: none;
     display: inline-block;
-    backdrop-filter: blur(8px);
 }
 
 .logout-btn:hover,
 .back-link:hover {
-    background: rgba(255, 255, 255, 0.95);
-    color: var(--brand-primary);
-    border-color: rgba(255, 255, 255, 0.95);
+    background: var(--brand-primary);
+    color: white;
+    border-color: var(--brand-primary);
     transform: var(--button-hover-transform);
 }
 
