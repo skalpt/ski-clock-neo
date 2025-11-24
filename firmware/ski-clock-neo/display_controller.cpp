@@ -206,9 +206,9 @@ void initDisplayController() {
   temperaturePollTicker.attach(30.0, temperaturePollCallback);  // Poll every 30 seconds
   DEBUG_PRINTLN("Temperature poll ticker started (30 seconds)");
   
-  // Initial temperature read (conversion already started in initTemperatureData)
-  temperatureReadTicker.once(0.75, temperatureReadCallback);  // Read after 750ms
-  DEBUG_PRINTLN("Initial temperature read scheduled (750ms)");
+  // Trigger first temperature poll immediately (requests conversion and schedules read)
+  temperaturePollCallback();
+  DEBUG_PRINTLN("Initial temperature poll triggered");
   
   DEBUG_PRINTLN("Display controller initialized");
 }
