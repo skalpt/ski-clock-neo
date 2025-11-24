@@ -11,6 +11,7 @@
 #define PANELS_PER_ROW  3       // Number of panels per row
 #define PANEL_WIDTH     16      // Width of each panel in pixels
 #define PANEL_HEIGHT    16      // Height of each panel in pixels
+#define BRIGHTNESS 10           // 0-255 (keeping dim for development)
 
 // Calculate total dimensions
 #define ROW_WIDTH (PANELS_PER_ROW * PANEL_WIDTH)    // 3 * 16 = 48 pixels

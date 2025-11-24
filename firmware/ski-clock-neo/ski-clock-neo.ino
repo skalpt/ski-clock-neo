@@ -11,8 +11,9 @@
 #include "display_controller.h"
 
 // Hardware pin configuration
-#define TEMP_SENSOR_PIN 2       // DS18B20 temperature sensor on GPIO2
-#define BUTTON_PIN 0            // Button on GPIO0 (boot button on most ESP32/ESP8266 boards)
+#define TEMP_SENSOR_PIN 2                            // DS18B20 temperature sensor on GPIO2
+#define BUTTON_PIN 0                                 // Button on GPIO0 (boot button on most ESP32/ESP8266 boards)
+const uint8_t NEOPIXEL_PINS[DISPLAY_ROWS] = {4, 3};  // Row 1: GPIO4, Row 2: GPIO3
 
 void setup() {
   // Initialise serial (only if debug logging enabled)

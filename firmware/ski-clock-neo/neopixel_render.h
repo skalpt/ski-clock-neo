@@ -8,13 +8,9 @@
 #include "debug.h"
 #include "display.h"
 
-// ==================== CONSTANTS ====================
-// Display settings
-#define BRIGHTNESS 10                    // 0-255 (keeping dim for development)
-
 // ==================== GLOBAL STATE ====================
 // Pin array for row initialization
-extern const uint8_t ROW_PINS[DISPLAY_ROWS];
+extern const uint8_t NEOPIXEL_PINS[DISPLAY_ROWS];
 
 // Static storage buffer for NeoPixel objects (no heap allocation)
 // We'll use placement-new to construct them in setup()

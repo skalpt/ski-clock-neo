@@ -1,9 +1,6 @@
 #include "neopixel_render.h"
 
 // ==================== GLOBAL VARIABLE DEFINITIONS ====================
-// Pin array for row initialization (change pins here for all rows)
-const uint8_t ROW_PINS[DISPLAY_ROWS] = {4, 3};  // Row 1: GPIO4, Row 2: GPIO3
-
 // Static storage buffer for NeoPixel objects (no heap allocation)
 // We'll use placement-new to construct them in setup()
 alignas(Adafruit_NeoPixel) uint8_t rowsStorage[DISPLAY_ROWS * sizeof(Adafruit_NeoPixel)];
@@ -108,7 +105,7 @@ void setupNeoPixels() {
   // Use placement-new to construct NeoPixel objects in loop (dynamic, no heap!)
   for (uint8_t i = 0; i < DISPLAY_ROWS; i++) {
     // Construct Adafruit_NeoPixel at rows[i] using placement-new
-    new (&rows[i]) Adafruit_NeoPixel(ROW_WIDTH * ROW_HEIGHT, ROW_PINS[i], NEO_GRB + NEO_KHZ800);
+    new (&rows[i]) Adafruit_NeoPixel(ROW_WIDTH * ROW_HEIGHT, NEOPIXEL_PINS[i], NEO_GRB + NEO_KHZ800);
     
     // Initialize the hardware
     rows[i].begin();
@@ -118,7 +115,7 @@ void setupNeoPixels() {
     DEBUG_PRINT("NeoPixel row ");
     DEBUG_PRINT(i + 1);
     DEBUG_PRINT(" (GPIO ");
-    DEBUG_PRINT(ROW_PINS[i]);
+    DEBUG_PRINT(NEOPIXEL_PINS[i]);
     DEBUG_PRINTLN(") initialised.");
   }
   
