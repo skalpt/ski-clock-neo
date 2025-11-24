@@ -40,7 +40,7 @@
                 </thead>
                 <tbody id="firmware-body">
                     <tr>
-                        <td colspan="3" style="text-align: center; color: #999;">Loading...</td>
+                        <td colspan="3" class="muted-text" style="text-align: center;">Loading...</td>
                     </tr>
                 </tbody>
             </table>
@@ -48,13 +48,13 @@
     </div>
 
     <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <div class="flex-between" style="margin-bottom: 15px;">
             <h2>📊 OTA Update Statistics</h2>
-            <div style="display: flex; gap: 10px;">
-                <a href="/snapshot-debug" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: bold;">
+            <div class="flex-gap">
+                <a href="/snapshot-debug" class="action-link secondary">
                     🔍 Snapshot Debug
                 </a>
-                <a href="/ota-history" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: bold;">
+                <a href="/ota-history" class="action-link">
                     View Full History →
                 </a>
             </div>
@@ -153,7 +153,7 @@
                 container.innerHTML = `
                     <div class="empty-state">
                         <p>${data.mqtt_enabled ? 'No devices connected yet' : 'MQTT monitoring not configured'}</p>
-                        <p style="font-size: 0.9rem; margin-top: 10px; color: #999;">
+                        <p class="muted-text" style="font-size: 0.9rem; margin-top: 10px;">
                             ${data.mqtt_enabled ? 'Devices will appear here when they send heartbeats' : 'Configure MQTT credentials to enable device monitoring'}
                         </p>
                     </div>
@@ -223,7 +223,7 @@
                                     <div><strong>Version:</strong> ${safeVersion}</div>
                                     <div><strong>Uptime:</strong> ${formatUptime(device.uptime)}</div>
                                     ${device.ssid ? `<div><strong>WiFi Network:</strong> ${safeSsid}</div>` : ''}
-                                    ${device.ip_address ? `<div><strong>IP Address:</strong> ${device.online && isIPv4(device.ip_address) ? `<a href="http://${encodeURIComponent(device.ip_address)}/" target="_blank" rel="noopener noreferrer" style="color: white; text-decoration: none;" title="Open AutoConnect page (only works if you're on the same network)">${safeIpAddress}</a>` : safeIpAddress}</div>` : ''}
+                                    ${device.ip_address ? `<div><strong>IP Address:</strong> ${device.online && isIPv4(device.ip_address) ? `<a href="http://${encodeURIComponent(device.ip_address)}/" target="_blank" rel="noopener noreferrer" class="device-ip-link" title="Open AutoConnect page (only works if you're on the same network)">${safeIpAddress}</a>` : safeIpAddress}</div>` : ''}
                                     <div><strong>WiFi Signal:</strong> ${getSignalStrengthIcon(device.rssi)}${device.rssi} dBm</div>
                                     <div><strong>Free Memory:</strong> ${(device.free_heap / 1024).toFixed(1)} KB</div>
                                     <div><strong>Last Seen:</strong> <span class="live-timestamp" data-timestamp="${escapeHtml(device.last_seen)}">${formatTimestamp(device.last_seen)}</span></div>
@@ -619,7 +619,7 @@
                         return `
                             <tr>
                                 <td><strong>${platform.toUpperCase()}</strong></td>
-                                <td><a href="${downloadUrl}" style="color: #667eea; text-decoration: none;">${escapeHtml(fw.filename || 'Unknown')}</a></td>
+                                <td><a href="${downloadUrl}" class="table-link">${escapeHtml(fw.filename || 'Unknown')}</a></td>
                                 <td>${escapeHtml(fw.version || 'Unknown')}</td>
                                 <td class="flash-column">
                                     ${flashButtons}
@@ -632,13 +632,13 @@
                                 <td><strong>${platform.toUpperCase()}</strong></td>
                                 <td>${escapeHtml(fw.filename || 'Unknown')}</td>
                                 <td>${escapeHtml(fw.version || 'Unknown')}</td>
-                                <td class="flash-column"><span style="color: #999;">No Permission</span></td>
+                                <td class="flash-column"><span class="muted-text">No Permission</span></td>
                             </tr>
                         `;
                     }
                 }).join('');
 
-            tbody.innerHTML = rows || '<tr><td colspan="4" style="text-align: center; color: #999;">No firmware uploaded yet</td></tr>';
+            tbody.innerHTML = rows || '<tr><td colspan="4" class="muted-text" style="text-align: center;">No firmware uploaded yet</td></tr>';
         } catch (error) {
             console.error('Failed to load firmware:', error);
         }

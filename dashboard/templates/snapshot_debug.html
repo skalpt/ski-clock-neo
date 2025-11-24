@@ -14,12 +14,12 @@
 
     <div class="card">
         <h2>🔍 Snapshot History (Row Text vs Bitmap)</h2>
-        <p style="margin-bottom: 20px; color: rgba(255,255,255,0.7);">
+        <p class="description-text">
             Compare what text the device sent vs what pixels were rendered in the bitmap.
             This helps debug display rendering issues.
         </p>
         
-        <div class="filter-bar" style="margin-bottom: 20px;">
+        <div class="filter-bar">
             <div class="form-group" style="flex: 1; min-width: 300px; margin-bottom: 0;">
                 <label for="device-filter">Select Device</label>
                 <select id="device-filter" class="device-filter-select" onchange="loadSnapshots()">
@@ -128,22 +128,22 @@
         rowTextHtml += '</ul>';
         
         return `
-            <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 20px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h3 style="margin: 0;">📸 Snapshot #${snapshot.id}</h3>
-                    <span style="color: rgba(255,255,255,0.6);">${timestamp}</span>
+            <div class="snapshot-card">
+                <div class="snapshot-card-header">
+                    <h3>📸 Snapshot #${snapshot.id}</h3>
+                    <span class="snapshot-timestamp">${timestamp}</span>
                 </div>
                 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px;">
-                    <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 6px;">
-                        <h4 style="margin-top: 0;">📝 Row Text (Sent by Device)</h4>
+                <div class="snapshot-grid">
+                    <div class="snapshot-section">
+                        <h4>📝 Row Text (Sent by Device)</h4>
                         ${rowTextHtml}
                     </div>
                     
-                    <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 6px;">
-                        <h4 style="margin-top: 0;">🎨 Bitmap Preview (${bitmap.width || 0}x${bitmap.height || 0})</h4>
-                        <div style="display: flex; justify-content: center; align-items: center; min-height: 100px; background: #000; border-radius: 4px; padding: 10px;">
-                            <canvas id="canvas-${snapshot.id}" style="max-width: 100%; height: auto; image-rendering: pixelated;"></canvas>
+                    <div class="snapshot-section">
+                        <h4>🎨 Bitmap Preview (${bitmap.width || 0}x${bitmap.height || 0})</h4>
+                        <div class="bitmap-preview">
+                            <canvas id="canvas-${snapshot.id}" class="bitmap-canvas"></canvas>
                         </div>
                     </div>
                 </div>
