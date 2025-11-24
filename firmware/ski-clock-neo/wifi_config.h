@@ -47,26 +47,26 @@ body {
 // Initialize AutoConnect with robust configuration
 void setupWiFi() {
   DEBUG_PRINTLN("Initializing WiFi with AutoConnect...");
-  
+
   // Configure AutoConnect behavior
   config.apid = AP_SSID;
   config.psk = AP_PASSWORD;
   config.title = "⛷️ Ski Clock Setup";
-  
+
   // KEY FEATURES for your requirements:
-  
+
   // Keep Access Point running alongside WiFi connection
   // retainPortal keeps the SoftAP (and web interface) running after WiFi connects
   // NOTE: The auto-popup captive portal only works BEFORE WiFi connects
   //       After connection, users must manually connect to the same network and visit its IP
   config.retainPortal = true;
-  
+
   // Automatically will try to reconnect with past established access points (BSSIDs) when the current configured SSID in ESP8266/ESP32 could not be connected
   config.autoReconnect = true;
-  
+
   // Set reconnect interval for background retry (5 seconds)
   config.reconnectInterval = 5;
-  
+
   // Configure portal timeout (0 = never timeout)
   config.portalTimeout = 0;  // Portal always available
 
@@ -75,16 +75,16 @@ void setupWiFi() {
 
   // Configure items in the AutoConnect menu
   config.menuItems = AC_MENUITEM_CONFIGNEW | AC_MENUITEM_OPENSSIDS | AC_MENUITEM_RESET | AC_MENUITEM_DEVINFO | AC_MENUITEM_DELETESSID;
-  
+
   // Minimum RSSI to connect (signal strength threshold)
   config.minRSSI = -80;
 
   // Disable auto-reset when the user clicks "Disconnect" in the portal menu
   config.autoReset = false;
-  
+
   // Apply configuration
   portal.config(config);
-  
+
   // Start AutoConnect
   // This will:
   // - Try to connect to previously saved networks (in order of signal strength)
@@ -99,14 +99,14 @@ void setupWiFi() {
   } else {
     DEBUG_PRINTLN("WiFi connection failed - portal active");
   }
-  
+
   // Add redirect from root "/" to AutoConnect portal "/_ac"
   // This makes it easier for users browsing to the device IP directly
   server.on("/", HTTP_GET, []() {
     server.sendHeader("Location", "/_ac", true);
     server.send(302, "text/plain", "Redirecting to portal...");
   });
-  
+
   DEBUG_PRINTLN("AutoConnect portal is running");
   DEBUG_PRINT("Portal SSID: ");
   DEBUG_PRINTLN(AP_SSID);
@@ -123,7 +123,7 @@ void setupWiFi() {
 // - Credential management
 void updateWiFi() {
   portal.handleClient();
-  
+
   // AutoConnect automatically handles:
   // - Reconnection when WiFi drops
   // - Portal availability for network switching
