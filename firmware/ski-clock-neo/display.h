@@ -21,11 +21,14 @@ struct DisplayConfig {
 // Display buffer - stores on/off state for each pixel (1 bit per pixel, packed into bytes)
 extern uint8_t displayBuffer[DISPLAY_BUFFER_SIZE];
 extern DisplayConfig displayConfig;
-dis
+
 // Text content for each row (what should be displayed)
 extern char displayText[DISPLAY_ROWS][MAX_TEXT_LENGTH];
 
-// Initialize display system with panel configuration
+// Initialize display system (includes hardware renderer and FreeRTOS/Ticker setup)
+void initDisplay();
+
+// Initialize display buffer with panel configuration
 void initDisplayBuffer(uint8_t rows, uint8_t panelsPerRow, uint8_t panelWidth, uint8_t panelHeight);
 
 // Get current display configuration
