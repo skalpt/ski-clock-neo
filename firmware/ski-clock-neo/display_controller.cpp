@@ -26,28 +26,44 @@ static bool firstTemperatureRead = true;
   static Ticker temperaturePollTicker;    // 30-second temperature polling ticker
   static Ticker temperatureReadTicker;    // 750ms temperature read ticker
 #elif defined(ESP8266)
-  // ESP8266: Fallback using Ticker with flag-polling pattern
+  // ESP8266: Fallback using Ticker with flag-polling pattern for display toggle
   static Ticker toggleTicker;
   static Ticker temperaturePollTicker;    // 30-second temperature polling ticker
   static Ticker temperatureReadTicker;    // 750ms temperature read ticker
-  static volatile bool updatePending = false;
+  static volatile bool updatePending = false;  // For display toggle only
 #endif
-
-// Temperature ticker flags (set by ISR, cleared by main loop)
-static volatile bool temperaturePollRequested = false;
-static volatile bool temperatureReadRequested = false;
 
 // Forward declarations
 void updateRow0();
 void updateRow1();
 
-// Temperature ticker callbacks (ISR-safe, just set flags)
-void IRAM_ATTR temperaturePollCallback() {
-  temperaturePollRequested = true;
+// Temperature ticker callbacks (software tickers, not ISR context)
+void temperaturePollCallback() {
+  if (!temperatureRequestPending) {
+    // Request new temperature reading
+    requestTemperature();
+    temperatureRequestPending = true;
+    DEBUG_PRINTLN("Temperature read requested (ticker)");
+    
+    // Schedule read after 750ms
+    temperatureReadTicker.once(0.75, temperatureReadCallback);
+  }
 }
 
-void IRAM_ATTR temperatureReadCallback() {
-  temperatureReadRequested = true;
+void temperatureReadCallback() {
+  float temp;
+  if (getTemperature(&temp)) {
+    updateRow1();
+    DEBUG_PRINT("Temperature updated: ");
+    DEBUG_PRINTLN(temp);
+    
+    // First read complete
+    if (firstTemperatureRead) {
+      firstTemperatureRead = false;
+      DEBUG_PRINTLN("First temperature read complete");
+    }
+  }
+  temperatureRequestPending = false;
 }
 
 // Display controller task (ESP32 only) - handles ONLY the 4-second time/date toggle
@@ -223,46 +239,15 @@ void forceDisplayUpdate() {
 void updateDisplayController() {
   if (!initialized) return;
   
-  // ESP8266: Handle deferred display update from timer callback
+  // ESP8266 only: Handle deferred display update from timer callback
+  // Temperature updates are handled directly in ticker callbacks (no flags needed)
   #if defined(ESP8266)
     if (updatePending) {
       updatePending = false;
-      updateRow0();  // Safe to call here (not in timer/ISR context)
+      updateRow0();  // Safe to call here (not in ISR context)
     }
   #endif
   
-  // Handle temperature polling ticker (both ESP32 and ESP8266)
-  // Tickers set flags in ISR context, we handle the heavy work here
-  if (temperaturePollRequested) {
-    temperaturePollRequested = false;
-    
-    if (!temperatureRequestPending) {
-      // Request new temperature reading
-      requestTemperature();
-      temperatureRequestPending = true;
-      DEBUG_PRINTLN("Temperature read requested (ticker)");
-      
-      // Schedule read after 750ms
-      temperatureReadTicker.once(0.75, temperatureReadCallback);
-    }
-  }
-  
-  // Handle temperature read ticker (both ESP32 and ESP8266)
-  if (temperatureReadRequested) {
-    temperatureReadRequested = false;
-    
-    float temp;
-    if (getTemperature(&temp)) {
-      updateRow1();
-      DEBUG_PRINT("Temperature updated: ");
-      DEBUG_PRINTLN(temp);
-      
-      // First read complete
-      if (firstTemperatureRead) {
-        firstTemperatureRead = false;
-        DEBUG_PRINTLN("First temperature read complete");
-      }
-    }
-    temperatureRequestPending = false;
-  }
+  // ESP32: Nothing to do - FreeRTOS task handles display, tickers handle temperature
+  // This function is effectively a no-op on ESP32
 }
