@@ -77,7 +77,8 @@ bool performOTAUpdate(String version) {
     return false;
   }
 
-  setLedPattern(LED_OTA_PROGRESS); // Set LED indicator to OTA mode
+  // Enter LED override mode for OTA progress indication
+  beginLedOverride(LED_OTA_PROGRESS);
   
   String binaryUrl = String(UPDATE_SERVER_URL) + "/api/firmware/" + getPlatform();
   
@@ -93,8 +94,6 @@ bool performOTAUpdate(String version) {
   DEBUG_PRINTLN("===========================================");
   
   publishOTAStart(version);
-  
-  setLedPattern(LED_OTA_PROGRESS);
   otaUpdateInProgress = true;
   
 #if defined(ESP32)
@@ -116,7 +115,7 @@ bool performOTAUpdate(String version) {
       DEBUG_PRINTLN("Failed to begin HTTP connection");
       publishOTAComplete(false, "Failed to begin HTTP connection");
       delete secureClientPtr;
-      setLedPattern(LED_CONNECTED);
+      endLedOverride();
       otaUpdateInProgress = false;
       return false;
     }
@@ -128,7 +127,7 @@ bool performOTAUpdate(String version) {
       DEBUG_PRINTLN("Failed to begin HTTP connection");
       publishOTAComplete(false, "Failed to begin HTTP connection");
       delete plainClientPtr;
-      setLedPattern(LED_CONNECTED);
+      endLedOverride();
       otaUpdateInProgress = false;
       return false;
     }
@@ -147,7 +146,7 @@ bool performOTAUpdate(String version) {
     http.end();
     if (secureClientPtr) delete secureClientPtr;
     if (plainClientPtr) delete plainClientPtr;
-    setLedPattern(LED_CONNECTED);
+    endLedOverride();
     otaUpdateInProgress = false;
     return false;
   }
@@ -162,7 +161,7 @@ bool performOTAUpdate(String version) {
     http.end();
     if (secureClientPtr) delete secureClientPtr;
     if (plainClientPtr) delete plainClientPtr;
-    setLedPattern(LED_CONNECTED);
+    endLedOverride();
     otaUpdateInProgress = false;
     return false;
   }
@@ -174,7 +173,7 @@ bool performOTAUpdate(String version) {
     http.end();
     if (secureClientPtr) delete secureClientPtr;
     if (plainClientPtr) delete plainClientPtr;
-    setLedPattern(LED_CONNECTED);
+    endLedOverride();
     otaUpdateInProgress = false;
     return false;
   }
@@ -199,7 +198,7 @@ bool performOTAUpdate(String version) {
         http.end();
         if (secureClientPtr) delete secureClientPtr;
     if (plainClientPtr) delete plainClientPtr;
-        setLedPattern(LED_CONNECTED);
+        endLedOverride();
         otaUpdateInProgress = false;
         return false;
       }
@@ -228,7 +227,7 @@ bool performOTAUpdate(String version) {
     http.end();
     if (secureClientPtr) delete secureClientPtr;
     if (plainClientPtr) delete plainClientPtr;
-    setLedPattern(LED_CONNECTED);
+    endLedOverride();
     otaUpdateInProgress = false;
     return false;
   }
@@ -245,7 +244,7 @@ bool performOTAUpdate(String version) {
       return true;
     } else {
       DEBUG_PRINTLN("Update not finished");
-      setLedPattern(LED_CONNECTED);
+      endLedOverride();
       otaUpdateInProgress = false;
       publishOTAComplete(false, "Update not finished");
     }
@@ -259,7 +258,7 @@ bool performOTAUpdate(String version) {
   http.end();
   if (secureClientPtr) delete secureClientPtr;
   if (plainClientPtr) delete plainClientPtr;
-  setLedPattern(LED_CONNECTED);
+  endLedOverride();
   otaUpdateInProgress = false;
   return false;
   
@@ -282,7 +281,7 @@ bool performOTAUpdate(String version) {
       DEBUG_PRINTLN("Failed to begin HTTP connection");
       publishOTAComplete(false, "Failed to begin HTTP connection");
       delete secureClientPtr;
-      setLedPattern(LED_CONNECTED);
+      endLedOverride();
       otaUpdateInProgress = false;
       return false;
     }
@@ -294,7 +293,7 @@ bool performOTAUpdate(String version) {
       DEBUG_PRINTLN("Failed to begin HTTP connection");
       publishOTAComplete(false, "Failed to begin HTTP connection");
       delete plainClientPtr;
-      setLedPattern(LED_CONNECTED);
+      endLedOverride();
       otaUpdateInProgress = false;
       return false;
     }
@@ -313,7 +312,7 @@ bool performOTAUpdate(String version) {
     http.end();
     if (secureClientPtr) delete secureClientPtr;
     if (plainClientPtr) delete plainClientPtr;
-    setLedPattern(LED_CONNECTED);
+    endLedOverride();
     otaUpdateInProgress = false;
     return false;
   }
@@ -328,7 +327,7 @@ bool performOTAUpdate(String version) {
     http.end();
     if (secureClientPtr) delete secureClientPtr;
     if (plainClientPtr) delete plainClientPtr;
-    setLedPattern(LED_CONNECTED);
+    endLedOverride();
     otaUpdateInProgress = false;
     return false;
   }
@@ -340,7 +339,7 @@ bool performOTAUpdate(String version) {
     http.end();
     if (secureClientPtr) delete secureClientPtr;
     if (plainClientPtr) delete plainClientPtr;
-    setLedPattern(LED_CONNECTED);
+    endLedOverride();
     otaUpdateInProgress = false;
     return false;
   }
@@ -365,7 +364,7 @@ bool performOTAUpdate(String version) {
         http.end();
         if (secureClientPtr) delete secureClientPtr;
     if (plainClientPtr) delete plainClientPtr;
-        setLedPattern(LED_CONNECTED);
+        endLedOverride();
         otaUpdateInProgress = false;
         return false;
       }
@@ -394,7 +393,7 @@ bool performOTAUpdate(String version) {
     http.end();
     if (secureClientPtr) delete secureClientPtr;
     if (plainClientPtr) delete plainClientPtr;
-    setLedPattern(LED_CONNECTED);
+    endLedOverride();
     otaUpdateInProgress = false;
     return false;
   }
@@ -423,7 +422,7 @@ bool performOTAUpdate(String version) {
   http.end();
   if (secureClientPtr) delete secureClientPtr;
   if (plainClientPtr) delete plainClientPtr;
-  setLedPattern(LED_CONNECTED);
+  endLedOverride();
   otaUpdateInProgress = false;
   return false;
 #endif
