@@ -1,5 +1,4 @@
 #include "display.h"
-#include "display_controller.h"
 #include "neopixel_render.h"
 #include "debug.h"
 #include <string.h>
@@ -133,8 +132,9 @@ void initDisplay() {
     DEBUG_PRINTLN("Display ticker ready (ESP8266 software ticker, on-demand)");
   #endif
 
-  // Start the display controller (handles time/date/temperature updates)
-  initDisplayController();
+  // NOTE: Display controller initialization (time/date/temp) is handled separately
+  // See ski-clock-neo.ino setup() which calls initDisplayController(TEMP_SENSOR_PIN)
+  DEBUG_PRINTLN("Display hardware initialized");
 }
 
 DisplayConfig getDisplayConfig() {

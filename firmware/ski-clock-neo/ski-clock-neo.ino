@@ -17,6 +17,7 @@ const uint8_t DISPLAY_PINS[DISPLAY_ROWS] = {4, 3};  // Row 1: GPIO4, Row 2: GPIO
 #include "debug.h"
 #include "led_indicator.h"
 #include "display.h"
+#include "display_controller.h"
 #include "button.h"
 #include "wifi_config.h"
 #include "mqtt_client.h"
@@ -33,8 +34,12 @@ void setup() {
   // Initialize onboard LED indicator
   initLedIndicator();
 
-  // Initialize display
+  // Initialize display (hardware only - no controller yet)
   initDisplay();
+  
+  // Initialize display controller (with time/temp data libraries)
+  // This is called separately to pass the temperature sensor pin
+  initDisplayController(TEMP_SENSOR_PIN);
 
   // Initialize button
   initButton();

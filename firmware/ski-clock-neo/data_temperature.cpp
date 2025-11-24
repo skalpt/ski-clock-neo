@@ -51,19 +51,15 @@ void initTemperatureData(uint8_t pin) {
   
   initialized = true;
   
-  // Kick off initial temperature conversion immediately
-  // (don't wait 30 seconds for first reading)
-  sensors->requestTemperatures();
-  temperatureRequestPending = true;
-  DEBUG_PRINTLN("Temperature sensor initialized (non-blocking mode, initial conversion started)");
-  
   // Start temperature polling ticker (30 seconds)
   temperaturePollTicker.attach(30.0, temperaturePollCallback);
   DEBUG_PRINTLN("Temperature poll ticker started (30 seconds)");
   
-  // Trigger first poll immediately (schedules read after 750ms)
+  // Trigger first poll immediately (requests conversion and schedules read after 750ms)
+  // Clear flag first to ensure callback executes
+  temperatureRequestPending = false;
   temperaturePollCallback();
-  DEBUG_PRINTLN("Initial temperature poll triggered");
+  DEBUG_PRINTLN("Temperature sensor initialized (non-blocking mode, first poll triggered)");
 }
 
 void requestTemperature() {
@@ -119,6 +115,7 @@ bool isSensorConnected() {
 }
 
 // Temperature ticker callbacks (software tickers, not ISR context)
+// These are safe to call setText() since software tickers run in loop() context
 void temperaturePollCallback() {
   if (!temperatureRequestPending) {
     // Request new temperature reading
@@ -127,7 +124,12 @@ void temperaturePollCallback() {
     DEBUG_PRINTLN("Temperature read requested (ticker)");
     
     // Schedule read after 750ms
-    temperatureReadTicker.once(0.75, temperatureReadCallback);
+    // Platform-specific ticker API (ESP32 uses seconds, ESP8266 uses milliseconds)
+    #if defined(ESP32)
+      temperatureReadTicker.once(0.75f, temperatureReadCallback);  // 0.75 seconds
+    #elif defined(ESP8266)
+      temperatureReadTicker.once_ms(750, temperatureReadCallback);  // 750 milliseconds
+    #endif
   }
 }
 
@@ -144,6 +146,11 @@ void temperatureReadCallback() {
       firstTemperatureRead = false;
       DEBUG_PRINTLN("First temperature read complete");
     }
+  } else {
+    // Failed to read temperature - retry on next poll
+    DEBUG_PRINTLN("Temperature read failed, will retry on next poll");
   }
+  
+  // Always clear flag to allow next poll (ensures recovery from failed reads)
   temperatureRequestPending = false;
 }
