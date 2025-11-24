@@ -611,7 +611,7 @@ def start_mqtt_subscriber():
     print(f"  Client ID: {client_id}")
     print(f"  Subscriber ID: {_subscriber_id}")
     
-    client = mqtt.Client(client_id=client_id, protocol=mqtt.MQTTv311)
+    client = mqtt.Client(client_id=client_id, protocol=mqtt.MQTTv311, clean_session=True)
     client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
     
     client.tls_set(cert_reqs=ssl.CERT_REQUIRED, tls_version=ssl.PROTOCOL_TLS)
