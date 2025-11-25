@@ -469,22 +469,29 @@ button {
 .snapshot-btn {
     background: rgba(59, 130, 246, 0.9);
     color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: var(--radius-md);
+}
+
+.snapshot-btn:hover {
+    background: rgba(59, 130, 246, 1);
+}
+
+/* Standalone snapshot button (used when no snapshot exists) */
+.no-snapshot-message .snapshot-btn {
     font-size: 0.875rem;
     cursor: pointer;
     transition: all var(--transition-base);
     font-weight: 600;
     margin-top: var(--spacing-sm);
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: var(--radius-md);
 }
 
-.snapshot-btn:hover {
-    background: rgba(59, 130, 246, 1);
+.no-snapshot-message .snapshot-btn:hover {
     transform: var(--button-hover-transform);
 }
 
-.snapshot-btn:disabled {
+.no-snapshot-message .snapshot-btn:disabled {
     background: #9ca3af;
     cursor: not-allowed;
     opacity: 0.6;
@@ -1344,10 +1351,12 @@ body.no-web-serial .flash-column {
 .history-btn {
     text-decoration: none;
     background: rgba(99, 102, 241, 0.9);
+    color: white;
 }
 
 .history-btn:hover {
     background: rgba(99, 102, 241, 1);
+    color: white;
 }
 
 .snapshot-info {
