@@ -8,7 +8,6 @@
 #define TEMPERATURE_PIN 2       // DS18B20 temperature sensor on GPIO2
 #define RTC_SDA_PIN     5       // RTC I2C data pin on GPIO5
 #define RTC_SCL_PIN     6       // RTC I2C clock pin on GPIO 6
-#define RTC_SQW_PIN     7.      // RTC square wave pin (for hardware interrupts) on GPIO7
 
 // Display configuration
 #define DISPLAY_ROWS    2       // Number of physical display rows
