@@ -1540,6 +1540,95 @@ def get_snapshot_history(device_id):
         'offset': offset
     }), 200
 
+@app.route('/api/events')
+@login_required
+def get_events():
+    """Get device event logs with optional filters
+    
+    Query parameters:
+    - device_id: Filter by specific device
+    - event_type: Filter by event type (e.g., 'temp_read', 'boot', 'wifi_connect')
+    - start_date: ISO 8601 date (events after this time)
+    - end_date: ISO 8601 date (events before this time)
+    - limit: Number of events to return (default: 100)
+    - offset: Pagination offset (default: 0)
+    """
+    from models import EventLog
+    from sqlalchemy import desc
+    from datetime import datetime
+    
+    device_id = request.args.get('device_id')
+    event_type = request.args.get('event_type')
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    limit = request.args.get('limit', type=int, default=100)
+    offset = request.args.get('offset', type=int, default=0)
+    
+    query = EventLog.query
+    
+    if device_id:
+        query = query.filter_by(device_id=device_id)
+    if event_type:
+        query = query.filter_by(event_type=event_type)
+    
+    if start_date:
+        try:
+            start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+            query = query.filter(EventLog.timestamp >= start_dt)
+        except (ValueError, AttributeError):
+            return jsonify({'error': 'Invalid start_date format. Use ISO 8601.'}), 400
+    
+    if end_date:
+        try:
+            end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+            query = query.filter(EventLog.timestamp <= end_dt)
+        except (ValueError, AttributeError):
+            return jsonify({'error': 'Invalid end_date format. Use ISO 8601.'}), 400
+    
+    total_count = query.count()
+    events = query.order_by(desc(EventLog.timestamp)).limit(limit).offset(offset).all()
+    
+    return jsonify({
+        'events': [e.to_dict() for e in events],
+        'total_count': total_count,
+        'limit': limit,
+        'offset': offset
+    }), 200
+
+@app.route('/api/events/summary')
+@login_required
+def get_events_summary():
+    """Get event summary/analytics for dashboard
+    
+    Query parameters:
+    - device_id: Filter by specific device
+    - hours: Time range in hours (default: 24)
+    """
+    from models import EventLog
+    from sqlalchemy import func
+    from datetime import datetime, timedelta, timezone
+    
+    device_id = request.args.get('device_id')
+    hours = request.args.get('hours', type=int, default=24)
+    
+    since = datetime.now(timezone.utc) - timedelta(hours=hours)
+    
+    query = EventLog.query.filter(EventLog.timestamp >= since)
+    
+    if device_id:
+        query = query.filter_by(device_id=device_id)
+    
+    event_counts = query.with_entities(
+        EventLog.event_type,
+        func.count(EventLog.id).label('count')
+    ).group_by(EventLog.event_type).all()
+    
+    return jsonify({
+        'summary': {e.event_type: e.count for e in event_counts},
+        'hours': hours,
+        'since': since.isoformat()
+    }), 200
+
 @app.route('/api/ota-logs')
 @login_required
 def ota_logs():
