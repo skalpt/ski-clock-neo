@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 
-#define EVENT_TYPE_MAX_LEN 16
+#define EVENT_TYPE_MAX_LEN 32
 #define EVENT_DATA_MAX_LEN 64
 #define EVENT_QUEUE_SIZE 50
 
