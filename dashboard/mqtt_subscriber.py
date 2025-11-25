@@ -24,6 +24,7 @@ MQTT_TOPIC_OTA_PROGRESS = "skiclock/ota/progress"
 MQTT_TOPIC_OTA_COMPLETE = "skiclock/ota/complete"
 MQTT_TOPIC_COMMAND = "skiclock/command"
 MQTT_TOPIC_DISPLAY_SNAPSHOT = "skiclock/display/snapshot"
+MQTT_TOPIC_EVENTS = "skiclock/events"
 
 # Store Flask app instance for database access
 _app_context = None
@@ -86,6 +87,8 @@ def on_connect(client, userdata, flags, rc, properties=None):
         print(f"✓ Subscribed to topic: {MQTT_TOPIC_OTA_COMPLETE}")
         client.subscribe(f"{MQTT_TOPIC_DISPLAY_SNAPSHOT}/#")
         print(f"✓ Subscribed to topic: {MQTT_TOPIC_DISPLAY_SNAPSHOT}/#")
+        client.subscribe(f"{MQTT_TOPIC_EVENTS}/#")
+        print(f"✓ Subscribed to topic: {MQTT_TOPIC_EVENTS}/#")
     else:
         print(f"✗ Failed to connect to MQTT broker, return code {rc}")
 
@@ -456,6 +459,70 @@ def handle_display_snapshot(client, payload):
                 except Exception as e:
                     print(f"✗ Failed to store display snapshot: {e}")
 
+def handle_event(client, payload, topic):
+    """Handle device event messages for analytics
+    
+    Events are queued on device when offline and flushed when MQTT connects.
+    Each event includes offset_ms which is millis() - event_timestamp_ms,
+    allowing us to calculate actual event time from receive time.
+    
+    Payload format:
+    {
+        "type": "temp_read",
+        "data": {"value": 5.2},
+        "offset_ms": 45000
+    }
+    """
+    # Extract device_id from topic: skiclock/events/{device_id}
+    topic_parts = topic.split('/')
+    if len(topic_parts) < 3:
+        print(f"⚠ Invalid event topic format: {topic}")
+        return
+    
+    device_id = topic_parts[2]
+    event_type = payload.get('type')
+    event_data = payload.get('data')
+    offset_ms = payload.get('offset_ms', 0)
+    
+    if not event_type:
+        print(f"⚠ Missing event type in payload from {device_id}")
+        return
+    
+    if _app_context:
+        from models import Device, EventLog, db
+        from datetime import timedelta
+        
+        with _app_context.app_context():
+            # Calculate actual event time: receive_time - offset
+            receive_time = datetime.now(timezone.utc)
+            event_time = receive_time - timedelta(milliseconds=offset_ms)
+            
+            # Ensure device exists (create if new)
+            device = Device.query.filter_by(device_id=device_id).first()
+            if not device:
+                device = Device(
+                    device_id=device_id,
+                    board_type='Unknown',
+                    firmware_version='Unknown'
+                )
+                db.session.add(device)
+                print(f"✨ New device registered via event: {device_id}")
+            
+            # Store the event
+            event_log = EventLog(
+                device_id=device_id,
+                event_type=event_type,
+                event_data=event_data,
+                timestamp=event_time
+            )
+            db.session.add(event_log)
+            db.session.commit()
+            
+            # Format data for logging
+            data_str = f", data={event_data}" if event_data else ""
+            offset_str = f" (offset: {offset_ms}ms)" if offset_ms > 0 else ""
+            print(f"📊 Event logged: {device_id} [{event_type}]{data_str}{offset_str}")
+
 def on_message(client, userdata, msg):
     try:
         payload = json.loads(msg.payload.decode())
@@ -471,6 +538,8 @@ def on_message(client, userdata, msg):
             handle_ota_complete(client, payload)
         elif msg.topic.startswith(MQTT_TOPIC_DISPLAY_SNAPSHOT):
             handle_display_snapshot(client, payload)
+        elif msg.topic.startswith(MQTT_TOPIC_EVENTS):
+            handle_event(client, payload, msg.topic)
     
     except json.JSONDecodeError as e:
         print(f"✗ Failed to parse MQTT message: {e}")
