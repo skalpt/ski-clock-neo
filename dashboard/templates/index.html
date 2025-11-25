@@ -489,13 +489,15 @@
             }
             
             // Get mono color from monoColor [R, G, B, brightness] or default to white
+            // Apply minimum brightness floor (30%) so dim displays remain visible in preview
             let monoR = 255, monoG = 255, monoB = 255;
             if (snapshot.monoColor && snapshot.monoColor.length >= 3) {
                 monoR = snapshot.monoColor[0];
                 monoG = snapshot.monoColor[1];
                 monoB = snapshot.monoColor[2];
                 if (snapshot.monoColor.length >= 4) {
-                    const brightness = snapshot.monoColor[3] / 255;
+                    const rawBrightness = snapshot.monoColor[3] / 255;
+                    const brightness = Math.max(rawBrightness, 0.3); // Minimum 30% for visibility
                     monoR = Math.round(monoR * brightness);
                     monoG = Math.round(monoG * brightness);
                     monoB = Math.round(monoB * brightness);

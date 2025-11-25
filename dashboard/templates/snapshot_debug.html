@@ -251,13 +251,15 @@
             }
             
             // Get mono color from monoColor [R, G, B, brightness] or default to white
+            // Apply minimum brightness floor (30%) so dim displays remain visible in preview
             let monoR = 255, monoG = 255, monoB = 255;
             if (bitmapData.monoColor && bitmapData.monoColor.length >= 3) {
                 monoR = bitmapData.monoColor[0];
                 monoG = bitmapData.monoColor[1];
                 monoB = bitmapData.monoColor[2];
                 if (bitmapData.monoColor.length >= 4) {
-                    const brightness = bitmapData.monoColor[3] / 255;
+                    const rawBrightness = bitmapData.monoColor[3] / 255;
+                    const brightness = Math.max(rawBrightness, 0.3); // Minimum 30% for visibility
                     monoR = Math.round(monoR * brightness);
                     monoG = Math.round(monoG * brightness);
                     monoB = Math.round(monoB * brightness);

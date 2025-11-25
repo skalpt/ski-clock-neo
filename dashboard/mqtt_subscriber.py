@@ -404,14 +404,13 @@ def handle_display_snapshot(client, payload):
                         print(f"✗ No pixel data in snapshot for {device_id}")
                         return
                     
-                    # Build snapshot data object - include all formats for compatibility
+                    # Build snapshot data object
                     snapshot_data = {
                         'rows': payload.get('rows', 1),
                         'cols': payload.get('cols', 1),
                         'width': payload.get('width', 16),
                         'height': payload.get('height', 16),
-                        'mono': mono_base64,   # Bit-packed mono data
-                        'pixels': mono_base64, # Legacy field for backward compatibility
+                        'mono': mono_base64,   # Bit-packed mono data (primary field)
                         'timestamp': datetime.now(timezone.utc).isoformat()
                     }
                     
@@ -429,8 +428,7 @@ def handle_display_snapshot(client, payload):
                     
                     # Store snapshot in history table for debugging
                     bitmap_data = {
-                        'mono': mono_base64,   # Bit-packed mono data
-                        'pixels': mono_base64, # Legacy field for backward compatibility
+                        'mono': mono_base64,   # Bit-packed mono data (primary field)
                         'width': payload.get('width', 16),
                         'height': payload.get('height', 16),
                         'rows': payload.get('rows', 1),
