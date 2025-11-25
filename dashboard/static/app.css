@@ -1585,47 +1585,7 @@ body.no-web-serial .flash-column {
     }
 }
 
-/* Event Details Tooltip */
-.details-cell {
-    position: relative;
-}
-
-.details-text {
-    cursor: pointer;
-}
-
-.json-tooltip {
-    display: none;
-    position: absolute;
-    bottom: 100%;
-    left: 0;
-    z-index: 100;
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-lg);
-    padding: var(--spacing-sm);
-    min-width: 250px;
-    max-width: 400px;
-    max-height: 300px;
-    overflow: auto;
-}
-
-.details-cell:hover .json-tooltip {
-    display: block;
-}
-
-.json-tooltip pre {
-    margin: 0 0 var(--spacing-sm) 0;
-    font-size: 0.75rem;
-    white-space: pre-wrap;
-    word-break: break-word;
-    color: var(--text-primary);
-    background: var(--bg-tertiary);
-    padding: var(--spacing-sm);
-    border-radius: var(--radius-sm);
-}
-
+/* Copy JSON Button */
 .copy-json-btn {
     background: var(--brand-primary);
     color: white;

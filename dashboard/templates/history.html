@@ -524,15 +524,7 @@
                                         <td title="${escapeHtml(fullTimestamp)}">${new Date(event.timestamp).toLocaleString()}</td>
                                         <td>${escapeHtml(event.device_id)}</td>
                                         <td><span class="event-badge ${event.event_type}">${eventIcon} ${formatEventType(event.event_type)}</span></td>
-                                        <td class="details-cell">
-                                            <span class="details-text">${eventDetails}</span>
-                                            ${rawJson ? `
-                                            <div class="json-tooltip">
-                                                <pre>${escapeHtml(rawJson)}</pre>
-                                                <button class="copy-json-btn" onclick="event.stopPropagation(); copyJson(this, \`${escapeHtml(rawJson).replace(/`/g, '\\`')}\`)">📋 Copy</button>
-                                            </div>
-                                            ` : ''}
-                                        </td>
+                                        <td>${eventDetails}</td>
                                     </tr>
                                     <tr class="event-expanded-row" id="${rowId}" style="display: none;">
                                         <td colspan="4">
