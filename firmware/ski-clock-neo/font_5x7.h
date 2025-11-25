@@ -16,6 +16,7 @@ enum GlyphIndex {
   GLYPH_8,
   GLYPH_9,
   GLYPH_MINUS,
+  GLYPH_DASH,
   GLYPH_DOT,
   GLYPH_DEGREE,
   GLYPH_C,
@@ -127,7 +128,7 @@ const uint8_t FONT_5x7[][7] PROGMEM = {
     B00010,
     B01100
   },
-  // '-'
+  // '-' (minus / short dash)
   {
     B00,
     B00,
@@ -136,6 +137,16 @@ const uint8_t FONT_5x7[][7] PROGMEM = {
     B00,
     B00,
     B00
+  },
+  // '—' (long dash)
+  {
+    B00000,
+    B00000,
+    B00000,
+    B11111,
+    B00000,
+    B00000,
+    B00000
   },
   // '.'
   {
@@ -192,6 +203,7 @@ const uint8_t FONT_WIDTH_TABLE[] = {
   5, // 8
   5, // 9
   2, // '-' 
+  5, // '—' 
   1, // '.'
   3, // '°'
   5, // 'C'
