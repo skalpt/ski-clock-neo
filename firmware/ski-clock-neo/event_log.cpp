@@ -4,6 +4,7 @@
 #include "debug.h"
 
 #if defined(ESP32)
+  #include "esp_system.h"
   static portMUX_TYPE eventQueueMux = portMUX_INITIALIZER_UNLOCKED;
   #define EVENT_ENTER_CRITICAL() portENTER_CRITICAL(&eventQueueMux)
   #define EVENT_EXIT_CRITICAL() portEXIT_CRITICAL(&eventQueueMux)
@@ -11,6 +12,38 @@
   #define EVENT_ENTER_CRITICAL() noInterrupts()
   #define EVENT_EXIT_CRITICAL() interrupts()
 #endif
+
+static const char* getResetReason() {
+#if defined(ESP32)
+  esp_reset_reason_t reason = esp_reset_reason();
+  switch (reason) {
+    case ESP_RST_POWERON:   return "power_on";
+    case ESP_RST_SW:        return "software";
+    case ESP_RST_PANIC:     return "crash";
+    case ESP_RST_INT_WDT:   return "watchdog_int";
+    case ESP_RST_TASK_WDT:  return "watchdog_task";
+    case ESP_RST_WDT:       return "watchdog";
+    case ESP_RST_DEEPSLEEP: return "deep_sleep";
+    case ESP_RST_BROWNOUT:  return "brownout";
+    case ESP_RST_SDIO:      return "sdio";
+    default:                return "unknown";
+  }
+#elif defined(ESP8266)
+  rst_info* info = ESP.getResetInfoPtr();
+  switch (info->reason) {
+    case REASON_DEFAULT_RST:      return "power_on";
+    case REASON_WDT_RST:          return "watchdog";
+    case REASON_EXCEPTION_RST:    return "crash";
+    case REASON_SOFT_WDT_RST:     return "soft_watchdog";
+    case REASON_SOFT_RESTART:     return "software";
+    case REASON_DEEP_SLEEP_AWAKE: return "deep_sleep";
+    case REASON_EXT_SYS_RST:      return "external";
+    default:                      return "unknown";
+  }
+#else
+  return "unknown";
+#endif
+}
 
 static EventEntry eventQueue[EVENT_QUEUE_SIZE];
 static volatile uint8_t queueHead = 0;
@@ -27,6 +60,17 @@ void initEventLog() {
     queueCount = 0;
     eventLogReady = false;
     DEBUG_PRINTLN("Event log initialized");
+}
+
+void logBootEvent() {
+    String bootData = "{\"reason\":\"";
+    bootData += getResetReason();
+    bootData += "\",\"version\":\"";
+    bootData += FIRMWARE_VERSION;
+    bootData += "\"}";
+    logEvent("boot", bootData.c_str());
+    DEBUG_PRINT("Boot event logged: ");
+    DEBUG_PRINTLN(bootData);
 }
 
 void setEventLogReady(bool ready) {

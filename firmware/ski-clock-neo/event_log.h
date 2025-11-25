@@ -16,6 +16,7 @@ struct EventEntry {
 
 void initEventLog();
 void logEvent(const char* type, const char* dataJson = nullptr);
+void logBootEvent();
 void flushEventQueue();
 bool hasQueuedEvents();
 int getQueuedEventCount();
