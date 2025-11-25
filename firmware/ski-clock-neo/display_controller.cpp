@@ -19,15 +19,19 @@ static volatile bool showingTime = true;  // Toggle: true = time, false = date (
 // Platform-specific task handles and tickers
 #if defined(ESP32)
   static TaskHandle_t controllerTaskHandle = nullptr;  // For 4-second display toggle
+  static TaskHandle_t timeCheckTaskHandle = nullptr;   // For 1-second time change detection
 #elif defined(ESP8266)
-  // Software ticker (loop-driven, non-ISR, safe for setText)
-  void toggleTimerCallback();  // Forward declaration
-  TickTwo toggleTicker(toggleTimerCallback, 4000, 0, MILLIS);  // 4s, endless, millis resolution (extern in .h)
+  // Software tickers (loop-driven, non-ISR, safe for setText)
+  void toggleTimerCallback();     // Forward declaration
+  void timeCheckCallback();       // Forward declaration
+  TickTwo toggleTicker(toggleTimerCallback, 4000, 0, MILLIS);     // 4s, endless (extern in .h)
+  TickTwo timeCheckTicker(timeCheckCallback, 1000, 0, MILLIS);    // 1s, endless (extern in .h)
 #endif
 
 // Forward declarations
 void updateRow0();
 void updateRow1();
+void onTimeChange(uint8_t flags);
 
 // Display controller task (ESP32 only) - handles ONLY the 4-second time/date toggle
 #if defined(ESP32)
@@ -57,7 +61,45 @@ void toggleTimerCallback() {
   showingTime = !showingTime;
   updateRow0();
 }
+
+void timeCheckCallback() {
+  // Check for time changes (minute or date)
+  checkTimeChange();
+}
 #endif
+
+// Time change detection task (ESP32 only) - checks every second
+#if defined(ESP32)
+void timeCheckTask(void* parameter) {
+  DEBUG_PRINTLN("Time check FreeRTOS task started");
+  
+  TickType_t lastWakeTime = xTaskGetTickCount();
+  const TickType_t checkInterval = pdMS_TO_TICKS(1000);  // 1 second
+  
+  for(;;) {
+    vTaskDelayUntil(&lastWakeTime, checkInterval);
+    checkTimeChange();
+  }
+}
+#endif
+
+// Callback for time changes - forces display update
+void onTimeChange(uint8_t flags) {
+  DEBUG_PRINT("Time change detected, flags: ");
+  DEBUG_PRINTLN(flags);
+  
+  // If minute changed and we're showing time, update immediately
+  if ((flags & TIME_CHANGE_MINUTE) && showingTime) {
+    DEBUG_PRINTLN("Forcing time display update");
+    updateRow0();
+  }
+  
+  // If date changed and we're showing date, update immediately
+  if ((flags & TIME_CHANGE_DATE) && !showingTime) {
+    DEBUG_PRINTLN("Forcing date display update");
+    updateRow0();
+  }
+}
 
 void updateRow0() {
   // Check if NTP is synced before attempting to display time/date
@@ -162,6 +204,37 @@ void initDisplayController() {
   // Initialize data libraries LAST - allows display to show immediately during boot
   // Time library: NTP sync for Sweden timezone (CET/CEST)
   initTimeData();
+  
+  // Register time change callback - forces display update when minute/date changes
+  setTimeChangeCallback(onTimeChange);
+  
+  // Start time check task/ticker (1-second interval for detecting minute changes)
+  #if defined(ESP32)
+    #if defined(CONFIG_IDF_TARGET_ESP32C3)
+      xTaskCreate(
+        timeCheckTask,              // Task function
+        "TimeCheck",                // Task name
+        2048,                       // Stack size (bytes)
+        NULL,                       // Task parameter
+        1,                          // Priority (lower than display tasks)
+        &timeCheckTaskHandle        // Task handle
+      );
+    #else
+      xTaskCreatePinnedToCore(
+        timeCheckTask,              // Task function
+        "TimeCheck",                // Task name
+        2048,                       // Stack size (bytes)
+        NULL,                       // Task parameter
+        1,                          // Priority (lower than display tasks)
+        &timeCheckTaskHandle,       // Task handle
+        1                           // Core 1 (APP_CPU_NUM)
+      );
+    #endif
+    DEBUG_PRINTLN("Time check FreeRTOS task created (1s interval)");
+  #elif defined(ESP8266)
+    timeCheckTicker.start();
+    DEBUG_PRINTLN("Time check ticker started (ESP8266 TickTwo - 1s interval)");
+  #endif
   
   // Temperature library: DS18B20 sensor with automatic 30-second polling
   // Temperature library owns ALL temperature timing (tickers, callbacks)

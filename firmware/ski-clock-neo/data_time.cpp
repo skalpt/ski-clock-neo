@@ -27,6 +27,11 @@ static bool ntpSynced = false;
 static unsigned long lastNtpCheck = 0;
 static unsigned long lastRtcSync = 0;
 
+// Time change detection
+static int8_t lastMinute = -1;
+static int8_t lastDay = -1;
+static TimeChangeCallback timeChangeCallback = nullptr;
+
 // Check intervals (milliseconds)
 const unsigned long NTP_CHECK_INTERVAL = 10000;    // Check NTP every 10 seconds until synced
 const unsigned long RTC_SYNC_INTERVAL = 3600000;   // Sync RTC from NTP every hour
@@ -244,4 +249,59 @@ time_t getCurrentTime() {
     return 0;
   }
   return time(nullptr);
+}
+
+void setTimeChangeCallback(TimeChangeCallback callback) {
+  timeChangeCallback = callback;
+  DEBUG_PRINTLN("Time change callback registered");
+}
+
+bool checkTimeChange() {
+  if (!isTimeSynced()) {
+    return false;
+  }
+  
+  time_t now = time(nullptr);
+  struct tm timeinfo;
+  
+  #if defined(ESP32)
+    if (!getLocalTime(&timeinfo)) {
+      return false;
+    }
+  #elif defined(ESP8266)
+    localtime_r(&now, &timeinfo);
+  #endif
+  
+  uint8_t changeFlags = 0;
+  
+  // Check minute change
+  if (lastMinute != timeinfo.tm_min) {
+    if (lastMinute >= 0) {  // Skip first call (initialization)
+      changeFlags |= TIME_CHANGE_MINUTE;
+      DEBUG_PRINT("Minute changed: ");
+      DEBUG_PRINT(lastMinute);
+      DEBUG_PRINT(" -> ");
+      DEBUG_PRINTLN(timeinfo.tm_min);
+    }
+    lastMinute = timeinfo.tm_min;
+  }
+  
+  // Check date change (day of month)
+  if (lastDay != timeinfo.tm_mday) {
+    if (lastDay >= 0) {  // Skip first call (initialization)
+      changeFlags |= TIME_CHANGE_DATE;
+      DEBUG_PRINT("Date changed: day ");
+      DEBUG_PRINT(lastDay);
+      DEBUG_PRINT(" -> ");
+      DEBUG_PRINTLN(timeinfo.tm_mday);
+    }
+    lastDay = timeinfo.tm_mday;
+  }
+  
+  // Call callback if registered and changes detected
+  if (changeFlags != 0 && timeChangeCallback != nullptr) {
+    timeChangeCallback(changeFlags);
+  }
+  
+  return changeFlags != 0;
 }

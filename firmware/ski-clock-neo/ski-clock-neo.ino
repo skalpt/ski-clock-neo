@@ -58,6 +58,7 @@ void loop() {
   #if defined(ESP8266)
     displayTicker.update();             // Display rendering (1ms poll, safe for NeoPixel)
     toggleTicker.update();              // Display time/date toggle (4s)
+    timeCheckTicker.update();           // Time change detection (1s)
     temperaturePollTicker.update();     // Temperature poll (30s)
     temperatureReadTicker.update();     // Temperature read delay (750ms)
   #endif
