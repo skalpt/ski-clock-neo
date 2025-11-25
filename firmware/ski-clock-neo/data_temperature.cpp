@@ -2,6 +2,7 @@
 
 #include "ski-clock-neo_config.h" // For TEMPERATURE_PIN
 #include "display_controller.h"   // For updateTemperatureDisplay callback
+#include "event_log.h"            // For logging temperature events
 #include "debug.h"                // For serial debugging
 #include <OneWire.h>              // OneWire library for DS18B20
 #include <DallasTemperature.h>    // Main library for DS18B20
@@ -161,6 +162,15 @@ void temperatureReadCallback() {
     DEBUG_PRINT("Temperature updated: ");
     DEBUG_PRINTLN(temp);
     
+    // Log temp_read event with temperature value
+    // Use dtostrf for portable float-to-string conversion
+    char tempStr[16];
+    dtostrf(temp, 4, 1, tempStr);
+    String tempData = "{\"celsius\":";
+    tempData += tempStr;
+    tempData += "}";
+    logEvent("temp_read", tempData.c_str());
+    
     // First read complete
     if (firstTemperatureRead) {
       firstTemperatureRead = false;
@@ -169,6 +179,7 @@ void temperatureReadCallback() {
   } else {
     // Failed to read temperature - retry on next poll
     DEBUG_PRINTLN("Temperature read failed, will retry on next poll");
+    logEvent("temp_error", "{\"reason\":\"read_failed\"}");
   }
   
   // Always clear flag to allow next poll (ensures recovery from failed reads)

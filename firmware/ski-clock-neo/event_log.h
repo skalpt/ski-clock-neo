@@ -5,7 +5,7 @@
 
 #define EVENT_TYPE_MAX_LEN 16
 #define EVENT_DATA_MAX_LEN 64
-#define EVENT_QUEUE_SIZE 32
+#define EVENT_QUEUE_SIZE 50
 
 struct EventEntry {
     uint32_t timestamp_ms;

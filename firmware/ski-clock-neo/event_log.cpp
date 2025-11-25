@@ -3,10 +3,19 @@
 #include "device_info.h"
 #include "debug.h"
 
+#if defined(ESP32)
+  static portMUX_TYPE eventQueueMux = portMUX_INITIALIZER_UNLOCKED;
+  #define EVENT_ENTER_CRITICAL() portENTER_CRITICAL(&eventQueueMux)
+  #define EVENT_EXIT_CRITICAL() portEXIT_CRITICAL(&eventQueueMux)
+#else
+  #define EVENT_ENTER_CRITICAL() noInterrupts()
+  #define EVENT_EXIT_CRITICAL() interrupts()
+#endif
+
 static EventEntry eventQueue[EVENT_QUEUE_SIZE];
-static uint8_t queueHead = 0;
-static uint8_t queueTail = 0;
-static uint8_t queueCount = 0;
+static volatile uint8_t queueHead = 0;
+static volatile uint8_t queueTail = 0;
+static volatile uint8_t queueCount = 0;
 static bool eventLogReady = false;
 
 void initEventLog() {
@@ -27,6 +36,8 @@ void setEventLogReady(bool ready) {
 void logEvent(const char* type, const char* dataJson) {
     if (!type) return;
     
+    EVENT_ENTER_CRITICAL();
+    
     EventEntry& entry = eventQueue[queueTail];
     entry.timestamp_ms = millis();
     strncpy(entry.type, type, EVENT_TYPE_MAX_LEN - 1);
@@ -45,8 +56,12 @@ void logEvent(const char* type, const char* dataJson) {
         queueCount++;
     } else {
         queueHead = (queueHead + 1) % EVENT_QUEUE_SIZE;
-        DEBUG_PRINTLN("Event queue overflow - oldest event dropped");
     }
+    
+    uint8_t currentCount = queueCount;
+    bool shouldFlush = eventLogReady && mqttIsConnected;
+    
+    EVENT_EXIT_CRITICAL();
     
     DEBUG_PRINT("Event queued: ");
     DEBUG_PRINT(type);
@@ -55,16 +70,23 @@ void logEvent(const char* type, const char* dataJson) {
         DEBUG_PRINT(dataJson);
     }
     DEBUG_PRINT(" (queue: ");
-    DEBUG_PRINT(queueCount);
+    DEBUG_PRINT(currentCount);
     DEBUG_PRINTLN(")");
     
-    if (eventLogReady && mqttIsConnected) {
+    if (shouldFlush) {
         flushEventQueue();
     }
 }
 
 void flushEventQueue() {
-    if (!mqttIsConnected || queueCount == 0) return;
+    if (!mqttIsConnected) return;
+    
+    EVENT_ENTER_CRITICAL();
+    if (queueCount == 0) {
+        EVENT_EXIT_CRITICAL();
+        return;
+    }
+    EVENT_EXIT_CRITICAL();
     
     String deviceId = getDeviceID();
     String topic = String("skiclock/events/") + deviceId;
@@ -72,19 +94,38 @@ void flushEventQueue() {
     uint32_t now = millis();
     int flushed = 0;
     
-    while (queueCount > 0) {
-        EventEntry& entry = eventQueue[queueHead];
+    while (true) {
+        EVENT_ENTER_CRITICAL();
+        if (queueCount == 0) {
+            EVENT_EXIT_CRITICAL();
+            break;
+        }
         
-        if (entry.valid) {
-            uint32_t offset_ms = now - entry.timestamp_ms;
+        EventEntry& entry = eventQueue[queueHead];
+        uint32_t timestamp = entry.timestamp_ms;
+        char type[EVENT_TYPE_MAX_LEN];
+        char data[EVENT_DATA_MAX_LEN];
+        bool valid = entry.valid;
+        
+        strncpy(type, entry.type, EVENT_TYPE_MAX_LEN);
+        strncpy(data, entry.data, EVENT_DATA_MAX_LEN);
+        
+        entry.valid = false;
+        queueHead = (queueHead + 1) % EVENT_QUEUE_SIZE;
+        queueCount--;
+        
+        EVENT_EXIT_CRITICAL();
+        
+        if (valid) {
+            uint32_t offset_ms = now - timestamp;
             
             String payload = "{\"type\":\"";
-            payload += entry.type;
+            payload += type;
             payload += "\"";
             
-            if (entry.data[0] != '\0') {
+            if (data[0] != '\0') {
                 payload += ",\"data\":";
-                payload += entry.data;
+                payload += data;
             }
             
             payload += ",\"offset_ms\":";
@@ -93,22 +134,17 @@ void flushEventQueue() {
             
             if (mqttClient.publish(topic.c_str(), payload.c_str())) {
                 DEBUG_PRINT("Event flushed: ");
-                DEBUG_PRINT(entry.type);
+                DEBUG_PRINT(type);
                 DEBUG_PRINT(" (offset: ");
                 DEBUG_PRINT(offset_ms);
                 DEBUG_PRINTLN("ms)");
                 flushed++;
             } else {
                 DEBUG_PRINT("Failed to publish event: ");
-                DEBUG_PRINTLN(entry.type);
+                DEBUG_PRINTLN(type);
                 break;
             }
-            
-            entry.valid = false;
         }
-        
-        queueHead = (queueHead + 1) % EVENT_QUEUE_SIZE;
-        queueCount--;
     }
     
     if (flushed > 0) {
