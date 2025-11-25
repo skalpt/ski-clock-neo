@@ -1,6 +1,5 @@
 #include "display_controller.h"
 #include "display.h"
-#include "neopixel_render.h"  // For updateNeoPixels() synchronous render on startup
 #include "data_time.h"
 #include "data_temperature.h"
 #include "debug.h"
@@ -118,10 +117,6 @@ void initDisplayController() {
   
   showingTime = true; // Start with time display
   forceDisplayUpdate(); // Force initial update
-  
-  // Render synchronously BEFORE WiFi/MQTT init can preempt (ESP32-C3 single-core fix)
-  // This ensures placeholder text displays cleanly before network tasks start
-  updateNeoPixels();
   
   // Create FreeRTOS task for display toggle (ESP32) or Ticker (ESP8266)
   #if defined(ESP32)
