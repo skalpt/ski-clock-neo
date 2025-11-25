@@ -274,12 +274,12 @@
                                          <div>Last updated: ${new Date(device.display_snapshot.timestamp).toLocaleString()}</div>
                                      </div>
                                      <div class="device-actions snapshot-actions">
-                                         <a href="/history?tab=snapshots&device=${safeDeviceId}" class="device-btn history-btn">
-                                             📜 Snapshot History
-                                         </a>
                                          <button class="device-btn snapshot-btn" data-device-id="${safeDeviceId}" data-action="request-snapshot" ${device.status === 'offline' ? 'disabled' : ''}>
                                              📸 Request New
                                          </button>
+                                         <a href="/history?tab=snapshots&device=${safeDeviceId}" class="device-btn history-btn">
+                                             📜 History
+                                         </a>
                                      </div>` : 
                                     `<div class="no-snapshot-message">
                                         <p>No display snapshot available</p>

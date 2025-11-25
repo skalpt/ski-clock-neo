@@ -467,12 +467,12 @@ button {
 }
 
 .snapshot-btn {
-    background: rgba(59, 130, 246, 0.9);
+    background: rgba(249, 115, 22, 0.9);
     color: white;
 }
 
 .snapshot-btn:hover {
-    background: rgba(59, 130, 246, 1);
+    background: rgba(249, 115, 22, 1);
 }
 
 /* Standalone snapshot button (used when no snapshot exists) */
@@ -1350,12 +1350,12 @@ body.no-web-serial .flash-column {
 
 .history-btn {
     text-decoration: none;
-    background: rgba(249, 115, 22, 0.9);
+    background: rgba(59, 130, 246, 0.9);
     color: white;
 }
 
 .history-btn:hover {
-    background: rgba(249, 115, 22, 1);
+    background: rgba(59, 130, 246, 1);
     color: white;
 }
 
