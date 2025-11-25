@@ -1,6 +1,7 @@
 #include "data_time.h"
-#include "debug.h"
-#include <time.h>
+
+#include "debug.h"                // For serial debugging
+#include <time.h>                 // For time functions
 
 // Sweden timezone: CET-1CEST,M3.5.0,M10.5.0/3
 // CET (UTC+1) from last Sunday of October to last Sunday of March

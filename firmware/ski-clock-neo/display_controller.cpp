@@ -112,7 +112,7 @@ void updateRow1() {
   }
 }
 
-void initDisplayController(uint8_t temperatureSensorPin) {
+void initDisplayController() {
   DEBUG_PRINTLN("Initializing display controller");
   
   // Start with time display
@@ -166,7 +166,7 @@ void initDisplayController(uint8_t temperatureSensorPin) {
   // Temperature library: DS18B20 sensor with automatic 30-second polling
   // Temperature library owns ALL temperature timing (tickers, callbacks)
   // Calls updateTemperatureDisplay() callback when value changes
-  initTemperatureData(temperatureSensorPin);
+  initTemperatureData();
 }
 
 void setDisplayMode(DisplayMode mode) {

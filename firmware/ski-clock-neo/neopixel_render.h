@@ -9,9 +9,6 @@
 #include "display.h"
 
 // ==================== GLOBAL STATE ====================
-// Pin array for row initialization
-extern const uint8_t DISPLAY_PINS[DISPLAY_ROWS];
-
 // Static storage buffer for NeoPixel objects (no heap allocation)
 // We'll use placement-new to construct them in initNeoPixels()
 extern alignas(Adafruit_NeoPixel) uint8_t rowsStorage[DISPLAY_ROWS * sizeof(Adafruit_NeoPixel)];

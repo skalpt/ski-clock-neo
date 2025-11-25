@@ -12,8 +12,7 @@ enum DisplayMode {
 // Initialize display controller
 // Initializes time/temperature data libraries at the end
 // Display shows immediately, then data libraries init in background
-// temperatureSensorPin: GPIO pin for DS18B20 temperature sensor
-void initDisplayController(uint8_t temperatureSensorPin);
+void initDisplayController();
 
 // Set display mode (normal or timer mode)
 void setDisplayMode(DisplayMode mode);

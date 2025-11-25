@@ -1,8 +1,10 @@
 #include "data_temperature.h"
-#include "display_controller.h"  // For updateTemperatureDisplay callback
-#include "debug.h"
-#include <OneWire.h>
-#include <DallasTemperature.h>
+
+#include "ski-clock-neo_config.h" // For TEMPERATURE_PIN
+#include "display_controller.h"   // For updateTemperatureDisplay callback
+#include "debug.h"                // For serial debugging
+#include <OneWire.h>              // OneWire library for DS18B20
+#include <DallasTemperature.h>    // Main library for DS18B20
 
 #if defined(ESP32)
   #include <Ticker.h>  // ESP32: Software ticker (loop-driven)
@@ -33,12 +35,12 @@ static bool lastReadValid = false;
 static bool temperatureRequestPending = false;
 static bool firstTemperatureRead = true;
 
-void initTemperatureData(uint8_t pin) {
+void initTemperatureData() {
   DEBUG_PRINT("Initializing DS18B20 temperature sensor on GPIO ");
-  DEBUG_PRINTLN(pin);
+  DEBUG_PRINTLN(TEMPERATURE_PIN);
   
   // Initialize OneWire on specified pin
-  oneWire = new OneWire(pin);
+  oneWire = new OneWire(TEMPERATURE_PIN);
   sensors = new DallasTemperature(oneWire);
   
   // Start the sensor library

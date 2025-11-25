@@ -138,9 +138,7 @@ void initDisplay() {
     DEBUG_PRINTLN("Display ticker started (ESP8266 TickTwo - 1ms, loop-driven)");
   #endif
 
-  // NOTE: Display controller initialization (time/date/temp) is handled separately
-  // See ski-clock-neo.ino setup() which calls initDisplayController(TEMP_SENSOR_PIN)
-  DEBUG_PRINTLN("Display hardware initialized");
+  initDisplayController();
 }
 
 DisplayConfig getDisplayConfig() {

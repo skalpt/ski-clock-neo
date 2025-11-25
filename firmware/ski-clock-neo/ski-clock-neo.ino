@@ -1,9 +1,5 @@
 // Includes
 #include "ski-clock-neo_config.h"
-
-// Display pin mapping (extern declared in config, defined here)
-const uint8_t DISPLAY_PINS[DISPLAY_ROWS] = {4, 3};  // Row 1: GPIO4, Row 2: GPIO3
-
 #include "debug.h"
 #include "led_indicator.h"
 #include "display.h"
@@ -25,13 +21,9 @@ void setup() {
   // Initialize onboard LED indicator
   initLedIndicator();
 
-  // Initialize display (hardware only - no controller yet)
+  // Initialize display
   initDisplay();
   
-  // Initialize display controller (with time/temp data libraries)
-  // This is called separately to pass the temperature sensor pin
-  initDisplayController(TEMP_SENSOR_PIN);
-
   // Initialize button
   initButton();
 

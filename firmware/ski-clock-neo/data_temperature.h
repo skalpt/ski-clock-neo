@@ -5,7 +5,7 @@
 
 // Initialize DS18B20 temperature sensor on specified GPIO pin
 // Must be called once during setup
-void initTemperatureData(uint8_t pin);
+void initTemperatureData();
 
 // Request a new temperature reading from the sensor
 // This is non-blocking and starts the conversion process

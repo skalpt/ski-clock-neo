@@ -1,5 +1,6 @@
 #include "button.h"
-#include "debug.h"
+
+#include "debug.h"                        // For serial debugging
 
 // Button state tracking
 static uint8_t buttonPin = 0;
