@@ -1326,8 +1326,8 @@ body.no-web-serial .flash-column {
 
 .text-center-margin {
     text-align: center;
-    margin-top: 15px;
-    margin-bottom: 15px;
+    margin-top: 45px;
+    margin-bottom: 10px;
 }
 
 .snapshot-heading {
@@ -1335,6 +1335,13 @@ body.no-web-serial .flash-column {
     font-size: 1.1rem;
     font-weight: bold;
     color: inherit;
+}
+
+.snapshot-history-link {
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .snapshot-info {
@@ -1620,34 +1627,6 @@ body.no-web-serial .flash-column {
     border-radius: 50%;
     background: var(--status-online);
     animation: pulse 2s infinite;
-}
-
-/* ========================================
-   Snapshot Actions
-   ======================================== */
-
-.snapshot-actions {
-    display: flex;
-    justify-content: center;
-    gap: var(--spacing-sm);
-    margin-top: var(--spacing-md);
-    flex-wrap: wrap;
-}
-
-.snapshot-history-btn {
-    background: rgba(99, 102, 241, 0.9);
-    color: white;
-    text-decoration: none;
-    padding: 0.5rem 1rem;
-    border-radius: var(--radius-md);
-    font-size: 0.875rem;
-    font-weight: 600;
-    transition: all var(--transition-base);
-}
-
-.snapshot-history-btn:hover {
-    background: rgba(99, 102, 241, 1);
-    transform: var(--button-hover-transform);
 }
 
 /* ========================================

@@ -271,13 +271,12 @@
                                 ${device.display_snapshot ? 
                                     `<div id="panel-grid-${safeDeviceId}" class="panel-grid"></div>
                                      <div class="snapshot-info">
-                                         <div>Size: ${device.display_snapshot.width || 0}x${device.display_snapshot.height || 0} pixels</div>
                                          <div>Last updated: ${new Date(device.display_snapshot.timestamp).toLocaleString()}</div>
                                      </div>
-                                     <div class="snapshot-actions">
-                                         <a href="/history?tab=snapshots&device=${safeDeviceId}" class="snapshot-history-btn">📜 Snapshot History</a>
-                                         <button class="snapshot-btn" data-device-id="${safeDeviceId}" data-action="request-snapshot" ${device.status === 'offline' ? 'disabled' : ''}>
-                                             📸 Request Snapshot
+                                     <div class="device-actions">
+                                         <a href="/history?tab=snapshots&device=${safeDeviceId}" class="device-btn snapshot-history-link">📜 History</a>
+                                         <button class="device-btn snapshot-btn" data-device-id="${safeDeviceId}" data-action="request-snapshot" ${device.status === 'offline' ? 'disabled' : ''}>
+                                             📸 Snapshot
                                          </button>
                                      </div>` : 
                                     `<div class="no-snapshot-message">
