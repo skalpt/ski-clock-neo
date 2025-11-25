@@ -12,6 +12,10 @@
   #include <TickTwo.h>  // ESP8266: Software ticker (loop-driven, non-ISR, WiFi-safe)
 #endif
 
+// Forward declarations for ticker callbacks (needed before use)
+void temperaturePollCallback();
+void temperatureReadCallback();
+
 // Global sensor objects (initialized in initTemperatureData)
 static OneWire* oneWire = nullptr;
 static DallasTemperature* sensors = nullptr;
@@ -26,8 +30,6 @@ static bool lastReadValid = false;
   static Ticker temperatureReadTicker;
 #elif defined(ESP8266)
   // ESP8266: Use TickTwo (loop-driven, non-ISR, WiFi-safe)
-  void temperaturePollCallback();  // Forward declaration
-  void temperatureReadCallback();  // Forward declaration
   TickTwo temperaturePollTicker(temperaturePollCallback, 30000, 0, MILLIS);  // 30s, endless (extern in .h)
   TickTwo temperatureReadTicker(temperatureReadCallback, 750, 1, MILLIS);  // 750ms, once (extern in .h)
 #endif

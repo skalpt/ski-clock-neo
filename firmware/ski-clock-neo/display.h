@@ -64,6 +64,9 @@ const uint8_t* getDisplayBuffer();
 // Get display buffer size in bytes
 uint16_t getDisplayBufferSize();
 
+// Create snapshot buffer for MQTT publishing (proxies to hardware-specific renderer)
+void createSnapshotBuffer();
+
 // Event-driven rendering support
 // Check if display needs to be re-rendered
 bool isDisplayDirty();

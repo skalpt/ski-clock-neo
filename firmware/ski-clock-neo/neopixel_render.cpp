@@ -71,7 +71,7 @@ void updateNeoPixels() {
 
 // Create snapshot buffer on-demand (only called when publishing MQTT snapshot)
 // This performs the reverse transform from NeoPixel indices to logical coordinates
-void createSnapshotBuffer() {
+void createNeopixelSnapshot() {
   // Clear buffer
   memset(neopixelRenderBuffer, 0, sizeof(neopixelRenderBuffer));
   

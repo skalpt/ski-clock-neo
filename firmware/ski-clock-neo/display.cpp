@@ -1,4 +1,5 @@
 #include "display.h"
+#include "display_controller.h"
 #include "neopixel_render.h"
 #include "debug.h"
 #include <string.h>
@@ -282,6 +283,12 @@ uint16_t getDisplayBufferSize() {
   // Return actual buffer size needed for current configuration (in bytes)
   uint16_t totalPixels = displayConfig.rows * displayConfig.panelsPerRow * displayConfig.panelWidth * displayConfig.panelHeight;
   return (totalPixels + 7) / 8;
+}
+
+void createSnapshotBuffer() {
+  // Proxy to hardware-specific renderer
+  // This abstraction allows easy swap to other display types (e.g., HUB75)
+  createNeopixelSnapshot();
 }
 
 bool isDisplayDirty() {
