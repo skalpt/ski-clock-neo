@@ -515,13 +515,15 @@
                             ${data.events.map(event => {
                                 const eventIcon = getEventIcon(event.event_type);
                                 const eventDetails = formatEventData(event.event_type, event.event_data);
+                                const fullTimestamp = new Date(event.timestamp).toISOString();
+                                const rawJson = event.event_data ? JSON.stringify(event.event_data, null, 2) : '';
                                 
                                 return `
                                     <tr class="event-row event-${event.event_type}">
-                                        <td>${new Date(event.timestamp).toLocaleString()}</td>
+                                        <td title="${escapeHtml(fullTimestamp)}">${new Date(event.timestamp).toLocaleString()}</td>
                                         <td>${escapeHtml(event.device_id)}</td>
                                         <td><span class="event-badge ${event.event_type}">${eventIcon} ${formatEventType(event.event_type)}</span></td>
-                                        <td>${eventDetails}</td>
+                                        <td title="${escapeHtml(rawJson)}">${eventDetails}</td>
                                     </tr>
                                 `;
                             }).join('')}
