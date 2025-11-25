@@ -562,17 +562,11 @@ def logout():
 def index():
     return render_template('index.html')
 
-@app.route('/ota-history')
+@app.route('/history')
 @login_required
-def ota_history():
-    """OTA update history page with filters"""
-    return render_template('ota_history.html')
-
-@app.route('/snapshot-debug')
-@login_required
-def snapshot_debug():
-    """Display snapshot debugging page showing row text vs bitmap data"""
-    return render_template('snapshot_debug.html')
+def history():
+    """Unified history page with tabs for Snapshots, OTA Updates, and Events"""
+    return render_template('history.html')
 
 @app.route('/api')
 def api_index():
@@ -1540,6 +1534,57 @@ def get_snapshot_history(device_id):
         'offset': offset
     }), 200
 
+@app.route('/api/snapshots')
+@login_required
+def get_all_snapshots():
+    """Get display snapshots across all devices with optional filters
+    
+    Query parameters:
+    - device_id: Filter by specific device
+    - start_date: ISO 8601 date (snapshots after this time)
+    - end_date: ISO 8601 date (snapshots before this time)
+    - limit: Number of snapshots to return (default: 50)
+    - offset: Pagination offset (default: 0)
+    """
+    from models import DisplaySnapshot
+    from sqlalchemy import desc
+    from datetime import datetime
+    
+    device_id = request.args.get('device_id')
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    limit = request.args.get('limit', type=int, default=50)
+    offset = request.args.get('offset', type=int, default=0)
+    
+    query = DisplaySnapshot.query
+    
+    if device_id:
+        query = query.filter_by(device_id=device_id)
+    
+    if start_date:
+        try:
+            start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+            query = query.filter(DisplaySnapshot.timestamp >= start_dt)
+        except (ValueError, AttributeError):
+            return jsonify({'error': 'Invalid start_date format. Use ISO 8601.'}), 400
+    
+    if end_date:
+        try:
+            end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+            query = query.filter(DisplaySnapshot.timestamp <= end_dt)
+        except (ValueError, AttributeError):
+            return jsonify({'error': 'Invalid end_date format. Use ISO 8601.'}), 400
+    
+    total = query.count()
+    snapshots = query.order_by(desc(DisplaySnapshot.timestamp)).limit(limit).offset(offset).all()
+    
+    return jsonify({
+        'snapshots': [s.to_dict() for s in snapshots],
+        'total': total,
+        'limit': limit,
+        'offset': offset
+    }), 200
+
 @app.route('/api/events')
 @login_required
 def get_events():
@@ -1585,12 +1630,12 @@ def get_events():
         except (ValueError, AttributeError):
             return jsonify({'error': 'Invalid end_date format. Use ISO 8601.'}), 400
     
-    total_count = query.count()
+    total = query.count()
     events = query.order_by(desc(EventLog.timestamp)).limit(limit).offset(offset).all()
     
     return jsonify({
         'events': [e.to_dict() for e in events],
-        'total_count': total_count,
+        'total': total,
         'limit': limit,
         'offset': offset
     }), 200

@@ -1,0 +1,700 @@
+{% extends "base.html" %}
+
+{% block title %}History - Ski Clock Neo{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="header-bar">
+        <div class="header-content">
+            <h1>⛷️ Ski Clock Neo</h1>
+            <p class="subtitle">History</p>
+        </div>
+        <a href="/" class="back-link">← Back to Dashboard</a>
+    </div>
+
+    <div class="card">
+        <div class="tabs-container">
+            <button class="tab-btn active" data-tab="snapshots">📸 Snapshots</button>
+            <button class="tab-btn" data-tab="ota">📦 OTA Updates</button>
+            <button class="tab-btn" data-tab="events">📋 Events</button>
+        </div>
+        
+        <div class="filter-bar">
+            <div class="form-group flex-1 min-width-200 mb-0">
+                <label for="device-filter">Device</label>
+                <select id="device-filter" class="device-filter-select">
+                    <option value="">All Devices</option>
+                </select>
+            </div>
+            
+            <div class="form-group flex-1 min-width-150 mb-0 status-filter-group" style="display: none;">
+                <label for="status-filter">Status</label>
+                <select id="status-filter">
+                    <option value="">All Status</option>
+                    <option value="success">Success</option>
+                    <option value="failed">Failed</option>
+                    <option value="in-progress">In Progress</option>
+                </select>
+            </div>
+            
+            <div class="form-group flex-1 min-width-150 mb-0 event-type-filter-group" style="display: none;">
+                <label for="event-type-filter">Event Type</label>
+                <select id="event-type-filter">
+                    <option value="">All Types</option>
+                    <option value="heartbeat">Heartbeat</option>
+                    <option value="boot">Boot</option>
+                    <option value="wifi_connect">WiFi Connect</option>
+                    <option value="wifi_disconnect">WiFi Disconnect</option>
+                    <option value="mqtt_connect">MQTT Connect</option>
+                    <option value="mqtt_disconnect">MQTT Disconnect</option>
+                    <option value="temp_read">Temperature Read</option>
+                    <option value="temp_error">Temperature Error</option>
+                </select>
+            </div>
+            
+            <div class="form-group flex-1 min-width-200 mb-0">
+                <label for="date-from">From Date</label>
+                <input type="datetime-local" id="date-from" class="date-input">
+            </div>
+            
+            <div class="form-group flex-1 min-width-200 mb-0">
+                <label for="date-to">To Date</label>
+                <input type="datetime-local" id="date-to" class="date-input">
+            </div>
+            
+            <div class="form-group flex-1 min-width-100 mb-0">
+                <label for="page-size">Per Page</label>
+                <select id="page-size">
+                    <option value="25">25</option>
+                    <option value="50" selected>50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+            
+            <div class="flex-align-end">
+                <button onclick="applyFilters()">Apply</button>
+                <button onclick="clearFilters()" class="button-secondary">Clear</button>
+            </div>
+        </div>
+
+        <div id="tab-content-snapshots" class="tab-content active">
+            <div class="empty-state">
+                <p>Loading snapshots...</p>
+            </div>
+        </div>
+        
+        <div id="tab-content-ota" class="tab-content" style="display: none;">
+            <div class="empty-state">
+                <p>Loading OTA history...</p>
+            </div>
+        </div>
+        
+        <div id="tab-content-events" class="tab-content" style="display: none;">
+            <div class="empty-state">
+                <p>Loading events...</p>
+            </div>
+        </div>
+        
+        <div class="pagination" id="pagination-container"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let currentTab = 'snapshots';
+    let currentPage = 1;
+    let pageSize = 50;
+    let currentFilters = {};
+    let allDevices = [];
+    let cachedSnapshots = [];
+
+    function getUrlParams() {
+        const params = new URLSearchParams(window.location.search);
+        return {
+            tab: params.get('tab') || 'snapshots',
+            device: params.get('device') || '',
+            page: parseInt(params.get('page')) || 1
+        };
+    }
+
+    function updateUrl() {
+        const params = new URLSearchParams();
+        params.set('tab', currentTab);
+        if (currentFilters.device_id) params.set('device', currentFilters.device_id);
+        if (currentPage > 1) params.set('page', currentPage);
+        window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+    }
+
+    async function loadDevicesList() {
+        try {
+            const response = await fetch('/api/devices');
+            const data = await response.json();
+            
+            if (data.devices && data.devices.length > 0) {
+                allDevices = data.devices;
+                const select = document.getElementById('device-filter');
+                allDevices.forEach(device => {
+                    const option = document.createElement('option');
+                    option.value = device.device_id;
+                    option.textContent = `${device.device_id} (${device.board})`;
+                    select.appendChild(option);
+                });
+                
+                const urlParams = getUrlParams();
+                if (urlParams.device) {
+                    select.value = urlParams.device;
+                    currentFilters.device_id = urlParams.device;
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load devices list:', error);
+        }
+    }
+
+    function switchTab(tabName) {
+        currentTab = tabName;
+        currentPage = 1;
+        
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === tabName);
+        });
+        
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.style.display = 'none';
+            content.classList.remove('active');
+        });
+        
+        const activeContent = document.getElementById(`tab-content-${tabName}`);
+        if (activeContent) {
+            activeContent.style.display = 'block';
+            activeContent.classList.add('active');
+        }
+        
+        document.querySelector('.status-filter-group').style.display = tabName === 'ota' ? 'block' : 'none';
+        document.querySelector('.event-type-filter-group').style.display = tabName === 'events' ? 'block' : 'none';
+        
+        updateUrl();
+        loadCurrentTab();
+    }
+
+    function loadCurrentTab() {
+        switch (currentTab) {
+            case 'snapshots':
+                loadSnapshots();
+                break;
+            case 'ota':
+                loadOTAHistory();
+                break;
+            case 'events':
+                loadEvents();
+                break;
+        }
+    }
+
+    async function loadSnapshots() {
+        const container = document.getElementById('tab-content-snapshots');
+        container.innerHTML = '<div class="empty-state"><p>Loading snapshots...</p></div>';
+        
+        try {
+            let url = `/api/snapshots?limit=${pageSize}&offset=${(currentPage - 1) * pageSize}`;
+            
+            if (currentFilters.device_id) {
+                url += `&device_id=${encodeURIComponent(currentFilters.device_id)}`;
+            }
+            if (currentFilters.start_date) {
+                url += `&start_date=${encodeURIComponent(currentFilters.start_date)}`;
+            }
+            if (currentFilters.end_date) {
+                url += `&end_date=${encodeURIComponent(currentFilters.end_date)}`;
+            }
+            
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (!data.snapshots || data.snapshots.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>No snapshots found</p></div>';
+                document.getElementById('pagination-container').innerHTML = '';
+                return;
+            }
+            
+            cachedSnapshots = data.snapshots;
+            
+            let html = '';
+            data.snapshots.forEach(snapshot => {
+                html += renderSnapshot(snapshot);
+            });
+            
+            container.innerHTML = html;
+            
+            setTimeout(() => {
+                data.snapshots.forEach(snapshot => {
+                    if (snapshot.bitmap_data) {
+                        renderBitmapToCanvas(`canvas-${snapshot.id}`, snapshot.bitmap_data);
+                    }
+                });
+            }, 100);
+            
+            updatePagination(data.total, currentPage);
+            
+        } catch (error) {
+            console.error('Failed to load snapshots:', error);
+            container.innerHTML = '<div class="empty-state"><p>Failed to load snapshots</p></div>';
+        }
+    }
+
+    function renderSnapshot(snapshot) {
+        const timestamp = new Date(snapshot.timestamp).toLocaleString();
+        const rowText = snapshot.row_text || [];
+        const bitmap = snapshot.bitmap_data || {};
+        
+        let rowTextHtml = '<ul class="list-reset">';
+        rowText.forEach((text, index) => {
+            rowTextHtml += `<li><strong>Row ${index}:</strong> "${escapeHtml(text)}"</li>`;
+        });
+        rowTextHtml += '</ul>';
+        
+        return `
+            <div class="snapshot-card">
+                <div class="snapshot-card-header">
+                    <div>
+                        <h3>📸 ${escapeHtml(snapshot.device_id)}</h3>
+                        <span class="snapshot-timestamp">${timestamp}</span>
+                    </div>
+                </div>
+                
+                <div class="snapshot-grid">
+                    <div class="snapshot-section">
+                        <h4>📝 Row Text (Sent by Device)</h4>
+                        ${rowTextHtml}
+                    </div>
+                    
+                    <div class="snapshot-section">
+                        <h4>🎨 Bitmap Preview (${bitmap.width || 0}x${bitmap.height || 0})</h4>
+                        <div class="bitmap-preview">
+                            <canvas id="canvas-${snapshot.id}" class="bitmap-canvas"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderBitmapToCanvas(canvasId, bitmapData) {
+        const canvas = document.getElementById(canvasId);
+        const monoData = bitmapData.mono || bitmapData.pixels;
+        const colorData = bitmapData.color;
+        
+        if (!canvas || (!monoData && !colorData)) return;
+        
+        try {
+            const width = bitmapData.width || 16;
+            const height = bitmapData.height || 16;
+            
+            const isColorMode = !!colorData;
+            let pixelData = null;
+            let colorPixelData = null;
+            
+            if (isColorMode) {
+                colorPixelData = atob(colorData);
+            } else {
+                pixelData = atob(monoData);
+            }
+            
+            let monoR = 255, monoG = 255, monoB = 255;
+            if (bitmapData.monoColor && bitmapData.monoColor.length >= 3) {
+                monoR = bitmapData.monoColor[0];
+                monoG = bitmapData.monoColor[1];
+                monoB = bitmapData.monoColor[2];
+                if (bitmapData.monoColor.length >= 4) {
+                    const rawBrightness = bitmapData.monoColor[3] / 255;
+                    const brightness = Math.max(rawBrightness, 0.3);
+                    monoR = Math.round(monoR * brightness);
+                    monoG = Math.round(monoG * brightness);
+                    monoB = Math.round(monoB * brightness);
+                }
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.createImageData(width, height);
+            
+            let pixelIndex = 0;
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const i = (y * width + x) * 4;
+                    
+                    if (isColorMode) {
+                        const colorByteIndex = pixelIndex * 4;
+                        const r = colorPixelData.charCodeAt(colorByteIndex) || 0;
+                        const g = colorPixelData.charCodeAt(colorByteIndex + 1) || 0;
+                        const b = colorPixelData.charCodeAt(colorByteIndex + 2) || 0;
+                        const brightness = (colorPixelData.charCodeAt(colorByteIndex + 3) || 255) / 255;
+                        
+                        imageData.data[i] = Math.round(r * brightness);
+                        imageData.data[i + 1] = Math.round(g * brightness);
+                        imageData.data[i + 2] = Math.round(b * brightness);
+                        imageData.data[i + 3] = 255;
+                    } else {
+                        const byteIndex = Math.floor(pixelIndex / 8);
+                        const bitIndex = pixelIndex % 8;
+                        const byte = pixelData.charCodeAt(byteIndex) || 0;
+                        const isOn = (byte & (1 << bitIndex)) !== 0;
+                        
+                        if (isOn) {
+                            imageData.data[i] = monoR;
+                            imageData.data[i + 1] = monoG;
+                            imageData.data[i + 2] = monoB;
+                            imageData.data[i + 3] = 255;
+                        } else {
+                            imageData.data[i] = 0;
+                            imageData.data[i + 1] = 0;
+                            imageData.data[i + 2] = 0;
+                            imageData.data[i + 3] = 255;
+                        }
+                    }
+                    
+                    pixelIndex++;
+                }
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+            
+            canvas.style.width = `${Math.min(width * 4, 400)}px`;
+            canvas.style.height = 'auto';
+            
+        } catch (error) {
+            console.error('Failed to render bitmap:', error);
+        }
+    }
+
+    async function loadOTAHistory() {
+        const container = document.getElementById('tab-content-ota');
+        container.innerHTML = '<div class="empty-state"><p>Loading OTA history...</p></div>';
+        
+        try {
+            let url = `/api/ota-logs?limit=${pageSize}&offset=${(currentPage - 1) * pageSize}`;
+            
+            if (currentFilters.device_id) {
+                url += `&device_id=${encodeURIComponent(currentFilters.device_id)}`;
+            }
+            if (currentFilters.status) {
+                url += `&status=${encodeURIComponent(currentFilters.status)}`;
+            }
+            if (currentFilters.start_date) {
+                url += `&start_date=${encodeURIComponent(currentFilters.start_date)}`;
+            }
+            if (currentFilters.end_date) {
+                url += `&end_date=${encodeURIComponent(currentFilters.end_date)}`;
+            }
+            
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (!data.logs || data.logs.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>No OTA updates found</p></div>';
+                document.getElementById('pagination-container').innerHTML = '';
+                return;
+            }
+            
+            const tableHtml = `
+                <div class="table-responsive">
+                    <table class="ota-history-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Device ID</th>
+                                <th>Platform</th>
+                                <th>Old Version</th>
+                                <th>New Version</th>
+                                <th>Progress</th>
+                                <th>Status</th>
+                                <th>Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.logs.map(log => {
+                                const statusClass = log.status === 'success' ? 'success' : log.status === 'failed' ? 'failed' : 'in-progress';
+                                const progressBar = log.status === 'in-progress' ? `
+                                    <div class="progress-bar-mini">
+                                        <div class="fill" data-progress="${log.download_progress}"></div>
+                                    </div>
+                                ` : `${log.download_progress}%`;
+                                
+                                const duration = log.duration_seconds ? `${log.duration_seconds}s` : '-';
+                                
+                                return `
+                                    <tr>
+                                        <td>${new Date(log.started_at).toLocaleString()}</td>
+                                        <td>${escapeHtml(log.device_id)}</td>
+                                        <td>${escapeHtml(log.platform || '-')}</td>
+                                        <td>${escapeHtml(log.old_version || '-')}</td>
+                                        <td>${escapeHtml(log.new_version || '-')}</td>
+                                        <td>${progressBar}</td>
+                                        <td><span class="status-badge ${statusClass}">${log.status}</span></td>
+                                        <td>${duration}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            container.innerHTML = tableHtml;
+            
+            updateProgressBars();
+            updatePagination(data.total, currentPage);
+            
+        } catch (error) {
+            console.error('Failed to load OTA history:', error);
+            container.innerHTML = '<div class="empty-state"><p>Failed to load OTA history</p></div>';
+        }
+    }
+
+    async function loadEvents() {
+        const container = document.getElementById('tab-content-events');
+        container.innerHTML = '<div class="empty-state"><p>Loading events...</p></div>';
+        
+        try {
+            let url = `/api/events?limit=${pageSize}&offset=${(currentPage - 1) * pageSize}`;
+            
+            if (currentFilters.device_id) {
+                url += `&device_id=${encodeURIComponent(currentFilters.device_id)}`;
+            }
+            if (currentFilters.event_type) {
+                url += `&event_type=${encodeURIComponent(currentFilters.event_type)}`;
+            }
+            if (currentFilters.start_date) {
+                url += `&start_date=${encodeURIComponent(currentFilters.start_date)}`;
+            }
+            if (currentFilters.end_date) {
+                url += `&end_date=${encodeURIComponent(currentFilters.end_date)}`;
+            }
+            
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (!data.events || data.events.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>No events found</p></div>';
+                document.getElementById('pagination-container').innerHTML = '';
+                return;
+            }
+            
+            const tableHtml = `
+                <div class="table-responsive">
+                    <table class="events-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Device ID</th>
+                                <th>Event Type</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.events.map(event => {
+                                const eventIcon = getEventIcon(event.event_type);
+                                const eventDetails = formatEventData(event.event_type, event.event_data);
+                                
+                                return `
+                                    <tr class="event-row event-${event.event_type}">
+                                        <td>${new Date(event.timestamp).toLocaleString()}</td>
+                                        <td>${escapeHtml(event.device_id)}</td>
+                                        <td><span class="event-badge ${event.event_type}">${eventIcon} ${formatEventType(event.event_type)}</span></td>
+                                        <td>${eventDetails}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            container.innerHTML = tableHtml;
+            updatePagination(data.total, currentPage);
+            
+        } catch (error) {
+            console.error('Failed to load events:', error);
+            container.innerHTML = '<div class="empty-state"><p>Failed to load events</p></div>';
+        }
+    }
+
+    function getEventIcon(eventType) {
+        const icons = {
+            'heartbeat': '💓',
+            'boot': '🔌',
+            'wifi_connect': '📶',
+            'wifi_disconnect': '📵',
+            'mqtt_connect': '🔗',
+            'mqtt_disconnect': '🔓',
+            'temp_read': '🌡️',
+            'temp_error': '⚠️'
+        };
+        return icons[eventType] || '📌';
+    }
+
+    function formatEventType(eventType) {
+        const labels = {
+            'heartbeat': 'Heartbeat',
+            'boot': 'Boot',
+            'wifi_connect': 'WiFi Connect',
+            'wifi_disconnect': 'WiFi Disconnect',
+            'mqtt_connect': 'MQTT Connect',
+            'mqtt_disconnect': 'MQTT Disconnect',
+            'temp_read': 'Temperature',
+            'temp_error': 'Temp Error'
+        };
+        return labels[eventType] || eventType;
+    }
+
+    function formatEventData(eventType, eventData) {
+        if (!eventData) return '-';
+        
+        try {
+            const data = typeof eventData === 'string' ? JSON.parse(eventData) : eventData;
+            
+            switch (eventType) {
+                case 'heartbeat':
+                    const parts = [];
+                    if (data.version) parts.push(`v${escapeHtml(data.version)}`);
+                    if (data.rssi) parts.push(`${data.rssi} dBm`);
+                    if (data.uptime) parts.push(`uptime: ${formatUptime(data.uptime)}`);
+                    if (data.free_heap) parts.push(`heap: ${Math.round(data.free_heap / 1024)}KB`);
+                    return parts.join(', ') || '-';
+                case 'boot':
+                    return data.reason ? `Reason: ${escapeHtml(data.reason)}` : '-';
+                case 'wifi_connect':
+                    const wifiParts = [];
+                    if (data.ssid) wifiParts.push(`SSID: ${escapeHtml(data.ssid)}`);
+                    if (data.rssi) wifiParts.push(`${data.rssi} dBm`);
+                    if (data.ip) wifiParts.push(`IP: ${escapeHtml(data.ip)}`);
+                    return wifiParts.join(', ') || '-';
+                case 'wifi_disconnect':
+                    return data.reason ? `Reason: ${escapeHtml(data.reason)}` : '-';
+                case 'temp_read':
+                    return data.celsius !== undefined ? `${data.celsius.toFixed(1)}°C` : '-';
+                case 'temp_error':
+                    return data.error ? escapeHtml(data.error) : 'Sensor error';
+                default:
+                    return JSON.stringify(data);
+            }
+        } catch (e) {
+            return String(eventData);
+        }
+    }
+
+    function formatUptime(seconds) {
+        if (!seconds) return '0s';
+        const days = Math.floor(seconds / 86400);
+        const hours = Math.floor((seconds % 86400) / 3600);
+        const mins = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+        
+        if (days > 0) return `${days}d ${hours}h`;
+        if (hours > 0) return `${hours}h ${mins}m`;
+        if (mins > 0) return `${mins}m ${secs}s`;
+        return `${secs}s`;
+    }
+
+    function updatePagination(total, page) {
+        const totalPages = Math.ceil(total / pageSize);
+        
+        if (totalPages <= 1) {
+            document.getElementById('pagination-container').innerHTML = '';
+            return;
+        }
+        
+        document.getElementById('pagination-container').innerHTML = `
+            <button onclick="goToPage(${page - 1})" ${page === 1 ? 'disabled' : ''}>
+                ← Previous
+            </button>
+            <span class="pagination-text">
+                Page ${page} of ${totalPages} (${total} records)
+            </span>
+            <button onclick="goToPage(${page + 1})" ${page === totalPages ? 'disabled' : ''}>
+                Next →
+            </button>
+        `;
+    }
+
+    function goToPage(page) {
+        currentPage = page;
+        updateUrl();
+        loadCurrentTab();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function updateProgressBars() {
+        document.querySelectorAll('[data-progress]').forEach(element => {
+            const progress = element.getAttribute('data-progress');
+            element.style.width = `${progress}%`;
+        });
+    }
+
+    function applyFilters() {
+        const deviceId = document.getElementById('device-filter').value;
+        const status = document.getElementById('status-filter').value;
+        const eventType = document.getElementById('event-type-filter').value;
+        const dateFrom = document.getElementById('date-from').value;
+        const dateTo = document.getElementById('date-to').value;
+        
+        pageSize = parseInt(document.getElementById('page-size').value);
+        
+        currentFilters = {};
+        if (deviceId) currentFilters.device_id = deviceId;
+        if (status) currentFilters.status = status;
+        if (eventType) currentFilters.event_type = eventType;
+        if (dateFrom) currentFilters.start_date = new Date(dateFrom).toISOString();
+        if (dateTo) currentFilters.end_date = new Date(dateTo).toISOString();
+        
+        currentPage = 1;
+        updateUrl();
+        loadCurrentTab();
+    }
+
+    function clearFilters() {
+        document.getElementById('device-filter').value = '';
+        document.getElementById('status-filter').value = '';
+        document.getElementById('event-type-filter').value = '';
+        document.getElementById('date-from').value = '';
+        document.getElementById('date-to').value = '';
+        currentFilters = {};
+        currentPage = 1;
+        updateUrl();
+        loadCurrentTab();
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+        });
+        
+        loadDevicesList().then(() => {
+            const urlParams = getUrlParams();
+            currentPage = urlParams.page;
+            
+            if (urlParams.tab && urlParams.tab !== 'snapshots') {
+                switchTab(urlParams.tab);
+            } else {
+                loadSnapshots();
+            }
+        });
+    });
+    
+    setInterval(() => {
+        if (currentTab === 'ota') {
+            loadOTAHistory();
+        }
+    }, 30000);
+</script>
+{% endblock %}

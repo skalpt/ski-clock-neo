@@ -26,6 +26,21 @@
         </div>
     </div>
 
+    <div class="card events-feed-container">
+        <div class="events-feed-header">
+            <div class="flex-align-center">
+                <h2>📋 Events</h2>
+                <span class="live-indicator">Live</span>
+            </div>
+            <a href="/history?tab=events" class="action-link">Events History →</a>
+        </div>
+        <div id="events-feed-container">
+            <div class="empty-state">
+                <p>Loading events...</p>
+            </div>
+        </div>
+    </div>
+
     <div class="card">
         <h2>📦 Firmware Versions</h2>
         <div class="table-responsive">
@@ -50,14 +65,7 @@
     <div class="card">
         <div class="flex-between mb-15">
             <h2>📊 OTA Update Statistics</h2>
-            <div class="flex-gap">
-                <a href="/snapshot-debug" class="action-link secondary">
-                    🔍 Snapshot Debug
-                </a>
-                <a href="/ota-history" class="action-link">
-                    View Full History →
-                </a>
-            </div>
+            <a href="/history?tab=ota" class="action-link">OTA Update History →</a>
         </div>
         <div id="ota-stats-container">
             <div class="empty-state">
@@ -265,6 +273,12 @@
                                      <div class="snapshot-info">
                                          <div>Size: ${device.display_snapshot.width || 0}x${device.display_snapshot.height || 0} pixels</div>
                                          <div>Last updated: ${new Date(device.display_snapshot.timestamp).toLocaleString()}</div>
+                                     </div>
+                                     <div class="snapshot-actions">
+                                         <a href="/history?tab=snapshots&device=${safeDeviceId}" class="snapshot-history-btn">📜 Snapshot History</a>
+                                         <button class="snapshot-btn" data-device-id="${safeDeviceId}" data-action="request-snapshot" ${device.status === 'offline' ? 'disabled' : ''}>
+                                             📸 Request Snapshot
+                                         </button>
                                      </div>` : 
                                     `<div class="no-snapshot-message">
                                         <p>No display snapshot available</p>
@@ -822,11 +836,122 @@
         }
     }
 
+    async function loadEventsFeed() {
+        try {
+            const response = await fetch('/api/events?limit=10');
+            const data = await response.json();
+            
+            const container = document.getElementById('events-feed-container');
+            
+            if (!data.events || data.events.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <p>No events yet</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const tableHtml = `
+                <div class="table-responsive">
+                    <table class="events-feed-table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Device</th>
+                                <th>Event</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.events.map(event => {
+                                const eventIcon = getEventIcon(event.event_type);
+                                const eventDetails = formatEventData(event.event_type, event.event_data);
+                                
+                                return `
+                                    <tr>
+                                        <td>${new Date(event.timestamp).toLocaleTimeString()}</td>
+                                        <td>${escapeHtml(event.device_id)}</td>
+                                        <td><span class="event-badge ${event.event_type}">${eventIcon} ${formatEventType(event.event_type)}</span></td>
+                                        <td>${eventDetails}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            container.innerHTML = tableHtml;
+            
+        } catch (error) {
+            console.error('Failed to load events feed:', error);
+        }
+    }
+
+    function getEventIcon(eventType) {
+        const icons = {
+            'heartbeat': '💓',
+            'boot': '🔌',
+            'wifi_connect': '📶',
+            'wifi_disconnect': '📵',
+            'mqtt_connect': '🔗',
+            'mqtt_disconnect': '🔓',
+            'temp_read': '🌡️',
+            'temp_error': '⚠️'
+        };
+        return icons[eventType] || '📌';
+    }
+
+    function formatEventType(eventType) {
+        const labels = {
+            'heartbeat': 'Heartbeat',
+            'boot': 'Boot',
+            'wifi_connect': 'WiFi Connect',
+            'wifi_disconnect': 'WiFi Disconnect',
+            'mqtt_connect': 'MQTT Connect',
+            'mqtt_disconnect': 'MQTT Disconnect',
+            'temp_read': 'Temperature',
+            'temp_error': 'Temp Error'
+        };
+        return labels[eventType] || eventType;
+    }
+
+    function formatEventData(eventType, eventData) {
+        if (!eventData) return '-';
+        
+        try {
+            const data = typeof eventData === 'string' ? JSON.parse(eventData) : eventData;
+            
+            switch (eventType) {
+                case 'heartbeat':
+                    const parts = [];
+                    if (data.rssi) parts.push(`${data.rssi} dBm`);
+                    if (data.uptime) parts.push(`up: ${formatUptime(data.uptime)}`);
+                    return parts.join(', ') || '-';
+                case 'boot':
+                    return data.reason ? escapeHtml(data.reason) : '-';
+                case 'wifi_connect':
+                    const wifiParts = [];
+                    if (data.ssid) wifiParts.push(escapeHtml(data.ssid));
+                    if (data.rssi) wifiParts.push(`${data.rssi} dBm`);
+                    return wifiParts.join(', ') || '-';
+                case 'temp_read':
+                    return data.celsius !== undefined ? `${data.celsius.toFixed(1)}°C` : '-';
+                default:
+                    return '-';
+            }
+        } catch (e) {
+            return '-';
+        }
+    }
+
     // Initial load
     checkWebSerialSupport();
     loadOTAStats();
     loadDevices();
     loadFirmware();
+    loadEventsFeed();
 
     // Update live timestamps every second for smooth counting
     setInterval(updateLiveTimestamps, 1000);
@@ -839,5 +964,8 @@
     deviceRefreshInterval = setInterval(loadDevices, currentRefreshRate);
     
     setInterval(loadFirmware, 60000);
+    
+    // Refresh events feed every 10 seconds
+    setInterval(loadEventsFeed, 10000);
 </script>
 {% endblock %}

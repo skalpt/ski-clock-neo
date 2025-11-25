@@ -100,7 +100,7 @@ def handle_heartbeat(client, payload):
     
     if device_id and _app_context:
         # Save to database
-        from models import Device, HeartbeatHistory, db
+        from models import Device, HeartbeatHistory, EventLog, db
         
         with _app_context.app_context():
             device = Device.query.filter_by(device_id=device_id).first()
@@ -130,6 +130,8 @@ def handle_heartbeat(client, payload):
                     ip_address=validate_ip_address(payload.get('ip'))
                 )
                 db.session.add(device)
+                # Flush to ensure device exists before adding EventLog (FK constraint)
+                db.session.flush()
                 print(f"✨ New device registered: {device_id} ({board_type})")
             
             # Log heartbeat to history (for degraded status detection)
@@ -141,6 +143,21 @@ def handle_heartbeat(client, payload):
                 free_heap=payload.get('free_heap')
             )
             db.session.add(heartbeat_log)
+            
+            # Log heartbeat as event for dashboard events feed
+            heartbeat_event = EventLog(
+                device_id=device_id,
+                event_type='heartbeat',
+                event_data={
+                    'version': current_version,
+                    'rssi': payload.get('rssi'),
+                    'uptime': payload.get('uptime'),
+                    'free_heap': payload.get('free_heap'),
+                    'ssid': payload.get('ssid')
+                },
+                timestamp=datetime.now(timezone.utc)
+            )
+            db.session.add(heartbeat_event)
             
             # Cleanup old heartbeat history (keep only last 24 hours)
             from datetime import timedelta
