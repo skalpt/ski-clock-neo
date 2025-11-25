@@ -2,6 +2,7 @@
 #define DISPLAY_H
 
 #include <Arduino.h>
+#include "display_config.h"
 
 // Calculate total dimensions
 #define ROW_WIDTH (PANELS_PER_ROW * PANEL_WIDTH)
