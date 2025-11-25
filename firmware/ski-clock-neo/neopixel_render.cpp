@@ -107,6 +107,7 @@ void initNeoPixels() {
     // Initialize the hardware
     rows[i].begin();
     rows[i].setBrightness(BRIGHTNESS);
+    rows[i].clear();  // Zero the strip buffer before first show (prevents garbage pixels)
     rows[i].show();
     
     DEBUG_PRINT("NeoPixel row ");

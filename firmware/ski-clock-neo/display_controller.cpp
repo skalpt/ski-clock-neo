@@ -1,5 +1,6 @@
 #include "display_controller.h"
 #include "display.h"
+#include "neopixel_render.h"  // For updateNeoPixels() synchronous render on startup
 #include "data_time.h"
 #include "data_temperature.h"
 #include "debug.h"
@@ -87,6 +88,7 @@ void updateRow0() {
         DEBUG_PRINT("Row 0: Date = ");
         DEBUG_PRINTLN(buffer);
       } else {
+        // Don't set text here - keep showing time if date format fails
         DEBUG_PRINTLN("Row 0: Date format failed");
       }
     }
@@ -114,10 +116,12 @@ void updateRow1() {
 void initDisplayController() {
   DEBUG_PRINTLN("Initializing display controller");
   
-  // Start with time display
-  showingTime = true;
-  updateRow0();
-  updateRow1();
+  showingTime = true; // Start with time display
+  forceDisplayUpdate(); // Force initial update
+  
+  // Render synchronously BEFORE WiFi/MQTT init can preempt (ESP32-C3 single-core fix)
+  // This ensures placeholder text displays cleanly before network tasks start
+  updateNeoPixels();
   
   // Create FreeRTOS task for display toggle (ESP32) or Ticker (ESP8266)
   #if defined(ESP32)
@@ -155,7 +159,7 @@ void initDisplayController() {
     toggleTicker.start();
     DEBUG_PRINTLN("Display toggle timer started (ESP8266 TickTwo - loop-driven)");
   #endif
-  
+
   DEBUG_PRINTLN("Display controller initialized");
   
   // Initialize data libraries LAST - allows display to show immediately during boot
@@ -173,9 +177,6 @@ void setDisplayMode(DisplayMode mode) {
     currentMode = mode;
     DEBUG_PRINT("Display mode changed to: ");
     DEBUG_PRINTLN(mode == MODE_NORMAL ? "NORMAL" : "TIMER");
-    
-    // Force immediate update
-    forceDisplayUpdate();
   }
 }
 
