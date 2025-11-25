@@ -23,7 +23,8 @@ The project consists of two primary components:
 *   **Display Snapshot System**: Publishes hourly snapshots of the display state to MQTT, including base64-encoded bit-packed pixel data and row text. On-demand snapshots are supported via MQTT commands.
 *   **MQTT Command Handling**: Subscribes to device-specific topics for remote management, supporting `rollback`, `restart`, and `snapshot` commands.
 *   **OTA Progress Reporting**: Publishes real-time OTA status to MQTT topics for granular tracking.
-*   **Display Content System**: Alternates time and date every 4 seconds (NTP synced). Temperature (DS18B20 sensor) is displayed with non-blocking reads. Event-driven updates via `setText()` callbacks are used for all data libraries.
+*   **Display Content System**: Alternates time and date every 4 seconds. Temperature (DS18B20 sensor) is displayed with non-blocking reads. Event-driven updates via `setText()` callbacks are used for all data libraries.
+*   **RTC Integration**: DS3231 RTC module provides instant time on boot (before WiFi/NTP connects). NTP automatically syncs the RTC hourly to maintain accuracy. Falls back gracefully to NTP-only if no RTC is present.
 *   **Clean Separation of Concerns**: Temperature polling and time/date toggling are owned by their respective libraries, which update the display controller via callbacks, ensuring independent timing logic.
 *   **Event Logging System**: A ring buffer stores device events with timestamps, publishing them to MQTT when connected. Events include boot, WiFi connect/disconnect, MQTT connect/disconnect, and temperature readings.
 
@@ -45,6 +46,6 @@ The project consists of two primary components:
 *   **System Design**: Emphasizes automated versioning, secure communication, and graceful fallback.
 
 ## External Dependencies
-*   **Firmware Libraries**: Adafruit_NeoPixel, AutoConnect, PubSubClient (with TLS support), ESP32 Arduino Core, ESP8266 WiFi libraries.
+*   **Firmware Libraries**: Adafruit_NeoPixel, RTClib (Adafruit), AutoConnect, PubSubClient (with TLS support), ESP32 Arduino Core, ESP8266 WiFi libraries.
 *   **Dashboard Dependencies**: Flask, paho-mqtt, PostgreSQL, Replit Object Storage (optional).
 *   **Cloud Services**: HiveMQ Cloud Serverless (MQTT broker), GitHub Actions (CI/CD).
