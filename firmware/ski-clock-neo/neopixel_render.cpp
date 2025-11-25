@@ -128,6 +128,9 @@ int charToGlyph(char c) {
   if (c == '-') {
     return GLYPH_MINUS;
   }
+  if (c == '~') {
+    return GLYPH_DASH;  // Long dash for placeholders
+  }
   if (c == '.') {
     return GLYPH_DOT;
   }

@@ -62,7 +62,7 @@ void updateRow0() {
   // Check if NTP is synced before attempting to display time/date
   if (!isTimeSynced()) {
     // NTP not synced yet, show placeholder
-    setText(0, "--.--");
+    setText(0, "~~.~~");
     DEBUG_PRINTLN("Row 0: Waiting for NTP sync");
     return;
   }
@@ -77,7 +77,7 @@ void updateRow0() {
         DEBUG_PRINT("Row 0: Time = ");
         DEBUG_PRINTLN(buffer);
       } else {
-        setText(0, "--.--");
+        setText(0, "~~.~~");
         DEBUG_PRINTLN("Row 0: Time format failed");
       }
     } else {
@@ -107,7 +107,7 @@ void updateRow1() {
     DEBUG_PRINT("Row 1: Temp = ");
     DEBUG_PRINTLN(buffer);
   } else {
-    setText(1, "--*C");
+    setText(1, "~~*C");
     DEBUG_PRINTLN("Row 1: Temperature not available");
   }
 }
