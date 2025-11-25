@@ -1585,6 +1585,112 @@ body.no-web-serial .flash-column {
     }
 }
 
+/* Event Details Tooltip */
+.details-cell {
+    position: relative;
+}
+
+.details-text {
+    cursor: pointer;
+}
+
+.json-tooltip {
+    display: none;
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    z-index: 100;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    padding: var(--spacing-sm);
+    min-width: 250px;
+    max-width: 400px;
+    max-height: 300px;
+    overflow: auto;
+}
+
+.details-cell:hover .json-tooltip {
+    display: block;
+}
+
+.json-tooltip pre {
+    margin: 0 0 var(--spacing-sm) 0;
+    font-size: 0.75rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-sm);
+}
+
+.copy-json-btn {
+    background: var(--brand-primary);
+    color: white;
+    border: none;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.copy-json-btn:hover {
+    background: var(--brand-secondary);
+}
+
+.copy-json-btn.copied {
+    background: #10b981;
+}
+
+/* Expandable Event Rows */
+.event-row {
+    cursor: pointer;
+    transition: background var(--transition-fast);
+}
+
+.event-row.expanded {
+    background: var(--bg-tertiary);
+}
+
+.event-expanded-row {
+    background: var(--bg-secondary);
+}
+
+.event-expanded-row:hover {
+    background: var(--bg-secondary) !important;
+}
+
+.expanded-content {
+    padding: var(--spacing-md);
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    margin: var(--spacing-xs) 0;
+}
+
+.expanded-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-sm);
+}
+
+.expanded-json {
+    margin: 0;
+    font-size: 0.8rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    max-height: 300px;
+    overflow: auto;
+}
+
 /* ========================================
    Events Feed Container (Dashboard)
    ======================================== */

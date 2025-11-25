@@ -512,18 +512,38 @@
                             </tr>
                         </thead>
                         <tbody>
-                            ${data.events.map(event => {
+                            ${data.events.map((event, index) => {
                                 const eventIcon = getEventIcon(event.event_type);
                                 const eventDetails = formatEventData(event.event_type, event.event_data);
                                 const fullTimestamp = new Date(event.timestamp).toISOString();
                                 const rawJson = event.event_data ? JSON.stringify(event.event_data, null, 2) : '';
+                                const rowId = `event-row-${currentPage}-${index}`;
                                 
                                 return `
-                                    <tr class="event-row event-${event.event_type}">
+                                    <tr class="event-row event-${event.event_type}" data-row-id="${rowId}" onclick="toggleEventRow('${rowId}')">
                                         <td title="${escapeHtml(fullTimestamp)}">${new Date(event.timestamp).toLocaleString()}</td>
                                         <td>${escapeHtml(event.device_id)}</td>
                                         <td><span class="event-badge ${event.event_type}">${eventIcon} ${formatEventType(event.event_type)}</span></td>
-                                        <td title="${escapeHtml(rawJson)}">${eventDetails}</td>
+                                        <td class="details-cell">
+                                            <span class="details-text">${eventDetails}</span>
+                                            ${rawJson ? `
+                                            <div class="json-tooltip">
+                                                <pre>${escapeHtml(rawJson)}</pre>
+                                                <button class="copy-json-btn" onclick="event.stopPropagation(); copyJson(this, \`${escapeHtml(rawJson).replace(/`/g, '\\`')}\`)">📋 Copy</button>
+                                            </div>
+                                            ` : ''}
+                                        </td>
+                                    </tr>
+                                    <tr class="event-expanded-row" id="${rowId}" style="display: none;">
+                                        <td colspan="4">
+                                            <div class="expanded-content">
+                                                <div class="expanded-header">
+                                                    <strong>Full Event Details</strong>
+                                                    <button class="copy-json-btn" onclick="event.stopPropagation(); copyJson(this, \`${escapeHtml(rawJson).replace(/`/g, '\\`')}\`)">📋 Copy JSON</button>
+                                                </div>
+                                                <pre class="expanded-json">${escapeHtml(rawJson) || 'No data'}</pre>
+                                            </div>
+                                        </td>
                                     </tr>
                                 `;
                             }).join('')}
@@ -684,6 +704,34 @@
         currentPage = 1;
         updateUrl();
         loadCurrentTab();
+    }
+
+    function toggleEventRow(rowId) {
+        const expandedRow = document.getElementById(rowId);
+        if (expandedRow) {
+            const isVisible = expandedRow.style.display !== 'none';
+            expandedRow.style.display = isVisible ? 'none' : 'table-row';
+            
+            const mainRow = document.querySelector(`[data-row-id="${rowId}"]`);
+            if (mainRow) {
+                mainRow.classList.toggle('expanded', !isVisible);
+            }
+        }
+    }
+
+    function copyJson(button, json) {
+        const textToCopy = json.replace(/\\n/g, '\n').replace(/\\"/g, '"');
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            const originalText = button.textContent;
+            button.textContent = '✓ Copied!';
+            button.classList.add('copied');
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.classList.remove('copied');
+            }, 1500);
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+        });
     }
 
     function escapeHtml(text) {
