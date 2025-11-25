@@ -16,6 +16,7 @@
 #include "device_info.h"   // For getDeviceID()
 #include "led_indicator.h" // For LED status patterns when WiFi connection state changes
 #include "mqtt_client.h"   // For MQTT connection management when WiFi connection state changes
+#include "event_log.h"     // For logging WiFi events
 #include "debug.h"
 
 // Configuration constants
@@ -153,24 +154,48 @@ void updateWiFi() {
 #if defined(ESP32)
   void onWiFiConnected(WiFiEvent_t event, WiFiEventInfo_t info) {
     DEBUG_PRINTLN("WiFi connected, connecting to MQTT...");
+    
+    // Log wifi_connect event with connection details
+    String wifiData = "{\"ssid\":\"";
+    wifiData += WiFi.SSID();
+    wifiData += "\",\"rssi\":";
+    wifiData += WiFi.RSSI();
+    wifiData += ",\"ip\":\"";
+    wifiData += WiFi.localIP().toString();
+    wifiData += "\"}";
+    logEvent("wifi_connect", wifiData.c_str());
+    
     setConnectivityState(true, false);  // WiFi=connected, MQTT=disconnected
     connectMQTT();
   }
 
   void onWiFiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info) {
     DEBUG_PRINTLN("WiFi disconnected, stopping MQTT...");
+    logEvent("wifi_disconnect");
     disconnectMQTT();
     setConnectivityState(false, false);  // WiFi=disconnected, MQTT=disconnected
   }
 #elif defined(ESP8266)
   void onWiFiConnected(const WiFiEventStationModeGotIP& event) {
     DEBUG_PRINTLN("WiFi connected, connecting to MQTT...");
+    
+    // Log wifi_connect event with connection details
+    String wifiData = "{\"ssid\":\"";
+    wifiData += WiFi.SSID();
+    wifiData += "\",\"rssi\":";
+    wifiData += WiFi.RSSI();
+    wifiData += ",\"ip\":\"";
+    wifiData += WiFi.localIP().toString();
+    wifiData += "\"}";
+    logEvent("wifi_connect", wifiData.c_str());
+    
     setConnectivityState(true, false);  // WiFi=connected, MQTT=disconnected
     connectMQTT();
   }
 
   void onWiFiDisconnected(const WiFiEventStationModeDisconnected& event) {
     DEBUG_PRINTLN("WiFi disconnected, stopping MQTT...");
+    logEvent("wifi_disconnect");
     disconnectMQTT();
     setConnectivityState(false, false);  // WiFi=disconnected, MQTT=disconnected
   }
