@@ -1,16 +1,9 @@
-// Hardware pin configuration
-#define BUTTON_PIN 0            // Button on GPIO0 (CAUTION: boot button)
-#define TEMP_SENSOR_PIN 2       // DS18B20 temperature sensor on GPIO2
-#define RTC_SDA_PIN 5           // RTC I2C data pin on GPIO5
-#define RTC_SCL_PIN 6           // RTC I2C clock pin on GPIO 6
-#define RTC_SQW_PIN 7           // RTC square wave pin (for hardware interrupts) on GPIO7
+// Includes
+#include "ski-clock-neo_config.h"
 
-// Display configuration (shared with all display libraries)
-#include "display_config.h"
-#define BRIGHTNESS      10      // 0-255 (keeping dim for development)
+// Display pin mapping (extern declared in config, defined here)
 const uint8_t DISPLAY_PINS[DISPLAY_ROWS] = {4, 3};  // Row 1: GPIO4, Row 2: GPIO3
 
-// Includes
 #include "debug.h"
 #include "led_indicator.h"
 #include "display.h"
