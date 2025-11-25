@@ -2,6 +2,7 @@
 #include "led_indicator.h"   // For LED status patterns when MQTT connection state changes
 #include "ota_update.h"      // For triggering an OTA update
 #include "display.h"         // For sending the display snapshot
+#include "event_log.h"       // For flushing event queue on connect
 #include "ski-clock-neo_config.h"  // For DISPLAY_COLOR_R/G/B and BRIGHTNESS
 
 // MQTT broker port
@@ -161,6 +162,11 @@ bool connectMQTT() {
     displaySnapshotTicker.detach();
     displaySnapshotTicker.attach_ms(DISPLAY_SNAPSHOT_INTERVAL, publishDisplaySnapshot);
     publishDisplaySnapshot();  // Send initial snapshot
+    
+    // Log mqtt_connect event and flush any queued events
+    logEvent("mqtt_connect");
+    setEventLogReady(true);
+    flushEventQueue();
     
     return true;
   } else {
@@ -336,6 +342,8 @@ void publishDisplaySnapshot() {
 void disconnectMQTT() {
   if (mqttIsConnected) {
     DEBUG_PRINTLN("Disconnecting from MQTT broker...");
+    logEvent("mqtt_disconnect");
+    setEventLogReady(false);  // Switch back to queuing mode
     heartbeatTicker.detach();
     displaySnapshotTicker.detach();
     mqttClient.disconnect();
