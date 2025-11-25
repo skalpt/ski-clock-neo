@@ -89,7 +89,7 @@ void flushEventQueue() {
     EVENT_EXIT_CRITICAL();
     
     String deviceId = getDeviceID();
-    String topic = String("skiclock/events/") + deviceId;
+    String topic = String("skiclock/event/") + deviceId;
     
     uint32_t now = millis();
     int flushed = 0;

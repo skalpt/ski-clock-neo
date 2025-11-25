@@ -9,7 +9,7 @@
 const uint16_t MQTT_PORT = 8883;  // TLS port for HiveMQ Cloud
 
 // MQTT topics (const arrays with external linkage)
-const char MQTT_TOPIC_HEARTBEAT[] = "skiclock/heartbeat";
+const char MQTT_TOPIC_HEARTBEAT[] = "skiclock/heartbeat/";  // Device ID appended when publishing
 const char MQTT_TOPIC_VERSION_RESPONSE[] = "skiclock/version/response";
 const char MQTT_TOPIC_COMMAND[] = "skiclock/command";
 const char MQTT_TOPIC_OTA_START[] = "skiclock/ota/start";
@@ -184,10 +184,12 @@ void publishHeartbeat() {
     return;
   }
   
+  // Build topic with device ID: skiclock/heartbeat/{deviceId}
+  String topic = String(MQTT_TOPIC_HEARTBEAT) + getDeviceID();
+  
   char payload[384];
   snprintf(payload, sizeof(payload),
-    "{\"device_id\":\"%s\",\"board\":\"%s\",\"version\":\"%s\",\"uptime\":%lu,\"rssi\":%d,\"free_heap\":%u,\"ssid\":\"%s\",\"ip\":\"%s\"}",
-    getDeviceID().c_str(),
+    "{\"board\":\"%s\",\"version\":\"%s\",\"uptime\":%lu,\"rssi\":%d,\"free_heap\":%u,\"ssid\":\"%s\",\"ip\":\"%s\"}",
     getBoardType().c_str(),
     FIRMWARE_VERSION,
     millis() / 1000,
@@ -197,8 +199,10 @@ void publishHeartbeat() {
     WiFi.localIP().toString().c_str()
   );
   
-  if (mqttClient.publish(MQTT_TOPIC_HEARTBEAT, payload)) {
-    DEBUG_PRINT("Heartbeat published: ");
+  if (mqttClient.publish(topic.c_str(), payload)) {
+    DEBUG_PRINT("Heartbeat published to ");
+    DEBUG_PRINT(topic);
+    DEBUG_PRINT(": ");
     DEBUG_PRINTLN(payload);
   } else {
     DEBUG_PRINTLN("Failed to publish heartbeat");

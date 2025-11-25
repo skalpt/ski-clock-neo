@@ -24,7 +24,7 @@ MQTT_TOPIC_OTA_PROGRESS = "skiclock/ota/progress"
 MQTT_TOPIC_OTA_COMPLETE = "skiclock/ota/complete"
 MQTT_TOPIC_COMMAND = "skiclock/command"
 MQTT_TOPIC_DISPLAY_SNAPSHOT = "skiclock/display/snapshot"
-MQTT_TOPIC_EVENTS = "skiclock/events"
+MQTT_TOPIC_EVENTS = "skiclock/event"
 
 # Store Flask app instance for database access
 _app_context = None
@@ -77,8 +77,8 @@ def validate_ip_address(ip: str) -> Optional[str]:
 def on_connect(client, userdata, flags, rc, properties=None):
     if rc == 0:
         print(f"✓ Connected to MQTT broker: {MQTT_HOST}")
-        client.subscribe(MQTT_TOPIC_HEARTBEAT)
-        print(f"✓ Subscribed to topic: {MQTT_TOPIC_HEARTBEAT}")
+        client.subscribe(f"{MQTT_TOPIC_HEARTBEAT}/+")
+        print(f"✓ Subscribed to topic: {MQTT_TOPIC_HEARTBEAT}/+")
         client.subscribe(MQTT_TOPIC_OTA_START)
         print(f"✓ Subscribed to topic: {MQTT_TOPIC_OTA_START}")
         client.subscribe(MQTT_TOPIC_OTA_PROGRESS)
@@ -92,9 +92,18 @@ def on_connect(client, userdata, flags, rc, properties=None):
     else:
         print(f"✗ Failed to connect to MQTT broker, return code {rc}")
 
-def handle_heartbeat(client, payload):
-    """Handle device heartbeat messages and check for firmware updates"""
-    device_id = payload.get('device_id')
+def handle_heartbeat(client, payload, topic):
+    """Handle device heartbeat messages and check for firmware updates
+    
+    Device ID is extracted from topic: skiclock/heartbeat/{device_id}
+    """
+    # Extract device_id from topic
+    topic_parts = topic.split('/')
+    if len(topic_parts) < 3:
+        print(f"⚠ Invalid heartbeat topic format: {topic}")
+        return
+    
+    device_id = topic_parts[2]
     board_type = payload.get('board', 'Unknown')
     current_version = payload.get('version', 'Unknown')
     
@@ -488,7 +497,7 @@ def handle_event(client, payload, topic):
         "offset_ms": 45000
     }
     """
-    # Extract device_id from topic: skiclock/events/{device_id}
+    # Extract device_id from topic: skiclock/event/{device_id}
     topic_parts = topic.split('/')
     if len(topic_parts) < 3:
         print(f"⚠ Invalid event topic format: {topic}")
@@ -543,8 +552,8 @@ def on_message(client, userdata, msg):
         payload = json.loads(msg.payload.decode())
         
         # Route message to appropriate handler based on topic
-        if msg.topic == MQTT_TOPIC_HEARTBEAT:
-            handle_heartbeat(client, payload)
+        if msg.topic.startswith(MQTT_TOPIC_HEARTBEAT):
+            handle_heartbeat(client, payload, msg.topic)
         elif msg.topic == MQTT_TOPIC_OTA_START:
             handle_ota_start(client, payload)
         elif msg.topic == MQTT_TOPIC_OTA_PROGRESS:
