@@ -229,12 +229,35 @@
 
     function renderBitmapToCanvas(canvasId, bitmapData) {
         const canvas = document.getElementById(canvasId);
-        if (!canvas || !bitmapData.pixels) return;
+        // Support both 'mono' (new) and 'pixels' (legacy) field names
+        const monoData = bitmapData.mono || bitmapData.pixels;
+        
+        // Future: If 'color' key exists, it contains 4-bytes-per-pixel RGBW buffer
+        // Each pixel is [R, G, B, brightness] in base64-encoded format
+        // const colorData = bitmapData.color;
+        // if (colorData) { /* decode as 4 bytes per pixel */ }
+        
+        if (!canvas || !monoData) return;
         
         try {
-            const pixelData = atob(bitmapData.pixels);
+            const pixelData = atob(monoData);
             const width = bitmapData.width || 16;
             const height = bitmapData.height || 16;
+            
+            // Get color from monoColor [R, G, B, brightness] or default to white
+            let r = 255, g = 255, b = 255;
+            if (bitmapData.monoColor && bitmapData.monoColor.length >= 3) {
+                r = bitmapData.monoColor[0];
+                g = bitmapData.monoColor[1];
+                b = bitmapData.monoColor[2];
+                // Optional: Apply brightness scaling (index 3) if needed
+                if (bitmapData.monoColor.length >= 4) {
+                    const brightness = bitmapData.monoColor[3] / 255;
+                    r = Math.round(r * brightness);
+                    g = Math.round(g * brightness);
+                    b = Math.round(b * brightness);
+                }
+            }
             
             canvas.width = width;
             canvas.height = height;
@@ -252,9 +275,9 @@
                     
                     const i = (y * width + x) * 4;
                     if (isOn) {
-                        imageData.data[i] = 255;
-                        imageData.data[i + 1] = 255;
-                        imageData.data[i + 2] = 255;
+                        imageData.data[i] = r;
+                        imageData.data[i + 1] = g;
+                        imageData.data[i + 2] = b;
                         imageData.data[i + 3] = 255;
                     } else {
                         imageData.data[i] = 0;

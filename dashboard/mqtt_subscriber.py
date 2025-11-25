@@ -387,13 +387,14 @@ def handle_display_snapshot(client, payload):
                 try:
                     pixels_bytes = base64.b64decode(mono_base64)
                     
-                    # Build snapshot data object
+                    # Build snapshot data object - include both 'mono' and 'pixels' for compatibility
                     snapshot_data = {
                         'rows': payload.get('rows', 1),
                         'cols': payload.get('cols', 1),
                         'width': payload.get('width', 16),
                         'height': payload.get('height', 16),
-                        'mono': mono_base64,  # Store as base64 for easy transmission to frontend
+                        'mono': mono_base64,   # New field
+                        'pixels': mono_base64, # Legacy field for backward compatibility
                         'timestamp': datetime.now(timezone.utc).isoformat()
                     }
                     
@@ -407,7 +408,8 @@ def handle_display_snapshot(client, payload):
                     
                     # Store snapshot in history table for debugging
                     bitmap_data = {
-                        'mono': mono_base64,
+                        'mono': mono_base64,   # New field
+                        'pixels': mono_base64, # Legacy field for backward compatibility
                         'width': payload.get('width', 16),
                         'height': payload.get('height', 16),
                         'rows': payload.get('rows', 1),

@@ -302,12 +302,14 @@ void publishDisplaySnapshot() {
   snprintf(monoColorStr, sizeof(monoColorStr), "[%u,%u,%u,%u]", 
            DISPLAY_COLOR_R, DISPLAY_COLOR_G, DISPLAY_COLOR_B, BRIGHTNESS);
   
+  // Include both 'mono' (new) and 'pixels' (legacy) for backward compatibility
   String payload = "{\"device_id\":\"" + getDeviceID() + 
                    "\",\"rows\":" + String(rowsStr) +
                    ",\"cols\":" + String(colsStr) +
                    ",\"width\":" + String(widthStr) +
                    ",\"height\":" + String(heightStr) +
                    ",\"mono\":\"" + base64Data + "\"" +
+                   ",\"pixels\":\"" + base64Data + "\"" +
                    ",\"monoColor\":" + String(monoColorStr) +
                    ",\"row_text\":" + rowTextJson + "}";
   

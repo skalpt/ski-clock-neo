@@ -457,18 +457,41 @@
     }
 
     function renderDisplaySnapshot(deviceId, snapshot) {
-        if (!snapshot || !snapshot.pixels) return;
+        // Support both 'mono' (new) and 'pixels' (legacy) field names
+        const monoData = snapshot ? (snapshot.mono || snapshot.pixels) : null;
+        
+        // Future: If 'color' key exists, it contains 4-bytes-per-pixel RGBW buffer
+        // Each pixel is [R, G, B, brightness] in base64-encoded format
+        // const colorData = snapshot ? snapshot.color : null;
+        // if (colorData) { /* decode as 4 bytes per pixel */ }
+        
+        if (!snapshot || !monoData) return;
         
         const grid = document.getElementById(`panel-grid-${deviceId}`);
         if (!grid) return;
         
         try {
             // Decode base64 pixel data
-            const pixelData = atob(snapshot.pixels);
+            const pixelData = atob(monoData);
             const width = snapshot.width || 48;
             const height = snapshot.height || 32;
             const rows = snapshot.rows || 2;
             const cols = snapshot.cols || 3;
+            
+            // Get color from monoColor [R, G, B, brightness] or default to white
+            let r = 255, g = 255, b = 255;
+            if (snapshot.monoColor && snapshot.monoColor.length >= 3) {
+                r = snapshot.monoColor[0];
+                g = snapshot.monoColor[1];
+                b = snapshot.monoColor[2];
+                // Optional: Apply brightness scaling (index 3) if needed
+                if (snapshot.monoColor.length >= 4) {
+                    const brightness = snapshot.monoColor[3] / 255;
+                    r = Math.round(r * brightness);
+                    g = Math.round(g * brightness);
+                    b = Math.round(b * brightness);
+                }
+            }
             
             const panelWidth = width / cols;
             const panelHeight = height / rows;
@@ -520,10 +543,10 @@
                             // Set pixel in panel canvas
                             const i = (py * panelWidth + px) * 4;
                             if (isOn) {
-                                // White pixel
-                                imageData.data[i] = 255;
-                                imageData.data[i + 1] = 255;
-                                imageData.data[i + 2] = 255;
+                                // Use monoColor for pixel color
+                                imageData.data[i] = r;
+                                imageData.data[i + 1] = g;
+                                imageData.data[i + 2] = b;
                                 imageData.data[i + 3] = 255;
                             } else {
                                 // Black pixel
