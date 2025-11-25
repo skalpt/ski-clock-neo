@@ -92,7 +92,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 }
 
 // Initialize MQTT connection
-void setupMQTT() {
+void initMQTT() {
   DEBUG_PRINTLN("Initializing MQTT client...");
   
   // Configure TLS without certificate validation

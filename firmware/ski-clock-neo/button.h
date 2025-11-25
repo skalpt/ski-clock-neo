@@ -6,10 +6,10 @@
 // Button press callback function type
 typedef void (*ButtonCallback)();
 
-// Initialize button on specified GPIO pin with pull-up resistor
+// Initialize button using BUTTON_PIN from config with pull-up resistor
 // Button should connect pin to GND when pressed (active LOW)
-// debounceMs: minimum time between button events (default 50ms)
-void initButton(uint8_t pin, uint16_t debounceMs = 50);
+// Uses debounce of 50ms
+void initButton();
 
 // Set callback for button press events
 // Callback will be called from ISR context - keep it short!

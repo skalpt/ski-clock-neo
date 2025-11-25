@@ -1,0 +1,69 @@
+2025-11-25T11:34:21.2798824Z ##[group]Run arduino-cli compile --fqbn esp32:esp32:esp32 \
+2025-11-25T11:34:21.2799282Z [36;1marduino-cli compile --fqbn esp32:esp32:esp32 \[0m
+2025-11-25T11:34:21.2799604Z [36;1m  --export-binaries \[0m
+2025-11-25T11:34:21.2799913Z [36;1m  --build-property "build.partitions=min_spiffs" \[0m
+2025-11-25T11:34:21.2801338Z [36;1m  --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"***\" -DDOWNLOAD_API_KEY=\"***\" -DFIRMWARE_VERSION=\"2025.11.25.55\" -DMQTT_HOST=\"***\" -DMQTT_USERNAME=\"***\" -DMQTT_PASSWORD=\"***\" -DBOARD_ESP32" \[0m
+2025-11-25T11:34:21.2802198Z [36;1m  --output-dir build/esp32 \[0m
+2025-11-25T11:34:21.2802494Z [36;1m  firmware/***[0m
+2025-11-25T11:34:21.2802852Z [36;1mcp build/esp32/***.ino.bin build/***-esp32.bin[0m
+2025-11-25T11:34:21.2803495Z [36;1mcp build/esp32/***.ino.bootloader.bin build/***-esp32.bootloader.bin || echo "Warning: Bootloader not found for ESP32"[0m
+2025-11-25T11:34:21.2804351Z [36;1mcp build/esp32/***.ino.partitions.bin build/***-esp32.partitions.bin || echo "Warning: Partitions not found for ESP32"[0m
+2025-11-25T11:34:21.2838801Z shell: /usr/bin/bash -e {0}
+2025-11-25T11:34:21.2839053Z ##[endgroup]
+2025-11-25T11:34:51.2348248Z In file included from /home/runner/work/***/***/firmware/***/neopixel_render.h:4,
+2025-11-25T11:34:51.2368849Z                  from /home/runner/work/***/***/firmware/***/neopixel_render.cpp:1:
+2025-11-25T11:34:51.2370337Z /home/runner/work/***/***/firmware/***/***_config.h:19:14: error: 'uint8_t' does not name a type
+2025-11-25T11:34:51.2371472Z  static const uint8_t DISPLAY_PINS[DISPLAY_ROWS] = {4, 3};
+2025-11-25T11:34:51.2372237Z               ^~~~~~~
+2025-11-25T11:34:51.2373275Z /home/runner/work/***/***/firmware/***/neopixel_render.cpp: In function 'void initNeoPixels()':
+2025-11-25T11:34:51.2374736Z /home/runner/work/***/***/firmware/***/neopixel_render.cpp:105:62: error: 'DISPLAY_PINS' was not declared in this scope
+2025-11-25T11:34:51.2375905Z      new (&rows[i]) Adafruit_NeoPixel(ROW_WIDTH * ROW_HEIGHT, DISPLAY_PINS[i], NEO_GRB + NEO_KHZ800);
+2025-11-25T11:34:51.2376910Z                                                               ^~~~~~~~~~~~
+2025-11-25T11:34:51.2378043Z /home/runner/work/***/***/firmware/***/neopixel_render.cpp:105:62: note: suggested alternative: 'DISPLAY_ROWS'
+2025-11-25T11:34:51.2379103Z      new (&rows[i]) Adafruit_NeoPixel(ROW_WIDTH * ROW_HEIGHT, DISPLAY_PINS[i], NEO_GRB + NEO_KHZ800);
+2025-11-25T11:34:51.2379844Z                                                               ^~~~~~~~~~~~
+2025-11-25T11:34:51.2380359Z                                                               DISPLAY_ROWS
+2025-11-25T11:34:52.5033382Z /home/runner/work/***/***/firmware/***/***.ino: In function 'void setup()':
+2025-11-25T11:34:52.5035883Z /home/runner/work/***/***/firmware/***/***.ino:28:14: error: too few arguments to function 'void initButton(uint8_t, uint16_t)'
+2025-11-25T11:34:52.5037071Z    initButton();
+2025-11-25T11:34:52.5037467Z               ^
+2025-11-25T11:34:52.5038334Z In file included from /home/runner/work/***/***/firmware/***/***.ino:8:
+2025-11-25T11:34:52.5039460Z /home/runner/work/***/***/firmware/***/button.h:12:6: note: declared here
+2025-11-25T11:34:52.5040232Z  void initButton(uint8_t pin, uint16_t debounceMs = 50);
+2025-11-25T11:34:52.5040794Z       ^~~~~~~~~~
+2025-11-25T11:34:52.5041774Z /home/runner/work/***/***/firmware/***/***.ino:34:3: error: 'initMQTT' was not declared in this scope
+2025-11-25T11:34:52.5042448Z    initMQTT();
+2025-11-25T11:34:52.5042751Z    ^~~~~~~~
+2025-11-25T11:34:52.5043610Z /home/runner/work/***/***/firmware/***/***.ino:34:3: note: suggested alternative: 'initWiFi'
+2025-11-25T11:34:52.5044254Z    initMQTT();
+2025-11-25T11:34:52.5044557Z    ^~~~~~~~
+2025-11-25T11:34:52.5044842Z    initWiFi
+2025-11-25T11:34:52.5065877Z 
+2025-11-25T11:34:52.6377608Z Error during build: exit status 1
+2025-11-25T11:34:52.6377998Z 
+2025-11-25T11:34:52.6378887Z [92mUsed library[0m      [92mVersion[0m [90mPath[0m                                                                                   
+2025-11-25T11:34:52.6380003Z [93mWiFi[0m              2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFi[0m            
+2025-11-25T11:34:52.6380833Z [93mWebServer[0m         2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WebServer[0m       
+2025-11-25T11:34:52.6381770Z [93mAutoConnect[0m       1.4.2   [90m/home/runner/Arduino/libraries/AutoConnect[0m                                             
+2025-11-25T11:34:52.6382766Z [93mDNSServer[0m         2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/DNSServer[0m       
+2025-11-25T11:34:52.6383587Z [93mEEPROM[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/EEPROM[0m          
+2025-11-25T11:34:52.6403545Z [93mPageBuilder[0m       1.5.6   [90m/home/runner/Arduino/libraries/PageBuilder[0m                                             
+2025-11-25T11:34:52.6404628Z [93mFS[0m                2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/FS[0m              
+2025-11-25T11:34:52.6405451Z [93mSPIFFS[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPIFFS[0m          
+2025-11-25T11:34:52.6406225Z [93mSD[0m                2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SD[0m              
+2025-11-25T11:34:52.6407185Z [93mSPI[0m               2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPI[0m             
+2025-11-25T11:34:52.6407994Z [93mPreferences[0m       2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Preferences[0m     
+2025-11-25T11:34:52.6408842Z [93mTicker[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Ticker[0m          
+2025-11-25T11:34:52.6409641Z [93mArduinoJson[0m       7.4.2   [90m/home/runner/Arduino/libraries/ArduinoJson[0m                                             
+2025-11-25T11:34:52.6410450Z [93mHTTPClient[0m        2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPClient[0m      
+2025-11-25T11:34:52.6411288Z [93mWiFiClientSecure[0m  2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFiClientSecure[0m
+2025-11-25T11:34:52.6412120Z [93mHTTPUpdate[0m        2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPUpdate[0m      
+2025-11-25T11:34:52.6412907Z [93mUpdate[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Update[0m          
+2025-11-25T11:34:52.6413712Z [93mPubSubClient[0m      2.8     [90m/home/runner/Arduino/libraries/PubSubClient[0m                                            
+2025-11-25T11:34:52.6414507Z [93mOneWire[0m           2.3.8   [90m/home/runner/Arduino/libraries/OneWire[0m                                                 
+2025-11-25T11:34:52.6415335Z [93mDallasTemperature[0m 4.0.5   [90m/home/runner/Arduino/libraries/DallasTemperature[0m                                       
+2025-11-25T11:34:52.6416193Z [93mAdafruit NeoPixel[0m 1.15.2  [90m/home/runner/Arduino/libraries/Adafruit_NeoPixel[0m                                       
+2025-11-25T11:34:52.6416777Z 
+2025-11-25T11:34:52.6417086Z [92mUsed platform[0m [92mVersion[0m [90mPath[0m                                                        
+2025-11-25T11:34:52.6417713Z [93mesp32:esp32[0m   2.0.14  [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14[0m
+2025-11-25T11:34:52.6436022Z ##[error]Process completed with exit code 1.

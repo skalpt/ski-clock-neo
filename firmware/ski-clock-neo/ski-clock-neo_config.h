@@ -1,6 +1,8 @@
 #ifndef SKI_CLOCK_NEO_CONFIG_H
 #define SKI_CLOCK_NEO_CONFIG_H
 
+#include <Arduino.h>
+
 // Hardware pin configuration
 #define BUTTON_PIN      0       // Button on GPIO0 (CAUTION: boot button)
 #define TEMPERATURE_PIN 2       // DS18B20 temperature sensor on GPIO2

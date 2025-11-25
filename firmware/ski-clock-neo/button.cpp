@@ -1,9 +1,10 @@
 #include "button.h"
 
+#include "ski-clock-neo_config.h"         // For BUTTON_PIN
 #include "debug.h"                        // For serial debugging
 
 // Button state tracking
-static uint8_t buttonPin = 0;
+static uint8_t buttonPin = BUTTON_PIN;
 static uint16_t debounceTime = 50;
 static bool buttonState = false;          // Current debounced state
 static bool lastRawState = false;         // Last raw GPIO reading
@@ -23,14 +24,11 @@ void IRAM_ATTR buttonISR() {
   interruptPending = true;
 }
 
-void initButton(uint8_t pin, uint16_t debounceMs) {
-  buttonPin = pin;
-  debounceTime = debounceMs;
-  
+void initButton() {
   DEBUG_PRINT("Initializing button on GPIO ");
-  DEBUG_PRINT(pin);
+  DEBUG_PRINT(buttonPin);
   DEBUG_PRINT(" (debounce: ");
-  DEBUG_PRINT(debounceMs);
+  DEBUG_PRINT(debounceTime);
   DEBUG_PRINTLN("ms)");
   
   // Configure pin as input with pull-up (active LOW button)

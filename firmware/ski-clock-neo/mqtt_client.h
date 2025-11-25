@@ -55,7 +55,7 @@ extern const unsigned long DISPLAY_SNAPSHOT_INTERVAL;
 extern Ticker displaySnapshotTicker;
 
 // Function declarations
-void setupMQTT();
+void initMQTT();
 bool connectMQTT();
 void disconnectMQTT();
 void updateMQTT();
