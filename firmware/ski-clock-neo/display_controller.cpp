@@ -62,7 +62,7 @@ void updateRow0() {
   // Check if NTP is synced before attempting to display time/date
   if (!isTimeSynced()) {
     // NTP not synced yet, show placeholder
-    setText(0, "SYNC");
+    setText(0, "--.--");
     DEBUG_PRINTLN("Row 0: Waiting for NTP sync");
     return;
   }
@@ -87,7 +87,6 @@ void updateRow0() {
         DEBUG_PRINT("Row 0: Date = ");
         DEBUG_PRINTLN(buffer);
       } else {
-        setText(0, "--:--");
         DEBUG_PRINTLN("Row 0: Date format failed");
       }
     }

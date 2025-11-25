@@ -1,0 +1,73 @@
+2025-11-25T11:18:39.0449679Z ##[group]Run arduino-cli compile --fqbn esp32:esp32:esp32 \
+2025-11-25T11:18:39.0450424Z [36;1marduino-cli compile --fqbn esp32:esp32:esp32 \[0m
+2025-11-25T11:18:39.0450946Z [36;1m  --export-binaries \[0m
+2025-11-25T11:18:39.0451433Z [36;1m  --build-property "build.partitions=min_spiffs" \[0m
+2025-11-25T11:18:39.0453853Z [36;1m  --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"***\" -DDOWNLOAD_API_KEY=\"***\" -DFIRMWARE_VERSION=\"2025.11.25.54\" -DMQTT_HOST=\"***\" -DMQTT_USERNAME=\"***\" -DMQTT_PASSWORD=\"***\" -DBOARD_ESP32" \[0m
+2025-11-25T11:18:39.0455033Z [36;1m  --output-dir build/esp32 \[0m
+2025-11-25T11:18:39.0455502Z [36;1m  firmware/***[0m
+2025-11-25T11:18:39.0456057Z [36;1mcp build/esp32/***.ino.bin build/***-esp32.bin[0m
+2025-11-25T11:18:39.0457125Z [36;1mcp build/esp32/***.ino.bootloader.bin build/***-esp32.bootloader.bin || echo "Warning: Bootloader not found for ESP32"[0m
+2025-11-25T11:18:39.0458784Z [36;1mcp build/esp32/***.ino.partitions.bin build/***-esp32.partitions.bin || echo "Warning: Partitions not found for ESP32"[0m
+2025-11-25T11:18:39.0492830Z shell: /usr/bin/bash -e {0}
+2025-11-25T11:18:39.0493264Z ##[endgroup]
+2025-11-25T11:19:08.6191720Z /home/runner/work/***/***/firmware/***/data_temperature.cpp: In function 'void initTemperatureData()':
+2025-11-25T11:19:08.6200791Z /home/runner/work/***/***/firmware/***/data_temperature.cpp:69:40: error: 'temperaturePollCallback' was not declared in this scope
+2025-11-25T11:19:08.6203897Z      temperaturePollTicker.attach(30.0, temperaturePollCallback);
+2025-11-25T11:19:08.6212005Z                                         ^~~~~~~~~~~~~~~~~~~~~~~
+2025-11-25T11:19:08.6215430Z /home/runner/work/***/***/firmware/***/data_temperature.cpp:69:40: note: suggested alternative: 'temperaturePollTicker'
+2025-11-25T11:19:08.6219761Z      temperaturePollTicker.attach(30.0, temperaturePollCallback);
+2025-11-25T11:19:08.6226391Z                                         ^~~~~~~~~~~~~~~~~~~~~~~
+2025-11-25T11:19:08.6228941Z                                         temperaturePollTicker
+2025-11-25T11:19:08.6231173Z /home/runner/work/***/***/firmware/***/data_temperature.cpp: In function 'void temperaturePollCallback()':
+2025-11-25T11:19:08.6233841Z /home/runner/work/***/***/firmware/***/data_temperature.cpp:147:41: error: 'temperatureReadCallback' was not declared in this scope
+2025-11-25T11:19:08.6248317Z        temperatureReadTicker.once(0.75f, temperatureReadCallback);  // 0.75 seconds
+2025-11-25T11:19:08.6249476Z                                          ^~~~~~~~~~~~~~~~~~~~~~~
+2025-11-25T11:19:08.6250750Z /home/runner/work/***/***/firmware/***/data_temperature.cpp:147:41: note: suggested alternative: 'temperaturePollCallback'
+2025-11-25T11:19:08.6251964Z        temperatureReadTicker.once(0.75f, temperatureReadCallback);  // 0.75 seconds
+2025-11-25T11:19:08.6252757Z                                          ^~~~~~~~~~~~~~~~~~~~~~~
+2025-11-25T11:19:08.6253347Z                                          temperaturePollCallback
+2025-11-25T11:19:09.0823596Z /home/runner/work/***/***/firmware/***/display.cpp: In function 'void initDisplay()':
+2025-11-25T11:19:09.0825210Z /home/runner/work/***/***/firmware/***/display.cpp:141:3: error: 'initDisplayController' was not declared in this scope
+2025-11-25T11:19:09.0826127Z    initDisplayController();
+2025-11-25T11:19:09.0826565Z    ^~~~~~~~~~~~~~~~~~~~~
+2025-11-25T11:19:09.0827785Z /home/runner/work/***/***/firmware/***/display.cpp:141:3: note: suggested alternative: 'initDisplayBuffer'
+2025-11-25T11:19:09.0828622Z    initDisplayController();
+2025-11-25T11:19:09.0829017Z    ^~~~~~~~~~~~~~~~~~~~~
+2025-11-25T11:19:09.0829374Z    initDisplayBuffer
+2025-11-25T11:19:09.1278233Z /home/runner/work/***/***/firmware/***/mqtt_client.cpp: In function 'void publishDisplaySnapshot()':
+2025-11-25T11:19:09.1279262Z /home/runner/work/***/***/firmware/***/mqtt_client.cpp:258:3: error: 'createSnapshotBuffer' was not declared in this scope
+2025-11-25T11:19:09.1279791Z    createSnapshotBuffer();
+2025-11-25T11:19:09.1280096Z    ^~~~~~~~~~~~~~~~~~~~
+2025-11-25T11:19:09.1281227Z /home/runner/work/***/***/firmware/***/mqtt_client.cpp:258:3: note: suggested alternative: 'clearDisplayBuffer'
+2025-11-25T11:19:09.1281855Z    createSnapshotBuffer();
+2025-11-25T11:19:09.1282161Z    ^~~~~~~~~~~~~~~~~~~~
+2025-11-25T11:19:09.1282445Z    clearDisplayBuffer
+2025-11-25T11:19:09.1298326Z 
+2025-11-25T11:19:09.2638812Z Error during build: exit status 1
+2025-11-25T11:19:09.2639304Z 
+2025-11-25T11:19:09.2640213Z [92mUsed library[0m      [92mVersion[0m [90mPath[0m                                                                                   
+2025-11-25T11:19:09.2641380Z [93mWiFi[0m              2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFi[0m            
+2025-11-25T11:19:09.2642824Z [93mWebServer[0m         2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WebServer[0m       
+2025-11-25T11:19:09.2644370Z [93mAutoConnect[0m       1.4.2   [90m/home/runner/Arduino/libraries/AutoConnect[0m                                             
+2025-11-25T11:19:09.2645862Z [93mDNSServer[0m         2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/DNSServer[0m       
+2025-11-25T11:19:09.2647606Z [93mEEPROM[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/EEPROM[0m          
+2025-11-25T11:19:09.2649081Z [93mPageBuilder[0m       1.5.6   [90m/home/runner/Arduino/libraries/PageBuilder[0m                                             
+2025-11-25T11:19:09.2650433Z [93mFS[0m                2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/FS[0m              
+2025-11-25T11:19:09.2651788Z [93mSPIFFS[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPIFFS[0m          
+2025-11-25T11:19:09.2653214Z [93mSD[0m                2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SD[0m              
+2025-11-25T11:19:09.2655275Z [93mSPI[0m               2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPI[0m             
+2025-11-25T11:19:09.2656650Z [93mPreferences[0m       2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Preferences[0m     
+2025-11-25T11:19:09.2658139Z [93mTicker[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Ticker[0m          
+2025-11-25T11:19:09.2658923Z [93mArduinoJson[0m       7.4.2   [90m/home/runner/Arduino/libraries/ArduinoJson[0m                                             
+2025-11-25T11:19:09.2659709Z [93mHTTPClient[0m        2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPClient[0m      
+2025-11-25T11:19:09.2660519Z [93mWiFiClientSecure[0m  2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFiClientSecure[0m
+2025-11-25T11:19:09.2661337Z [93mHTTPUpdate[0m        2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPUpdate[0m      
+2025-11-25T11:19:09.2662112Z [93mUpdate[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Update[0m          
+2025-11-25T11:19:09.2662874Z [93mPubSubClient[0m      2.8     [90m/home/runner/Arduino/libraries/PubSubClient[0m                                            
+2025-11-25T11:19:09.2663621Z [93mOneWire[0m           2.3.8   [90m/home/runner/Arduino/libraries/OneWire[0m                                                 
+2025-11-25T11:19:09.2664394Z [93mDallasTemperature[0m 4.0.5   [90m/home/runner/Arduino/libraries/DallasTemperature[0m                                       
+2025-11-25T11:19:09.2665218Z [93mAdafruit NeoPixel[0m 1.15.2  [90m/home/runner/Arduino/libraries/Adafruit_NeoPixel[0m                                       
+2025-11-25T11:19:09.2665614Z 
+2025-11-25T11:19:09.2665952Z [92mUsed platform[0m [92mVersion[0m [90mPath[0m                                                        
+2025-11-25T11:19:09.2666944Z [93mesp32:esp32[0m   2.0.14  [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14[0m
+2025-11-25T11:19:09.2683781Z ##[error]Process completed with exit code 1.
