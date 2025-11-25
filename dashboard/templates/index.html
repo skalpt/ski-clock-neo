@@ -898,8 +898,8 @@
             'wifi_disconnect': '📵',
             'mqtt_connect': '🔗',
             'mqtt_disconnect': '🔓',
-            'temp_read': '🌡️',
-            'temp_error': '⚠️'
+            'temperature_read': '🌡️',
+            'temperature_error': '⚠️'
         };
         return icons[eventType] || '📌';
     }
@@ -912,8 +912,8 @@
             'wifi_disconnect': 'WiFi Disconnect',
             'mqtt_connect': 'MQTT Connect',
             'mqtt_disconnect': 'MQTT Disconnect',
-            'temp_read': 'Temperature',
-            'temp_error': 'Temp Error'
+            'temperature_read': 'Temperature',
+            'temperature_error': 'Temperature Error'
         };
         return labels[eventType] || eventType;
     }
@@ -937,7 +937,7 @@
                     if (data.ssid) wifiParts.push(escapeHtml(data.ssid));
                     if (data.rssi) wifiParts.push(`${data.rssi} dBm`);
                     return wifiParts.join(', ') || '-';
-                case 'temp_read':
+                case 'temperature_read':
                     return data.celsius !== undefined ? `${data.celsius.toFixed(1)}°C` : '-';
                 default:
                     return '-';

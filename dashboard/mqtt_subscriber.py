@@ -483,7 +483,7 @@ def handle_event(client, payload, topic):
     
     Payload format:
     {
-        "type": "temp_read",
+        "type": "temperature_read",
         "data": {"value": 5.2},
         "offset_ms": 45000
     }

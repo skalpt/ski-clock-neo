@@ -1592,7 +1592,7 @@ def get_events():
     
     Query parameters:
     - device_id: Filter by specific device
-    - event_type: Filter by event type (e.g., 'temp_read', 'boot', 'wifi_connect')
+    - event_type: Filter by event type (e.g., 'temperature_read', 'boot', 'wifi_connect')
     - start_date: ISO 8601 date (events after this time)
     - end_date: ISO 8601 date (events before this time)
     - limit: Number of events to return (default: 100)

@@ -162,14 +162,14 @@ void temperatureReadCallback() {
     DEBUG_PRINT("Temperature updated: ");
     DEBUG_PRINTLN(temp);
     
-    // Log temp_read event with temperature value
+    // Log temperature_read event with temperature value
     // Use dtostrf for portable float-to-string conversion
     char tempStr[16];
     dtostrf(temp, 4, 1, tempStr);
     String tempData = "{\"celsius\":";
     tempData += tempStr;
     tempData += "}";
-    logEvent("temp_read", tempData.c_str());
+    logEvent("temperature_read", tempData.c_str());
     
     // First read complete
     if (firstTemperatureRead) {
@@ -179,7 +179,7 @@ void temperatureReadCallback() {
   } else {
     // Failed to read temperature - retry on next poll
     DEBUG_PRINTLN("Temperature read failed, will retry on next poll");
-    logEvent("temp_error", "{\"reason\":\"read_failed\"}");
+    logEvent("temperature_error", "{\"reason\":\"read_failed\"}");
   }
   
   // Always clear flag to allow next poll (ensures recovery from failed reads)

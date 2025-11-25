@@ -47,8 +47,8 @@
                     <option value="wifi_disconnect">WiFi Disconnect</option>
                     <option value="mqtt_connect">MQTT Connect</option>
                     <option value="mqtt_disconnect">MQTT Disconnect</option>
-                    <option value="temp_read">Temperature Read</option>
-                    <option value="temp_error">Temperature Error</option>
+                    <option value="temperature_read">Temperature Read</option>
+                    <option value="temperature_error">Temperature Error</option>
                 </select>
             </div>
             
@@ -530,8 +530,8 @@
             'wifi_disconnect': '📵',
             'mqtt_connect': '🔗',
             'mqtt_disconnect': '🔓',
-            'temp_read': '🌡️',
-            'temp_error': '⚠️'
+            'temperature_read': '🌡️',
+            'temperature_error': '⚠️'
         };
         return icons[eventType] || '📌';
     }
@@ -544,8 +544,8 @@
             'wifi_disconnect': 'WiFi Disconnect',
             'mqtt_connect': 'MQTT Connect',
             'mqtt_disconnect': 'MQTT Disconnect',
-            'temp_read': 'Temperature',
-            'temp_error': 'Temp Error'
+            'temperature_read': 'Temperature',
+            'temperature_error': 'Temperature Error'
         };
         return labels[eventType] || eventType;
     }
@@ -574,9 +574,9 @@
                     return wifiParts.join(', ') || '-';
                 case 'wifi_disconnect':
                     return data.reason ? `Reason: ${escapeHtml(data.reason)}` : '-';
-                case 'temp_read':
+                case 'temperature_read':
                     return data.celsius !== undefined ? `${data.celsius.toFixed(1)}°C` : '-';
-                case 'temp_error':
+                case 'temperature_error':
                     return data.error ? escapeHtml(data.error) : 'Sensor error';
                 default:
                     return JSON.stringify(data);
