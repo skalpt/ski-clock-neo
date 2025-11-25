@@ -1,4 +1,5 @@
 #include "display_controller.h"
+
 #include "display.h"
 #include "data_time.h"
 #include "data_temperature.h"
@@ -115,8 +116,9 @@ void updateRow1() {
 void initDisplayController() {
   DEBUG_PRINTLN("Initializing display controller");
   
-  showingTime = true; // Start with time display
-  forceDisplayUpdate(); // Force initial update
+  showingTime = true;    // Start with time display
+  forceDisplayUpdate();  // Force initial update
+  renderNow();           // Force immediate render (don't wait for next tick)
   
   // Create FreeRTOS task for display toggle (ESP32) or Ticker (ESP8266)
   #if defined(ESP32)

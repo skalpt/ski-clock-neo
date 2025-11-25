@@ -102,4 +102,7 @@ RenderCallback getRenderCallback();
   extern TickTwo displayTicker;
 #endif
 
+// Force immediate rendering of current display state
+void renderNow();
+
 #endif

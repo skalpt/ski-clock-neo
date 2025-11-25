@@ -139,7 +139,7 @@ void initDisplay() {
     DEBUG_PRINTLN("Display ticker started (ESP8266 TickTwo - 1ms, loop-driven)");
   #endif
 
-  initDisplayController();
+  initDisplayController(); // Initialize controller to handle display logic
 }
 
 DisplayConfig getDisplayConfig() {
@@ -351,4 +351,8 @@ bool clearRenderFlagsIfUnchanged(uint32_t startSeq) {
 
 RenderCallback getRenderCallback() {
   return renderCallback;
+}
+
+void renderNow() {
+  updateNeoPixels(); // Force immediate render; don't wait for next tick
 }
