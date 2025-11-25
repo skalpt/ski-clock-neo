@@ -1337,11 +1337,17 @@ body.no-web-serial .flash-column {
     color: inherit;
 }
 
-.snapshot-history-link {
+.snapshot-actions {
+    margin-top: var(--spacing-md);
+}
+
+.history-btn {
     text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    background: rgba(99, 102, 241, 0.9);
+}
+
+.history-btn:hover {
+    background: rgba(99, 102, 241, 1);
 }
 
 .snapshot-info {
