@@ -358,6 +358,8 @@ button {
     cursor: pointer;
     transition: all var(--transition-base);
     font-weight: 600;
+    text-align: center;
+    white-space: nowrap;
 }
 
 .delete-btn {
