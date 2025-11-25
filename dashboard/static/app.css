@@ -473,8 +473,14 @@ button {
     color: white;
 }
 
-.snapshot-btn:hover {
+.snapshot-btn:hover:not(:disabled) {
     background: rgba(249, 115, 22, 1);
+}
+
+.snapshot-btn:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+    opacity: 0.6;
 }
 
 /* Standalone snapshot button (used when no snapshot exists) */
