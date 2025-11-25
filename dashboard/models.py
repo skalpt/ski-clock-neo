@@ -219,6 +219,7 @@ class Device(db.Model):
     ota_update_logs = db.relationship('OTAUpdateLog', back_populates='device', cascade='all, delete-orphan')
     heartbeat_history = db.relationship('HeartbeatHistory', back_populates='device', cascade='all, delete-orphan')
     display_snapshots = db.relationship('DisplaySnapshot', back_populates='device', cascade='all, delete-orphan')
+    event_logs = db.relationship('EventLog', back_populates='device', cascade='all, delete-orphan')
     
     def __repr__(self):
         return f'<Device {self.device_id} ({self.board_type})>'
@@ -384,4 +385,36 @@ class DisplaySnapshot(db.Model):
             'timestamp': self.timestamp.isoformat(),
             'row_text': self.row_text,
             'bitmap_data': self.bitmap_data
+        }
+
+
+class EventLog(db.Model):
+    __tablename__ = 'event_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    device_id = db.Column(db.String(32), db.ForeignKey('devices.device_id'), nullable=False, index=True)
+    event_type = db.Column(db.String(32), nullable=False, index=True)
+    event_data = db.Column(db.JSON)  # Flexible payload: {"value": 5.2}, {"rssi": -65}, {"reason": "power_on"}
+    timestamp = db.Column(db.DateTime(timezone=True), nullable=False, index=True)
+    
+    # Relationships
+    device = db.relationship('Device', back_populates='event_logs')
+    
+    # Composite index for efficient queries by device + time range
+    __table_args__ = (
+        db.Index('idx_event_device_timestamp', 'device_id', 'timestamp'),
+        db.Index('idx_event_type_timestamp', 'event_type', 'timestamp'),
+    )
+    
+    def __repr__(self):
+        return f'<EventLog {self.device_id} {self.event_type} at {self.timestamp}>'
+    
+    def to_dict(self):
+        """Convert event log to dictionary"""
+        return {
+            'id': self.id,
+            'device_id': self.device_id,
+            'event_type': self.event_type,
+            'event_data': self.event_data,
+            'timestamp': self.timestamp.isoformat()
         }
