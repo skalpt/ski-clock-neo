@@ -1350,12 +1350,12 @@ body.no-web-serial .flash-column {
 
 .history-btn {
     text-decoration: none;
-    background: rgba(99, 102, 241, 0.9);
+    background: rgba(249, 115, 22, 0.9);
     color: white;
 }
 
 .history-btn:hover {
-    background: rgba(99, 102, 241, 1);
+    background: rgba(249, 115, 22, 1);
     color: white;
 }
 
