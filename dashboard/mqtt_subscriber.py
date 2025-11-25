@@ -689,6 +689,11 @@ def stop_mqtt_subscriber():
 def start_mqtt_subscriber():
     global _mqtt_client, _shutdown_event, _subscriber_id
     
+    # Prevent duplicate subscribers (can happen with Flask reloader or workflow restarts)
+    if _mqtt_client is not None:
+        print(f"⚠ MQTT subscriber already running (ID: {_subscriber_id}), skipping duplicate start")
+        return _mqtt_client
+    
     if not MQTT_HOST or not MQTT_USERNAME or not MQTT_PASSWORD:
         print("⚠ MQTT credentials not configured, device monitoring disabled")
         return None
