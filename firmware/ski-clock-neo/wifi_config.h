@@ -11,7 +11,7 @@
   #error "This code requires ESP32 or ESP8266"
 #endif
 
-#include <AutoConnect.h>
+#include <AutoConnectCore.h>
 #include <AutoConnectCredential.h>
 #include "device_info.h"   // For getDeviceID()
 #include "led_indicator.h" // For LED status patterns when WiFi connection state changes
