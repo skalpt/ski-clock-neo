@@ -17,6 +17,11 @@
 #define PANEL_HEIGHT    16      // Height of each panel in pixels
 #define BRIGHTNESS      10      // 0-255 (keeping dim for development)
 
+// Display color configuration (RGB)
+#define DISPLAY_COLOR_R 255     // Red component (0-255)
+#define DISPLAY_COLOR_G 0       // Green component (0-255)
+#define DISPLAY_COLOR_B 0       // Blue component (0-255)
+
 // Display pin configuration
 static const uint8_t DISPLAY_PINS[DISPLAY_ROWS] = {4, 3};
 

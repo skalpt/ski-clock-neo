@@ -35,10 +35,10 @@ void updateNeoPixels() {
     
     // Clear this row's NeoPixels
     rows[rowIdx].clear();
-    uint32_t red = rows[rowIdx].Color(255, 0, 0);
+    uint32_t color = rows[rowIdx].Color(DISPLAY_COLOR_R, DISPLAY_COLOR_G, DISPLAY_COLOR_B);
     
     // Render text using drawTextCentered
-    drawTextCentered(rows[rowIdx], displayText, 1, red, 2);
+    drawTextCentered(rows[rowIdx], displayText, 1, color, 2);
     
     // Copy rendered pixels to internal buffer for this row
     // Loop through NeoPixel strip indices and reverse-transform to logical coordinates

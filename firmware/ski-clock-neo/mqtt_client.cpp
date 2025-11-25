@@ -2,6 +2,7 @@
 #include "led_indicator.h"   // For LED status patterns when MQTT connection state changes
 #include "ota_update.h"      // For triggering an OTA update
 #include "display.h"         // For sending the display snapshot
+#include "ski-clock-neo_config.h"  // For DISPLAY_COLOR_R/G/B and BRIGHTNESS
 
 // MQTT broker port
 const uint16_t MQTT_PORT = 8883;  // TLS port for HiveMQ Cloud
@@ -289,19 +290,25 @@ void publishDisplaySnapshot() {
   rowTextJson += "]";
   
   // Build JSON payload with safe integer-to-string conversion
-  // Format: {"device_id":"xxx","rows":1,"cols":1,"width":16,"height":16,"pixels":"base64data","row_text":["text1","text2"]}
+  // Format: {"device_id":"xxx","rows":1,"cols":1,"width":16,"height":16,"mono":"base64data","monoColor":[R,G,B,brightness],"row_text":["text1","text2"]}
   char rowsStr[8], colsStr[8], widthStr[8], heightStr[8];
   snprintf(rowsStr, sizeof(rowsStr), "%u", cfg.rows);
   snprintf(colsStr, sizeof(colsStr), "%u", cfg.panelsPerRow);
   snprintf(widthStr, sizeof(widthStr), "%u", totalWidth);
   snprintf(heightStr, sizeof(heightStr), "%u", totalHeight);
   
+  // Build monoColor array [R, G, B, brightness]
+  char monoColorStr[32];
+  snprintf(monoColorStr, sizeof(monoColorStr), "[%u,%u,%u,%u]", 
+           DISPLAY_COLOR_R, DISPLAY_COLOR_G, DISPLAY_COLOR_B, BRIGHTNESS);
+  
   String payload = "{\"device_id\":\"" + getDeviceID() + 
                    "\",\"rows\":" + String(rowsStr) +
                    ",\"cols\":" + String(colsStr) +
                    ",\"width\":" + String(widthStr) +
                    ",\"height\":" + String(heightStr) +
-                   ",\"pixels\":\"" + base64Data + "\"" +
+                   ",\"mono\":\"" + base64Data + "\"" +
+                   ",\"monoColor\":" + String(monoColorStr) +
                    ",\"row_text\":" + rowTextJson + "}";
   
   // Check payload size against MQTT buffer

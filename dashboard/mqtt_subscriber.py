@@ -379,32 +379,44 @@ def handle_display_snapshot(client, payload):
             
             device = Device.query.filter_by(device_id=device_id).first()
             if device:
-                # Store snapshot data (decode from base64 and convert to list of bytes)
-                pixels_base64 = payload.get('pixels', '')
+                # Support both new 'mono' field and legacy 'pixels' field for backward compatibility
+                mono_base64 = payload.get('mono') or payload.get('pixels', '')
+                mono_color = payload.get('monoColor')  # [R, G, B, brightness] or None for legacy
                 row_text = payload.get('row_text', [])
                 
                 try:
-                    pixels_bytes = base64.b64decode(pixels_base64)
+                    pixels_bytes = base64.b64decode(mono_base64)
                     
-                    # Update device's current snapshot (for card flip view)
-                    device.display_snapshot = {
+                    # Build snapshot data object
+                    snapshot_data = {
                         'rows': payload.get('rows', 1),
                         'cols': payload.get('cols', 1),
                         'width': payload.get('width', 16),
                         'height': payload.get('height', 16),
-                        'pixels': pixels_base64,  # Store as base64 for easy transmission to frontend
+                        'mono': mono_base64,  # Store as base64 for easy transmission to frontend
                         'timestamp': datetime.now(timezone.utc).isoformat()
                     }
+                    
+                    # Add monoColor if present (new format)
+                    if mono_color:
+                        snapshot_data['monoColor'] = mono_color
+                    
+                    # Update device's current snapshot (for card flip view)
+                    device.display_snapshot = snapshot_data
                     device.last_seen = datetime.now(timezone.utc)
                     
                     # Store snapshot in history table for debugging
                     bitmap_data = {
-                        'pixels': pixels_base64,
+                        'mono': mono_base64,
                         'width': payload.get('width', 16),
                         'height': payload.get('height', 16),
                         'rows': payload.get('rows', 1),
                         'cols': payload.get('cols', 1)
                     }
+                    
+                    # Add monoColor to bitmap_data if present
+                    if mono_color:
+                        bitmap_data['monoColor'] = mono_color
                     
                     snapshot = DisplaySnapshot(
                         device_id=device_id,
@@ -415,7 +427,8 @@ def handle_display_snapshot(client, payload):
                     db.session.add(snapshot)
                     db.session.commit()
                     
-                    print(f"📸 Display snapshot stored for {device_id} ({len(pixels_bytes)} bytes, {len(row_text)} rows)")
+                    color_info = f", color={mono_color}" if mono_color else ""
+                    print(f"📸 Display snapshot stored for {device_id} ({len(pixels_bytes)} bytes, {len(row_text)} rows{color_info})")
                 except Exception as e:
                     print(f"✗ Failed to store display snapshot: {e}")
 
