@@ -230,7 +230,7 @@
             setTimeout(() => {
                 data.snapshots.forEach(snapshot => {
                     if (snapshot.bitmap_data) {
-                        renderBitmapToCanvas(`canvas-${snapshot.id}`, snapshot.bitmap_data);
+                        renderBitmapToGrid(`panel-grid-${snapshot.id}`, snapshot.bitmap_data);
                     }
                 });
             }, 100);
@@ -272,7 +272,7 @@
                     <div class="snapshot-section">
                         <h4>🎨 Bitmap Preview (${bitmap.width || 0}x${bitmap.height || 0})</h4>
                         <div class="bitmap-preview">
-                            <canvas id="canvas-${snapshot.id}" class="bitmap-canvas"></canvas>
+                            <div id="panel-grid-${snapshot.id}" class="panel-grid"></div>
                         </div>
                     </div>
                 </div>
@@ -280,16 +280,18 @@
         `;
     }
 
-    function renderBitmapToCanvas(canvasId, bitmapData) {
-        const canvas = document.getElementById(canvasId);
+    function renderBitmapToGrid(gridId, bitmapData) {
+        const grid = document.getElementById(gridId);
         const monoData = bitmapData.mono || bitmapData.pixels;
         const colorData = bitmapData.color;
         
-        if (!canvas || (!monoData && !colorData)) return;
+        if (!grid || (!monoData && !colorData)) return;
         
         try {
-            const width = bitmapData.width || 16;
-            const height = bitmapData.height || 16;
+            const width = bitmapData.width || 48;
+            const height = bitmapData.height || 32;
+            const rows = bitmapData.rows || 2;
+            const cols = bitmapData.cols || 3;
             
             const isColorMode = !!colorData;
             let pixelData = null;
@@ -315,55 +317,70 @@
                 }
             }
             
-            canvas.width = width;
-            canvas.height = height;
+            const panelWidth = width / cols;
+            const panelHeight = height / rows;
+            const scale = 6;
             
-            const ctx = canvas.getContext('2d');
-            const imageData = ctx.createImageData(width, height);
+            grid.innerHTML = '';
             
-            let pixelIndex = 0;
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
-                    const i = (y * width + x) * 4;
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = panelWidth;
+                    canvas.height = panelHeight;
+                    canvas.style.width = `${panelWidth * scale}px`;
+                    canvas.style.height = `${panelHeight * scale}px`;
+                    canvas.style.imageRendering = 'pixelated';
+                    canvas.style.display = 'block';
+                    canvas.style.background = '#000';
                     
-                    if (isColorMode) {
-                        const colorByteIndex = pixelIndex * 4;
-                        const r = colorPixelData.charCodeAt(colorByteIndex) || 0;
-                        const g = colorPixelData.charCodeAt(colorByteIndex + 1) || 0;
-                        const b = colorPixelData.charCodeAt(colorByteIndex + 2) || 0;
-                        const brightness = (colorPixelData.charCodeAt(colorByteIndex + 3) || 255) / 255;
-                        
-                        imageData.data[i] = Math.round(r * brightness);
-                        imageData.data[i + 1] = Math.round(g * brightness);
-                        imageData.data[i + 2] = Math.round(b * brightness);
-                        imageData.data[i + 3] = 255;
-                    } else {
-                        const byteIndex = Math.floor(pixelIndex / 8);
-                        const bitIndex = pixelIndex % 8;
-                        const byte = pixelData.charCodeAt(byteIndex) || 0;
-                        const isOn = (byte & (1 << bitIndex)) !== 0;
-                        
-                        if (isOn) {
-                            imageData.data[i] = monoR;
-                            imageData.data[i + 1] = monoG;
-                            imageData.data[i + 2] = monoB;
-                            imageData.data[i + 3] = 255;
-                        } else {
-                            imageData.data[i] = 0;
-                            imageData.data[i + 1] = 0;
-                            imageData.data[i + 2] = 0;
-                            imageData.data[i + 3] = 255;
+                    const ctx = canvas.getContext('2d');
+                    const imageData = ctx.createImageData(panelWidth, panelHeight);
+                    
+                    for (let py = 0; py < panelHeight; py++) {
+                        for (let px = 0; px < panelWidth; px++) {
+                            const globalX = col * panelWidth + px;
+                            const globalY = row * panelHeight + py;
+                            const globalPixelIndex = globalY * width + globalX;
+                            
+                            const i = (py * panelWidth + px) * 4;
+                            
+                            if (isColorMode) {
+                                const colorByteIndex = globalPixelIndex * 4;
+                                const r = colorPixelData.charCodeAt(colorByteIndex) || 0;
+                                const g = colorPixelData.charCodeAt(colorByteIndex + 1) || 0;
+                                const b = colorPixelData.charCodeAt(colorByteIndex + 2) || 0;
+                                const brightness = (colorPixelData.charCodeAt(colorByteIndex + 3) || 255) / 255;
+                                
+                                imageData.data[i] = Math.round(r * brightness);
+                                imageData.data[i + 1] = Math.round(g * brightness);
+                                imageData.data[i + 2] = Math.round(b * brightness);
+                                imageData.data[i + 3] = 255;
+                            } else {
+                                const byteIndex = Math.floor(globalPixelIndex / 8);
+                                const bitIndex = globalPixelIndex % 8;
+                                const byte = pixelData.charCodeAt(byteIndex) || 0;
+                                const isOn = (byte & (1 << bitIndex)) !== 0;
+                                
+                                if (isOn) {
+                                    imageData.data[i] = monoR;
+                                    imageData.data[i + 1] = monoG;
+                                    imageData.data[i + 2] = monoB;
+                                    imageData.data[i + 3] = 255;
+                                } else {
+                                    imageData.data[i] = 0;
+                                    imageData.data[i + 1] = 0;
+                                    imageData.data[i + 2] = 0;
+                                    imageData.data[i + 3] = 255;
+                                }
+                            }
                         }
                     }
                     
-                    pixelIndex++;
+                    ctx.putImageData(imageData, 0, 0);
+                    grid.appendChild(canvas);
                 }
             }
-            
-            ctx.putImageData(imageData, 0, 0);
-            
-            canvas.style.width = `${Math.min(width * 4, 400)}px`;
-            canvas.style.height = 'auto';
             
         } catch (error) {
             console.error('Failed to render bitmap:', error);
