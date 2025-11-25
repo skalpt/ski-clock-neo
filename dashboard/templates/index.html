@@ -457,39 +457,48 @@
     }
 
     function renderDisplaySnapshot(deviceId, snapshot) {
-        // Support both 'mono' (new) and 'pixels' (legacy) field names
+        // Support all three formats:
+        // 1. 'color': Full RGBW per-pixel (4 bytes each)
+        // 2. 'mono' + 'monoColor': Bit-packed with uniform color
+        // 3. 'pixels': Legacy bit-packed (white)
+        const colorData = snapshot ? snapshot.color : null;
         const monoData = snapshot ? (snapshot.mono || snapshot.pixels) : null;
         
-        // Future: If 'color' key exists, it contains 4-bytes-per-pixel RGBW buffer
-        // Each pixel is [R, G, B, brightness] in base64-encoded format
-        // const colorData = snapshot ? snapshot.color : null;
-        // if (colorData) { /* decode as 4 bytes per pixel */ }
-        
-        if (!snapshot || !monoData) return;
+        if (!snapshot || (!monoData && !colorData)) return;
         
         const grid = document.getElementById(`panel-grid-${deviceId}`);
         if (!grid) return;
         
         try {
-            // Decode base64 pixel data
-            const pixelData = atob(monoData);
             const width = snapshot.width || 48;
             const height = snapshot.height || 32;
             const rows = snapshot.rows || 2;
             const cols = snapshot.cols || 3;
             
-            // Get color from monoColor [R, G, B, brightness] or default to white
-            let r = 255, g = 255, b = 255;
+            // Determine rendering mode and prepare data
+            const isColorMode = !!colorData;
+            let pixelData = null;
+            let colorPixelData = null;
+            
+            if (isColorMode) {
+                // Full color mode: 4 bytes per pixel (R, G, B, brightness)
+                colorPixelData = atob(colorData);
+            } else {
+                // Mono mode: bit-packed with optional monoColor
+                pixelData = atob(monoData);
+            }
+            
+            // Get mono color from monoColor [R, G, B, brightness] or default to white
+            let monoR = 255, monoG = 255, monoB = 255;
             if (snapshot.monoColor && snapshot.monoColor.length >= 3) {
-                r = snapshot.monoColor[0];
-                g = snapshot.monoColor[1];
-                b = snapshot.monoColor[2];
-                // Optional: Apply brightness scaling (index 3) if needed
+                monoR = snapshot.monoColor[0];
+                monoG = snapshot.monoColor[1];
+                monoB = snapshot.monoColor[2];
                 if (snapshot.monoColor.length >= 4) {
                     const brightness = snapshot.monoColor[3] / 255;
-                    r = Math.round(r * brightness);
-                    g = Math.round(g * brightness);
-                    b = Math.round(b * brightness);
+                    monoR = Math.round(monoR * brightness);
+                    monoG = Math.round(monoG * brightness);
+                    monoB = Math.round(monoB * brightness);
                 }
             }
             
@@ -499,21 +508,17 @@
             // Calculate responsive scale factor based on container width
             const container = grid.parentElement;
             const containerWidth = container ? container.clientWidth : 300;
-            const gapPixels = (cols - 1) * 1;  // 1px gaps between panels
-            const paddingPixels = 2;  // Grid padding
-            const availableWidth = containerWidth - gapPixels - paddingPixels - 40;  // 40px safety margin
+            const gapPixels = (cols - 1) * 1;
+            const paddingPixels = 2;
+            const availableWidth = containerWidth - gapPixels - paddingPixels - 40;
             
-            // Calculate max integer scale that fits
             const maxScaleByWidth = Math.floor(availableWidth / (panelWidth * cols));
-            const scale = Math.max(4, Math.min(12, maxScaleByWidth));  // Clamp between 4 and 12
+            const scale = Math.max(4, Math.min(12, maxScaleByWidth));
             
-            // Clear any existing canvases
             grid.innerHTML = '';
             
-            // Create a canvas for each panel
             for (let row = 0; row < rows; row++) {
                 for (let col = 0; col < cols; col++) {
-                    // Create canvas for this panel
                     const canvas = document.createElement('canvas');
                     canvas.width = panelWidth;
                     canvas.height = panelHeight;
@@ -526,34 +531,44 @@
                     const ctx = canvas.getContext('2d');
                     const imageData = ctx.createImageData(panelWidth, panelHeight);
                     
-                    // Extract pixel data for this panel
                     for (let py = 0; py < panelHeight; py++) {
                         for (let px = 0; px < panelWidth; px++) {
-                            // Calculate global position
                             const globalX = col * panelWidth + px;
                             const globalY = row * panelHeight + py;
                             const globalPixelIndex = globalY * width + globalX;
                             
-                            // Get pixel state from bit-packed data
-                            const byteIndex = Math.floor(globalPixelIndex / 8);
-                            const bitIndex = globalPixelIndex % 8;
-                            const byte = pixelData.charCodeAt(byteIndex) || 0;
-                            const isOn = (byte & (1 << bitIndex)) !== 0;
-                            
-                            // Set pixel in panel canvas
                             const i = (py * panelWidth + px) * 4;
-                            if (isOn) {
-                                // Use monoColor for pixel color
-                                imageData.data[i] = r;
-                                imageData.data[i + 1] = g;
-                                imageData.data[i + 2] = b;
+                            
+                            if (isColorMode) {
+                                // Full color mode: read 4 bytes per pixel (R, G, B, brightness)
+                                const colorByteIndex = globalPixelIndex * 4;
+                                const r = colorPixelData.charCodeAt(colorByteIndex) || 0;
+                                const g = colorPixelData.charCodeAt(colorByteIndex + 1) || 0;
+                                const b = colorPixelData.charCodeAt(colorByteIndex + 2) || 0;
+                                const brightness = (colorPixelData.charCodeAt(colorByteIndex + 3) || 255) / 255;
+                                
+                                imageData.data[i] = Math.round(r * brightness);
+                                imageData.data[i + 1] = Math.round(g * brightness);
+                                imageData.data[i + 2] = Math.round(b * brightness);
                                 imageData.data[i + 3] = 255;
                             } else {
-                                // Black pixel
-                                imageData.data[i] = 0;
-                                imageData.data[i + 1] = 0;
-                                imageData.data[i + 2] = 0;
-                                imageData.data[i + 3] = 255;
+                                // Mono mode: bit-packed
+                                const byteIndex = Math.floor(globalPixelIndex / 8);
+                                const bitIndex = globalPixelIndex % 8;
+                                const byte = pixelData.charCodeAt(byteIndex) || 0;
+                                const isOn = (byte & (1 << bitIndex)) !== 0;
+                                
+                                if (isOn) {
+                                    imageData.data[i] = monoR;
+                                    imageData.data[i + 1] = monoG;
+                                    imageData.data[i + 2] = monoB;
+                                    imageData.data[i + 3] = 255;
+                                } else {
+                                    imageData.data[i] = 0;
+                                    imageData.data[i + 1] = 0;
+                                    imageData.data[i + 2] = 0;
+                                    imageData.data[i + 3] = 255;
+                                }
                             }
                         }
                     }

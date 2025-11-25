@@ -229,33 +229,38 @@
 
     function renderBitmapToCanvas(canvasId, bitmapData) {
         const canvas = document.getElementById(canvasId);
-        // Support both 'mono' (new) and 'pixels' (legacy) field names
+        // Support all three formats
         const monoData = bitmapData.mono || bitmapData.pixels;
+        const colorData = bitmapData.color;
         
-        // Future: If 'color' key exists, it contains 4-bytes-per-pixel RGBW buffer
-        // Each pixel is [R, G, B, brightness] in base64-encoded format
-        // const colorData = bitmapData.color;
-        // if (colorData) { /* decode as 4 bytes per pixel */ }
-        
-        if (!canvas || !monoData) return;
+        if (!canvas || (!monoData && !colorData)) return;
         
         try {
-            const pixelData = atob(monoData);
             const width = bitmapData.width || 16;
             const height = bitmapData.height || 16;
             
-            // Get color from monoColor [R, G, B, brightness] or default to white
-            let r = 255, g = 255, b = 255;
+            // Determine rendering mode
+            const isColorMode = !!colorData;
+            let pixelData = null;
+            let colorPixelData = null;
+            
+            if (isColorMode) {
+                colorPixelData = atob(colorData);
+            } else {
+                pixelData = atob(monoData);
+            }
+            
+            // Get mono color from monoColor [R, G, B, brightness] or default to white
+            let monoR = 255, monoG = 255, monoB = 255;
             if (bitmapData.monoColor && bitmapData.monoColor.length >= 3) {
-                r = bitmapData.monoColor[0];
-                g = bitmapData.monoColor[1];
-                b = bitmapData.monoColor[2];
-                // Optional: Apply brightness scaling (index 3) if needed
+                monoR = bitmapData.monoColor[0];
+                monoG = bitmapData.monoColor[1];
+                monoB = bitmapData.monoColor[2];
                 if (bitmapData.monoColor.length >= 4) {
                     const brightness = bitmapData.monoColor[3] / 255;
-                    r = Math.round(r * brightness);
-                    g = Math.round(g * brightness);
-                    b = Math.round(b * brightness);
+                    monoR = Math.round(monoR * brightness);
+                    monoG = Math.round(monoG * brightness);
+                    monoB = Math.round(monoB * brightness);
                 }
             }
             
@@ -268,22 +273,38 @@
             let pixelIndex = 0;
             for (let y = 0; y < height; y++) {
                 for (let x = 0; x < width; x++) {
-                    const byteIndex = Math.floor(pixelIndex / 8);
-                    const bitIndex = pixelIndex % 8;
-                    const byte = pixelData.charCodeAt(byteIndex) || 0;
-                    const isOn = (byte & (1 << bitIndex)) !== 0;
-                    
                     const i = (y * width + x) * 4;
-                    if (isOn) {
-                        imageData.data[i] = r;
-                        imageData.data[i + 1] = g;
-                        imageData.data[i + 2] = b;
+                    
+                    if (isColorMode) {
+                        // Full color mode: read 4 bytes per pixel (R, G, B, brightness)
+                        const colorByteIndex = pixelIndex * 4;
+                        const r = colorPixelData.charCodeAt(colorByteIndex) || 0;
+                        const g = colorPixelData.charCodeAt(colorByteIndex + 1) || 0;
+                        const b = colorPixelData.charCodeAt(colorByteIndex + 2) || 0;
+                        const brightness = (colorPixelData.charCodeAt(colorByteIndex + 3) || 255) / 255;
+                        
+                        imageData.data[i] = Math.round(r * brightness);
+                        imageData.data[i + 1] = Math.round(g * brightness);
+                        imageData.data[i + 2] = Math.round(b * brightness);
                         imageData.data[i + 3] = 255;
                     } else {
-                        imageData.data[i] = 0;
-                        imageData.data[i + 1] = 0;
-                        imageData.data[i + 2] = 0;
-                        imageData.data[i + 3] = 255;
+                        // Mono mode: bit-packed
+                        const byteIndex = Math.floor(pixelIndex / 8);
+                        const bitIndex = pixelIndex % 8;
+                        const byte = pixelData.charCodeAt(byteIndex) || 0;
+                        const isOn = (byte & (1 << bitIndex)) !== 0;
+                        
+                        if (isOn) {
+                            imageData.data[i] = monoR;
+                            imageData.data[i + 1] = monoG;
+                            imageData.data[i + 2] = monoB;
+                            imageData.data[i + 3] = 255;
+                        } else {
+                            imageData.data[i] = 0;
+                            imageData.data[i + 1] = 0;
+                            imageData.data[i + 2] = 0;
+                            imageData.data[i + 3] = 255;
+                        }
                     }
                     
                     pixelIndex++;

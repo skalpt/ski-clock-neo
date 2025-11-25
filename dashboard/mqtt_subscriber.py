@@ -370,7 +370,13 @@ def handle_ota_complete(client, payload):
                 print(f"⚠ No OTA log found for device: {device_id}")
 
 def handle_display_snapshot(client, payload):
-    """Handle display snapshot messages"""
+    """Handle display snapshot messages
+    
+    Supports three formats:
+    1. Legacy: 'pixels' field with bit-packed mono data (white pixels)
+    2. Mono: 'mono' field with bit-packed data + 'monoColor' [R,G,B,brightness]
+    3. Color: 'color' field with 4-bytes-per-pixel RGBW data (full color per pixel)
+    """
     device_id = payload.get('device_id')
     
     if device_id and _app_context:
@@ -379,28 +385,40 @@ def handle_display_snapshot(client, payload):
             
             device = Device.query.filter_by(device_id=device_id).first()
             if device:
-                # Support both new 'mono' field and legacy 'pixels' field for backward compatibility
+                # Support all three formats
                 mono_base64 = payload.get('mono') or payload.get('pixels', '')
-                mono_color = payload.get('monoColor')  # [R, G, B, brightness] or None for legacy
+                mono_color = payload.get('monoColor')  # [R, G, B, brightness] or None
+                color_base64 = payload.get('color')    # Full RGBW per-pixel data or None
                 row_text = payload.get('row_text', [])
                 
                 try:
-                    pixels_bytes = base64.b64decode(mono_base64)
+                    # Validate we have some pixel data
+                    if mono_base64:
+                        pixels_bytes = base64.b64decode(mono_base64)
+                    elif color_base64:
+                        pixels_bytes = base64.b64decode(color_base64)
+                    else:
+                        print(f"✗ No pixel data in snapshot for {device_id}")
+                        return
                     
-                    # Build snapshot data object - include both 'mono' and 'pixels' for compatibility
+                    # Build snapshot data object - include all formats for compatibility
                     snapshot_data = {
                         'rows': payload.get('rows', 1),
                         'cols': payload.get('cols', 1),
                         'width': payload.get('width', 16),
                         'height': payload.get('height', 16),
-                        'mono': mono_base64,   # New field
+                        'mono': mono_base64,   # Bit-packed mono data
                         'pixels': mono_base64, # Legacy field for backward compatibility
                         'timestamp': datetime.now(timezone.utc).isoformat()
                     }
                     
-                    # Add monoColor if present (new format)
+                    # Add monoColor if present
                     if mono_color:
                         snapshot_data['monoColor'] = mono_color
+                    
+                    # Add full color data if present (4 bytes per pixel: RGBW)
+                    if color_base64:
+                        snapshot_data['color'] = color_base64
                     
                     # Update device's current snapshot (for card flip view)
                     device.display_snapshot = snapshot_data
@@ -408,7 +426,7 @@ def handle_display_snapshot(client, payload):
                     
                     # Store snapshot in history table for debugging
                     bitmap_data = {
-                        'mono': mono_base64,   # New field
+                        'mono': mono_base64,   # Bit-packed mono data
                         'pixels': mono_base64, # Legacy field for backward compatibility
                         'width': payload.get('width', 16),
                         'height': payload.get('height', 16),
@@ -419,6 +437,10 @@ def handle_display_snapshot(client, payload):
                     # Add monoColor to bitmap_data if present
                     if mono_color:
                         bitmap_data['monoColor'] = mono_color
+                    
+                    # Add full color data if present
+                    if color_base64:
+                        bitmap_data['color'] = color_base64
                     
                     snapshot = DisplaySnapshot(
                         device_id=device_id,
