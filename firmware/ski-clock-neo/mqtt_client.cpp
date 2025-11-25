@@ -309,7 +309,6 @@ void publishDisplaySnapshot() {
                    ",\"width\":" + String(widthStr) +
                    ",\"height\":" + String(heightStr) +
                    ",\"mono\":\"" + base64Data + "\"" +
-                   ",\"pixels\":\"" + base64Data + "\"" +
                    ",\"monoColor\":" + String(monoColorStr) +
                    ",\"row_text\":" + rowTextJson + "}";
   
