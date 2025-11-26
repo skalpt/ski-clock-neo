@@ -79,12 +79,12 @@ def on_connect(client, userdata, flags, rc, properties=None):
         print(f"✓ Connected to MQTT broker: {MQTT_HOST}")
         client.subscribe(f"{MQTT_TOPIC_HEARTBEAT}/+")
         print(f"✓ Subscribed to topic: {MQTT_TOPIC_HEARTBEAT}/+")
-        client.subscribe(MQTT_TOPIC_OTA_START)
-        print(f"✓ Subscribed to topic: {MQTT_TOPIC_OTA_START}")
-        client.subscribe(MQTT_TOPIC_OTA_PROGRESS)
-        print(f"✓ Subscribed to topic: {MQTT_TOPIC_OTA_PROGRESS}")
-        client.subscribe(MQTT_TOPIC_OTA_COMPLETE)
-        print(f"✓ Subscribed to topic: {MQTT_TOPIC_OTA_COMPLETE}")
+        client.subscribe(f"{MQTT_TOPIC_OTA_START}/+")
+        print(f"✓ Subscribed to topic: {MQTT_TOPIC_OTA_START}/+")
+        client.subscribe(f"{MQTT_TOPIC_OTA_PROGRESS}/+")
+        print(f"✓ Subscribed to topic: {MQTT_TOPIC_OTA_PROGRESS}/+")
+        client.subscribe(f"{MQTT_TOPIC_OTA_COMPLETE}/+")
+        print(f"✓ Subscribed to topic: {MQTT_TOPIC_OTA_COMPLETE}/+")
         client.subscribe(f"{MQTT_TOPIC_DISPLAY_SNAPSHOT}/#")
         print(f"✓ Subscribed to topic: {MQTT_TOPIC_DISPLAY_SNAPSHOT}/#")
         client.subscribe(f"{MQTT_TOPIC_EVENTS}/#")
@@ -269,16 +269,43 @@ def handle_heartbeat(client, payload, topic):
         
         print(f"📡 Heartbeat from {device_id} ({board_type}): v{current_version}, uptime={payload.get('uptime')}s, RSSI={payload.get('rssi')}dBm")
 
-def handle_ota_start(client, payload):
-    """Handle OTA update start notification from device"""
+def extract_device_id_from_topic(topic: str, base_topic: str) -> Optional[str]:
+    """Extract device_id from topic path: base_topic/{device_id}[/...]
+    
+    Handles both single-segment (skiclock/ota/start/device123) and 
+    multi-segment topics (skiclock/display/snapshot/device123/full).
+    Returns only the first segment after base_topic as device_id.
+    """
+    if not topic.startswith(base_topic):
+        return None
+    # Topic format: base_topic/{device_id}[/optional/sub/path]
+    suffix = topic[len(base_topic):]
+    if suffix.startswith('/'):
+        suffix = suffix[1:]
+    if not suffix:
+        return None
+    # Take only the first segment as device_id (handles multi-segment topics)
+    return suffix.split('/')[0]
+
+def handle_ota_start(client, payload, topic):
+    """Handle OTA update start notification from device
+    
+    Device ID is extracted from topic: skiclock/ota/start/{device_id}
+    """
+    # Extract device_id from topic (primary source)
+    device_id = extract_device_id_from_topic(topic, MQTT_TOPIC_OTA_START)
+    
+    # Fallback to payload for backward compatibility with older firmware
+    if not device_id:
+        device_id = payload.get('device_id')
+    
     session_id = payload.get('session_id')
-    device_id = payload.get('device_id')
     platform = payload.get('platform')
     old_version = payload.get('old_version')
     new_version = payload.get('new_version')
     
     if not device_id or not platform or not new_version:
-        print(f"⚠ Invalid OTA start message: missing required fields")
+        print(f"⚠ Invalid OTA start message: missing required fields (device_id={device_id}, platform={platform})")
         return
     
     # Generate fallback session ID if not provided (backward compatibility)
@@ -304,10 +331,19 @@ def handle_ota_start(client, payload):
             
             print(f"📝 OTA update started: {device_id} ({old_version} → {new_version}) [session: {session_id}]")
 
-def handle_ota_progress(client, payload):
-    """Handle OTA download progress updates from device"""
+def handle_ota_progress(client, payload, topic):
+    """Handle OTA download progress updates from device
+    
+    Device ID is extracted from topic: skiclock/ota/progress/{device_id}
+    """
+    # Extract device_id from topic (primary source)
+    device_id = extract_device_id_from_topic(topic, MQTT_TOPIC_OTA_PROGRESS)
+    
+    # Fallback to payload for backward compatibility with older firmware
+    if not device_id:
+        device_id = payload.get('device_id')
+    
     session_id = payload.get('session_id')
-    device_id = payload.get('device_id')
     progress = payload.get('progress', 0)
     
     if _app_context:
@@ -339,10 +375,19 @@ def handle_ota_progress(client, payload):
             else:
                 print(f"⚠ No OTA log found for device: {device_id}")
 
-def handle_ota_complete(client, payload):
-    """Handle OTA update completion (success or failure) from device"""
+def handle_ota_complete(client, payload, topic):
+    """Handle OTA update completion (success or failure) from device
+    
+    Device ID is extracted from topic: skiclock/ota/complete/{device_id}
+    """
+    # Extract device_id from topic (primary source)
+    device_id = extract_device_id_from_topic(topic, MQTT_TOPIC_OTA_COMPLETE)
+    
+    # Fallback to payload for backward compatibility with older firmware
+    if not device_id:
+        device_id = payload.get('device_id')
+    
     session_id = payload.get('session_id')
-    device_id = payload.get('device_id')
     
     # Dual-path parser: support both current format (status string) and legacy format (success boolean)
     status_str = payload.get('status')
@@ -398,15 +443,22 @@ def handle_ota_complete(client, payload):
             else:
                 print(f"⚠ No OTA log found for device: {device_id}")
 
-def handle_display_snapshot(client, payload):
+def handle_display_snapshot(client, payload, topic):
     """Handle display snapshot messages
+    
+    Device ID is extracted from topic: skiclock/display/snapshot/{device_id}
     
     Supports three formats:
     1. Legacy: 'pixels' field with bit-packed mono data (white pixels)
     2. Mono: 'mono' field with bit-packed data + 'monoColor' [R,G,B,brightness]
     3. Color: 'color' field with 4-bytes-per-pixel RGBW data (full color per pixel)
     """
-    device_id = payload.get('device_id')
+    # Extract device_id from topic (primary source)
+    device_id = extract_device_id_from_topic(topic, MQTT_TOPIC_DISPLAY_SNAPSHOT)
+    
+    # Fallback to payload for backward compatibility with older firmware
+    if not device_id:
+        device_id = payload.get('device_id')
     
     if device_id and _app_context:
         with _app_context.app_context():
@@ -552,16 +604,17 @@ def on_message(client, userdata, msg):
         payload = json.loads(msg.payload.decode())
         
         # Route message to appropriate handler based on topic
+        # Device-specific topics use pattern: base_topic/{device_id}
         if msg.topic.startswith(MQTT_TOPIC_HEARTBEAT):
             handle_heartbeat(client, payload, msg.topic)
-        elif msg.topic == MQTT_TOPIC_OTA_START:
-            handle_ota_start(client, payload)
-        elif msg.topic == MQTT_TOPIC_OTA_PROGRESS:
-            handle_ota_progress(client, payload)
-        elif msg.topic == MQTT_TOPIC_OTA_COMPLETE:
-            handle_ota_complete(client, payload)
+        elif msg.topic.startswith(MQTT_TOPIC_OTA_START):
+            handle_ota_start(client, payload, msg.topic)
+        elif msg.topic.startswith(MQTT_TOPIC_OTA_PROGRESS):
+            handle_ota_progress(client, payload, msg.topic)
+        elif msg.topic.startswith(MQTT_TOPIC_OTA_COMPLETE):
+            handle_ota_complete(client, payload, msg.topic)
         elif msg.topic.startswith(MQTT_TOPIC_DISPLAY_SNAPSHOT):
-            handle_display_snapshot(client, payload)
+            handle_display_snapshot(client, payload, msg.topic)
         elif msg.topic.startswith(MQTT_TOPIC_EVENTS):
             handle_event(client, payload, msg.topic)
     

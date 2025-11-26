@@ -27,7 +27,8 @@ bool otaUpdateInProgress = false;
 // MQTT PROGRESS REPORTING
 // ============================================================================
 
-// Publish OTA start message
+// Publish OTA start message (to device-specific topic)
+// Note: device_id included in payload for backward compatibility during rollout
 void publishOTAStart(String newVersion) {
   static char payload[256];
   snprintf(payload, sizeof(payload),
@@ -38,10 +39,11 @@ void publishOTAStart(String newVersion) {
     newVersion.c_str()
   );
   
-  publishMqttPayload(MQTT_TOPIC_OTA_START, payload);
+  publishMqttPayload(buildDeviceTopic(MQTT_TOPIC_OTA_START), payload);
 }
 
-// Publish OTA progress message (0-100%)
+// Publish OTA progress message (0-100%, to device-specific topic)
+// Note: device_id included in payload for backward compatibility during rollout
 void publishOTAProgress(int progress) {
   static char payload[128];
   snprintf(payload, sizeof(payload),
@@ -50,10 +52,11 @@ void publishOTAProgress(int progress) {
     progress
   );
   
-  publishMqttPayload(MQTT_TOPIC_OTA_PROGRESS, payload);
+  publishMqttPayload(buildDeviceTopic(MQTT_TOPIC_OTA_PROGRESS), payload);
 }
 
-// Publish OTA complete message
+// Publish OTA complete message (to device-specific topic)
+// Note: device_id included in payload for backward compatibility during rollout
 void publishOTAComplete(bool success, String errorMessage) {
   static char payload[384];
   if (success) {
@@ -69,7 +72,7 @@ void publishOTAComplete(bool success, String errorMessage) {
     );
   }
   
-  publishMqttPayload(MQTT_TOPIC_OTA_COMPLETE, payload);
+  publishMqttPayload(buildDeviceTopic(MQTT_TOPIC_OTA_COMPLETE), payload);
 }
 
 // ============================================================================

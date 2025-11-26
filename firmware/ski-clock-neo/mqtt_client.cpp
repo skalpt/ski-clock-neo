@@ -27,14 +27,14 @@
 
 const uint16_t MQTT_PORT = 8883;  // TLS port for HiveMQ Cloud
 
-// MQTT topics
-const char MQTT_TOPIC_HEARTBEAT[] = "skiclock/heartbeat/";
+// MQTT topics (device-specific topics use buildDeviceTopic() which auto-adds trailing slash)
+const char MQTT_TOPIC_HEARTBEAT[] = "skiclock/heartbeat";
 const char MQTT_TOPIC_VERSION_RESPONSE[] = "skiclock/version/response";
 const char MQTT_TOPIC_COMMAND[] = "skiclock/command";
 const char MQTT_TOPIC_OTA_START[] = "skiclock/ota/start";
 const char MQTT_TOPIC_OTA_PROGRESS[] = "skiclock/ota/progress";
 const char MQTT_TOPIC_OTA_COMPLETE[] = "skiclock/ota/complete";
-const char MQTT_TOPIC_DISPLAY_SNAPSHOT[] = "skiclock/display/snapshot/";
+const char MQTT_TOPIC_DISPLAY_SNAPSHOT[] = "skiclock/display/snapshot";
 
 // Timing constants
 const unsigned long HEARTBEAT_INTERVAL = 60000;           // 60 seconds
@@ -267,7 +267,14 @@ void updateMQTT() {
 
 // Build a device-specific topic by appending device ID to base topic
 String buildDeviceTopic(const char* baseTopic) {
-  return String(baseTopic) + getDeviceID();
+  String topic = String(baseTopic);
+  
+  // Auto-insert trailing slash if base topic lacks one
+  if (topic.length() > 0 && topic.charAt(topic.length() - 1) != '/') {
+    topic += '/';
+  }
+  
+  return topic + getDeviceID();
 }
 
 // Publish payload to topic with connection check and logging (char* overloads)
