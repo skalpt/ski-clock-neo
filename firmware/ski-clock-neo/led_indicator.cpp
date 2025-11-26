@@ -45,6 +45,9 @@ volatile LedPattern currentPattern = LED_OFF;
 volatile uint8_t flashCount = 0;
 volatile bool ledState = false;
 
+// Debug counter to verify ISR is firing
+volatile uint32_t ledIsrCount = 0;
+
 // ============================================================================
 // HARDWARE TIMER CALLBACK
 // ============================================================================
@@ -55,6 +58,9 @@ void IRAM_ATTR ledTimerCallback() {
   #if defined(ESP32)
     portENTER_CRITICAL_ISR(&ledTimerMux);
   #endif
+  
+  // Debug: increment counter to verify ISR is firing
+  ledIsrCount++;
   
   switch (currentPattern) {
     case LED_OTA_PROGRESS:
@@ -318,4 +324,21 @@ void endLedOverride() {
   
   ledOverrideActive = false;
   updateLedStatus();
+}
+
+// Debug function to check if timer ISR is firing
+uint32_t getLedIsrCount() {
+  return ledIsrCount;
+}
+
+// Debug function to get current LED state info
+void debugLedState() {
+  DEBUG_PRINT("[LED DEBUG] ISR count: ");
+  DEBUG_PRINT(ledIsrCount);
+  DEBUG_PRINT(", pattern: ");
+  DEBUG_PRINT(patternToString(currentPattern));
+  DEBUG_PRINT(", flashCount: ");
+  DEBUG_PRINT(flashCount);
+  DEBUG_PRINT(", ledState: ");
+  DEBUG_PRINTLN(ledState ? "ON" : "OFF");
 }

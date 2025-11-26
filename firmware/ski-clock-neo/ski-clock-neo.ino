@@ -42,6 +42,9 @@ void setup() {
   DEBUG_PRINTLN("===========================================\n");
 }
 
+// Debug: track last LED debug print time
+static unsigned long lastLedDebug = 0;
+
 void loop() {
   // Handle WiFi tasks (config portal or reconnection)
   updateWiFi();
@@ -57,4 +60,10 @@ void loop() {
   #if defined(ESP8266)
     updateTimers();  // All timer_task managed timers (display, toggle, time check, temperature)
   #endif
+  
+  // Debug: print LED state every 5 seconds
+  if (millis() - lastLedDebug > 5000) {
+    lastLedDebug = millis();
+    debugLedState();
+  }
 }

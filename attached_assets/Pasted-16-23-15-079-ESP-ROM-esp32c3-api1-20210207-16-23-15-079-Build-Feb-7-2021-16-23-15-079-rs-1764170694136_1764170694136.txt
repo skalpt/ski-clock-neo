@@ -1,0 +1,116 @@
+16:23:15.079 -> ESP-ROM:esp32c3-api1-20210207
+16:23:15.079 -> Build:Feb  7 2021
+16:23:15.079 -> rst:0x3 (RTC_SW_SYS_RST),boot:0xf (SPI_FAST_FLASH_BOOT)
+16:23:15.079 -> Saved PC:0x40382970
+16:23:15.079 -> SPIWP:0xee
+16:23:15.079 -> mode:DIO, clock div:1
+16:23:15.079 -> load:0x3fcd5810,len:0x438
+16:23:15.079 -> load:0x403cc710,len:0x90c
+16:23:15.079 -> load:0x403ce710,len:0x2624
+16:23:15.079 -> entry 0x403cc710
+16:23:15.287 -> 
+16:23:15.287 -> 
+16:23:15.287 -> ===========================================
+16:23:15.287 -> Ski Clock Neo - Starting Up
+16:23:15.287 -> ===========================================
+16:23:15.287 -> Firmware version: 2025.11.26.74
+16:23:15.287 -> Event log initialized
+16:23:15.287 -> Event queued: boot {"reason":"software","version":"2025.11.26.74"} (queue: 1)
+16:23:15.287 -> Boot event logged: {"reason":"software","version":"2025.11.26.74"}
+16:23:15.287 -> LED indicator initialized on GPIO8
+16:23:15.287 -> ESP32 hardware timer initialized (Core 2.x, 100ms interval)
+16:23:15.287 -> [LED] Setting initial pattern to WIFI_DISCONNECTED
+16:23:15.287 -> [LED] setLedPattern called: WIFI_DISCONNECTED (current: OFF)
+16:23:15.287 -> [LED] Timer enabled (Core 2.x)
+16:23:15.287 -> [LED] initLedIndicator complete
+16:23:15.329 -> NeoPixel row 1 (GPIO 4) initialised.
+16:23:15.354 -> NeoPixel row 2 (GPIO 3) initialised.
+16:23:15.354 -> NeoPixel renderer ready (event-driven, no timers)
+16:23:15.354 -> Display FreeRTOS task started - waiting for notifications
+16:23:15.354 -> Notification task created (ESP32-C3): Display
+16:23:15.354 -> Initializing display controller
+16:23:15.354 -> Row 0: Waiting for NTP sync
+16:23:15.354 -> Row 1: Temperature not available
+16:23:15.392 -> Concurrent setText() detected, re-rendering
+16:23:15.392 -> FreeRTOS task started: DispToggle
+16:23:15.392 -> Timer created (ESP32-C3 FreeRTOS): DispToggle @ 4000ms
+16:23:15.392 -> Display controller initialized
+16:23:15.392 -> Initializing time system (RTC + NTP)
+16:23:15.392 -> DS3231 RTC not found - using NTP only
+16:23:15.392 -> Event queued: rtc_not_found (queue: 2)
+16:23:15.392 -> Initializing NTP time sync for Sweden (Europe/Stockholm)
+16:23:15.392 -> FreeRTOS task started: TimeCheck
+16:23:15.392 -> Timer created (ESP32-C3 FreeRTOS): TimeCheck @ 1000ms
+16:23:15.392 -> Time system initialized
+16:23:15.392 -> Time change callback registered
+16:23:15.392 -> Initializing DS18B20 temperature sensor on GPIO 2
+16:23:15.538 -> Found 0 DS18B20 device(s)
+16:23:15.538 -> WARNING: No DS18B20 sensor detected!
+16:23:15.538 -> Event queued: temp_sensor_not_found (queue: 3)
+16:23:15.538 -> FreeRTOS task started: TemperaturePoll
+16:23:15.538 -> Timer created (ESP32-C3 FreeRTOS): TemperaturePoll @ 30000ms
+16:23:15.538 -> One-shot timer registered: TemperatureRead @ 750ms (dormant)
+16:23:15.573 -> Temperature read requested (timer)
+16:23:15.573 -> One-shot timer triggered: TemperatureRead
+16:23:15.573 -> Temperature sensor initialized (non-blocking mode, first poll triggered)
+16:23:15.573 -> Initializing button on GPIO 0 (debounce: 50ms)
+16:23:15.573 -> Button initialized
+16:23:15.573 -> Registering WiFi connection event handlers...
+16:23:15.573 -> Initializing WiFi with AutoConnect...
+16:23:15.573 -> Generated AP SSID: SkiClockNeo-e8c5fbbdf5f0
+16:23:16.324 -> Temperature sensor disconnected
+16:23:16.324 -> Event queued: temp_sensor_not_found (queue: 4)
+16:23:16.324 -> Temperature read failed, will retry on next poll
+16:23:16.362 -> WiFi connected, connecting to MQTT...
+16:23:16.362 -> Event queued: wifi_connect {"ssid":"TP-LINK_IoT","rssi":-46,"ip":"192.168.68.112"} (queue: 5)
+16:23:16.362 -> [LED] setConnectivityState: wifi=true, mqtt=false
+16:23:16.362 -> [LED] updateLedStatus: wifi=true, mqtt=false, override=false
+16:23:16.362 -> [LED] Determined pattern: MQTT_DISCONNECTED
+16:23:16.362 -> [LED] setLedPattern called: MQTT_DISCONNECTED (current: WIFI_DISCONNECTED)
+16:23:16.362 -> [LED] Timer enabled (Core 2.x)
+16:23:16.362 -> Connecting to MQTT broker...
+16:23:16.362 -> MQTT broker connection failed, rc=-2
+16:23:16.362 -> [LED] setConnectivityState: wifi=true, mqtt=false
+16:23:16.362 -> [LED] updateLedStatus: wifi=true, mqtt=false, override=false
+16:23:16.362 -> [LED] Determined pattern: MQTT_DISCONNECTED
+16:23:16.362 -> [LED] setLedPattern called: MQTT_DISCONNECTED (current: MQTT_DISCONNECTED)
+16:23:16.362 -> [LED] Pattern unchanged, skipping
+16:23:16.362 -> WiFi connected successfully!
+16:23:16.362 -> IP address: 192.168.68.112
+16:23:16.362 -> SSID: TP-LINK_IoT
+16:23:16.362 -> AutoConnect portal is running
+16:23:16.362 -> Portal SSID: SkiClockNeo-e8c5fbbdf5f0
+16:23:16.362 -> Portal Password: configure
+16:23:16.362 -> Portal remains accessible even when connected to WiFi
+16:23:16.362 -> Access portal at device IP address (redirects / to /_ac)
+16:23:16.362 -> Initializing MQTT client...
+16:23:16.362 -> MQTT broker: 067cdeba5be946b6930820f48d86afc3.s1.eu.hivemq.cloud:8883
+16:23:16.362 -> TLS encryption enabled (no cert validation)
+16:23:16.362 -> Connecting to MQTT broker...
+16:23:16.404 -> NTP sync detected
+16:23:16.404 -> Event queued: ntp_sync_success (queue: 6)
+16:23:17.831 -> MQTT broker connected!
+16:23:17.831 -> [LED] setConnectivityState: wifi=true, mqtt=true
+16:23:17.831 -> [LED] updateLedStatus: wifi=true, mqtt=true, override=false
+16:23:17.831 -> [LED] Determined pattern: CONNECTED
+16:23:17.831 -> [LED] setLedPattern called: CONNECTED (current: MQTT_DISCONNECTED)
+16:23:17.831 -> [LED] Timer enabled (Core 2.x)
+16:23:17.831 -> Event queued: mqtt_connect (queue: 7)
+16:23:17.831 -> Published to skiclock/event/e8c5fbbdf5f0: {"type":"boot","data":{"reason":"software","version":"2025.11.26.74"},"offset_ms":2515}
+16:23:17.831 -> Published to skiclock/event/e8c5fbbdf5f0: {"type":"rtc_not_found","offset_ms":2415}
+16:23:17.831 -> Published to skiclock/event/e8c5fbbdf5f0: {"type":"temp_sensor_not_found","offset_ms":2263}
+16:23:17.831 -> Published to skiclock/event/e8c5fbbdf5f0: {"type":"temp_sensor_not_found","offset_ms":1510}
+16:23:17.831 -> Published to skiclock/event/e8c5fbbdf5f0: {"type":"wifi_connect","data":{"ssid":"TP-LINK_IoT","rssi":-46,"ip":"192.168.68.112"},"offset_ms":1448}
+16:23:17.831 -> Published to skiclock/event/e8c5fbbdf5f0: {"type":"ntp_sync_success","offset_ms":1414}
+16:23:17.831 -> Published to skiclock/event/e8c5fbbdf5f0: {"type":"mqtt_connect","offset_ms":0}
+16:23:17.831 -> Flushed 7 events from queue
+16:23:17.831 -> Subscribed to topic: skiclock/version/response/e8c5fbbdf5f0
+16:23:17.831 -> Subscribed to topic: skiclock/command/e8c5fbbdf5f0
+16:23:17.831 -> Published to skiclock/heartbeat/e8c5fbbdf5f0: {"board":"ESP32-C3","version":"2025.11.26.74","uptime":2,"rssi":-45,"free_heap":137040,"ssid":"TP-LINK_IoT","ip":"192.168.68.112"}
+16:23:17.831 -> Publishing display snapshot...
+16:23:17.831 -> Published to skiclock/display/snapshot/e8c5fbbdf5f0: {"device_id":"e8c5fbbdf5f0","rows":2,"cols":3,"width":48,"height":32,"mono":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/vEP/OMf/vEP/OMfAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAAAACAAQAAAAAAAAAAAAAAAAAAAAAAMPgBAAAAePwDAAAA/A4HAAAA/AYGAAAAeAYAAAAAMAYA8I9/AAYA8I9/AAYAAAAAAAYAAAAAAAYAAAAAAAYGAAAAAA4HAAAAAPwDAAAAAPgBAAAAAAAA","monoColor":[255,0,0,10],"row_text":["~~.~~","~~*C"]}
+16:23:17.831 -> Display snapshot size: 388 bytes
+16:23:17.831 -> ===========================================
+16:23:17.831 -> Setup complete - entering main loop
+16:23:17.831 -> ===========================================
+16:23:17.831 -> 

@@ -118,6 +118,10 @@ void setConnectivityState(bool wifiConnected, bool mqttConnected);
 void beginLedOverride(LedPattern pattern);
 void endLedOverride();
 
+// Debug functions
+uint32_t getLedIsrCount();
+void debugLedState();
+
 // ISR callbacks (declared but not exposed as public API)
 void IRAM_ATTR ledTimerCallback();
 #if defined(ESP8266)
