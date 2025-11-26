@@ -3,8 +3,6 @@
 #include "debug.h"
 #include "led_indicator.h"
 #include "display_core.h"
-#include "display_controller.h"
-#include "data_temperature.h"
 #include "timing_helpers.h"
 #include "data_button.h"
 #include "wifi_config.h"
