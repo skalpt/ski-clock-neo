@@ -116,7 +116,7 @@ void initDisplay() {
     displayTaskHandle = createNotificationTask("Display", displayTask, 2048, 2);
   #elif defined(ESP8266)
     // ESP8266: Use 1ms polling timer (checks dirty flag each iteration)
-    createTimer("Display", 1, displayRenderCallback, 0);
+    createTimer("Display", 1, displayRenderCallback);
   #endif
 
   // Initialize display controller to handle content logic (time/date/temp)

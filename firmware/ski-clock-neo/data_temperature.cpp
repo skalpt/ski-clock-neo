@@ -53,7 +53,7 @@ void temperaturePollCallback() {
     DEBUG_PRINTLN("Temperature read requested (timer)");
     
     // Trigger one-shot read timer (750ms delay for sensor conversion)
-    triggerTimer("TempRead");
+    triggerTimer("TemperatureRead");
   }
 }
 
@@ -124,10 +124,10 @@ void initTemperatureData() {
   
   // Create temperature timers using timing_helpers library
   // Poll timer: 30-second interval for triggering temperature conversions
-  createTimer("TempPoll", 30000, temperaturePollCallback);
+  createTimer("TemperaturePoll", 30000, temperaturePollCallback);
   
   // Read timer: 750ms one-shot, triggered after conversion starts
-  createOneShotTimer("TempRead", 750, temperatureReadCallback);
+  createOneShotTimer("TemperatureRead", 750, temperatureReadCallback);
   
   // Trigger first poll immediately
   temperatureRequestPending = false;
