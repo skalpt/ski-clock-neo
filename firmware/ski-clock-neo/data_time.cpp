@@ -14,6 +14,7 @@
 // ============================================================================
 
 #include "data_time.h"
+#include "ski-clock-neo_config.h"
 #include "event_log.h"
 #include "debug.h"
 #include "timing_helpers.h"
@@ -65,8 +66,8 @@ static TimeChangeCallback timeChangeCallback = nullptr;
 void initTimeData() {
   DEBUG_PRINTLN("Initializing time system (RTC + NTP)");
   
-  // Initialize I2C for RTC
-  Wire.begin();
+  // Initialize I2C for RTC on custom pins (avoid ESP32-C3 default GPIO 8/9)
+  Wire.begin(RTC_SDA_PIN, RTC_SCL_PIN);
   
   // Try to initialize DS3231 RTC
   if (rtc.begin()) {
