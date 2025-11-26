@@ -1,0 +1,82 @@
+Run arduino-cli compile --fqbn esp32:esp32:esp32 \
+  arduino-cli compile --fqbn esp32:esp32:esp32 \
+    --export-binaries \
+    --build-property "build.partitions=min_spiffs" \
+    --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"***\" -DDOWNLOAD_API_KEY=\"***\" -DFIRMWARE_VERSION=\"2025.11.26.69\" -DMQTT_HOST=\"***\" -DMQTT_USERNAME=\"***\" -DMQTT_PASSWORD=\"***\" -DBOARD_ESP32" \
+    --output-dir build/esp32 \
+    firmware/***
+  cp build/esp32/***.ino.bin build/***-esp32.bin
+  cp build/esp32/***.ino.bootloader.bin build/***-esp32.bootloader.bin || echo "Warning: Bootloader not found for ESP32"
+  cp build/esp32/***.ino.partitions.bin build/***-esp32.partitions.bin || echo "Warning: Partitions not found for ESP32"
+  shell: /usr/bin/bash -e {0}
+In file included from /home/runner/work/***/***/firmware/***/mqtt_client.cpp:18:
+/home/runner/work/***/***/firmware/***/led_indicator.h: In function 'void setLedPattern(LedPattern)':
+/home/runner/work/***/***/firmware/***/led_indicator.h:242:83: error: expected primary-expression before ')' token
+   if (pattern == LED_MQTT_DISCONNECTED && currentPattern == LED_WIFI_DISCONNECTED)) {
+                                                                                   ^
+/home/runner/work/***/***/firmware/***/mqtt_client.cpp: In function 'bool connectMQTT()':
+/home/runner/work/***/***/firmware/***/mqtt_client.cpp:164:5: error: 'setConnectivityState' was not declared in this scope
+     setConnectivityState(true, true);
+     ^~~~~~~~~~~~~~~~~~~~
+/home/runner/work/***/***/firmware/***/mqtt_client.cpp:181:5: error: 'setConnectivityState' was not declared in this scope
+     setConnectivityState(true, true);
+     ^~~~~~~~~~~~~~~~~~~~
+/home/runner/work/***/***/firmware/***/mqtt_client.cpp:216:5: error: 'setConnectivityState' was not declared in this scope
+     setConnectivityState(true, false);
+     ^~~~~~~~~~~~~~~~~~~~
+/home/runner/work/***/***/firmware/***/mqtt_client.cpp: In function 'void disconnectMQTT()':
+/home/runner/work/***/***/firmware/***/mqtt_client.cpp:231:5: error: 'setConnectivityState' was not declared in this scope
+     setConnectivityState(WiFi.status() == WL_CONNECTED, false);
+     ^~~~~~~~~~~~~~~~~~~~
+In file included from /home/runner/work/***/***/firmware/***/ota_update.cpp:17:
+/home/runner/work/***/***/firmware/***/led_indicator.h: In function 'void setLedPattern(LedPattern)':
+/home/runner/work/***/***/firmware/***/led_indicator.h:242:83: error: expected primary-expression before ')' token
+   if (pattern == LED_MQTT_DISCONNECTED && currentPattern == LED_WIFI_DISCONNECTED)) {
+                                                                                   ^
+/home/runner/work/***/***/firmware/***/ota_update.cpp: In function 'bool performOTAUpdate(String)':
+/home/runner/work/***/***/firmware/***/ota_update.cpp:79:3: error: 'beginLedOverride' was not declared in this scope
+   beginLedOverride(LED_OTA_PROGRESS);
+   ^~~~~~~~~~~~~~~~
+/home/runner/work/***/***/firmware/***/ota_update.cpp:117:7: error: 'endLedOverride' was not declared in this scope
+       endLedOverride();
+       ^~~~~~~~~~~~~~
+/home/runner/work/***/***/firmware/***/ota_update.cpp:129:7: error: 'endLedOverride' was not declared in this scope
+       endLedOverride();
+       ^~~~~~~~~~~~~~
+/home/runner/work/***/***/firmware/***/ota_update.cpp:149:5: error: 'endLedOverride' was not declared in this scope
+     endLedOverride();
+     ^~~~~~~~~~~~~~
+/home/runner/work/***/***/firmware/***/ota_update.cpp:164:5: error: 'endLedOverride' was not declared in this scope
+     endLedOverride();
+     ^~~~~~~~~~~~~~
+/home/runner/work/***/***/firmware/***/ota_update.cpp:177:5: error: 'endLedOverride' was not declared in this scope
+     endLedOverride();
+     ^~~~~~~~~~~~~~
+/home/runner/work/***/***/firmware/***/ota_update.cpp:202:9: error: 'endLedOverride' was not declared in this scope
+         endLedOverride();
+         ^~~~~~~~~~~~~~
+/home/runner/work/***/***/firmware/***/ota_update.cpp:231:5: error: 'endLedOverride' was not declared in this scope
+     endLedOverride();
+     ^~~~~~~~~~~~~~
+/home/runner/work/***/***/firmware/***/ota_update.cpp:249:7: error: 'endLedOverride' was not declared in this scope
+       endLedOverride();
+       ^~~~~~~~~~~~~~
+/home/runner/work/***/***/firmware/***/ota_update.cpp:263:3: error: 'endLedOverride' was not declared in this scope
+   endLedOverride();
+   ^~~~~~~~~~~~~~
+In file included from /home/runner/work/***/***/firmware/***/***.ino:4:
+/home/runner/work/***/***/firmware/***/led_indicator.h: In function 'void setLedPattern(LedPattern)':
+/home/runner/work/***/***/firmware/***/led_indicator.h:242:83: error: expected primary-expression before ')' token
+   if (pattern == LED_MQTT_DISCONNECTED && currentPattern == LED_WIFI_DISCONNECTED)) {
+                                                                                   ^
+In file included from /home/runner/work/***/***/firmware/***/***.ino:8:
+/home/runner/work/***/***/firmware/***/wifi_config.h: In function 'void onWiFiConnected(arduino_event_id_t, arduino_event_info_t)':
+/home/runner/work/***/***/firmware/***/wifi_config.h:168:5: error: 'setConnectivityState' was not declared in this scope
+     setConnectivityState(true, false);  // WiFi=connected, MQTT=disconnected
+     ^~~~~~~~~~~~~~~~~~~~
+/home/runner/work/***/***/firmware/***/wifi_config.h: In function 'void onWiFiDisconnected(arduino_event_id_t, arduino_event_info_t)':
+/home/runner/work/***/***/firmware/***/wifi_config.h:176:5: error: 'setConnectivityState' was not declared in this scope
+     setConnectivityState(false, false);  // WiFi=disconnected, MQTT=disconnected
+     ^~~~~~~~~~~~~~~~~~~~
+
+Error during build: exit status 1
