@@ -32,7 +32,7 @@ void setup() {
   initButton();
 
   // Initialise WiFi
-  initWiFi();
+  //initWiFi();
   
   // Initialize MQTT system
   initMQTT();
@@ -44,7 +44,7 @@ void setup() {
 
 void loop() {
   // Handle WiFi tasks (config portal or reconnection)
-  updateWiFi();
+  //updateWiFi();
 
   // Handle MQTT updates (subscriptions and version requests)
   updateMQTT();
