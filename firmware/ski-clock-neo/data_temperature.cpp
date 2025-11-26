@@ -78,8 +78,8 @@ void temperatureReadCallback() {
     }
   } else {
     // Failed to read temperature - retry on next poll
+    // (specific error already logged by getTemperature)
     DEBUG_PRINTLN("Temperature read failed, will retry on next poll");
-    logEvent("temperature_error", "{\"reason\":\"read_failed\"}");
   }
   
   // Always clear flag to allow next poll (ensures recovery from failed reads)
@@ -109,6 +109,7 @@ void initTemperatureData() {
   
   if (deviceCount == 0) {
     DEBUG_PRINTLN("WARNING: No DS18B20 sensor detected!");
+    logEvent("temp_sensor_not_found", nullptr);
   }
   
   // Set resolution to 12-bit for best accuracy (conversion time ~750ms)
@@ -154,11 +155,31 @@ bool getTemperature(float* temperature) {
   // Get temperature from first sensor (index 0)
   float tempC = sensors->getTempCByIndex(0);
   
-  // Check if reading is valid (DS18B20 returns -127°C on error)
-  if (tempC == DEVICE_DISCONNECTED_C || tempC < -55.0 || tempC > 125.0) {
-    DEBUG_PRINT("Temperature sensor error, raw value: ");
+  // Check for device disconnected error (DS18B20 returns -127°C)
+  if (tempC == DEVICE_DISCONNECTED_C) {
+    DEBUG_PRINTLN("Temperature sensor disconnected");
+    lastReadValid = false;
+    logEvent("temp_sensor_not_found", nullptr);
+    return false;
+  }
+  
+  // Check for out-of-range values (DS18B20 valid range: -55°C to +125°C)
+  // Values outside this range indicate CRC errors or power issues
+  if (tempC < -55.0 || tempC > 125.0) {
+    DEBUG_PRINT("Temperature read invalid, raw value: ");
     DEBUG_PRINTLN(tempC);
     lastReadValid = false;
+    
+    // 85°C is the power-on reset value - indicates underpowered sensor
+    if (tempC == 85.0) {
+      static char eventData[48];
+      snprintf(eventData, sizeof(eventData), "{\"raw\":%.1f,\"reason\":\"power_on_reset\"}", tempC);
+      logEvent("temp_read_invalid", eventData);
+    } else {
+      static char eventData[48];
+      snprintf(eventData, sizeof(eventData), "{\"raw\":%.1f,\"reason\":\"out_of_range\"}", tempC);
+      logEvent("temp_read_invalid", eventData);
+    }
     return false;
   }
   

@@ -14,6 +14,7 @@
 // ============================================================================
 
 #include "data_time.h"
+#include "event_log.h"
 #include "debug.h"
 #include "timing_helpers.h"
 #include <time.h>
@@ -71,11 +72,13 @@ void initTimeData() {
   if (rtc.begin()) {
     rtcAvailable = true;
     DEBUG_PRINTLN("DS3231 RTC found on I2C bus");
+    logEvent("rtc_initialized", nullptr);
     
     // Check if RTC lost power (time invalid)
     if (rtc.lostPower()) {
       DEBUG_PRINTLN("RTC lost power - time invalid, waiting for NTP sync");
       rtcTimeValid = false;
+      logEvent("rtc_lost_power", nullptr);
     } else {
       // Check if RTC time is reasonable (after 2020)
       DateTime rtcTime = rtc.now();
@@ -103,11 +106,13 @@ void initTimeData() {
       } else {
         DEBUG_PRINTLN("RTC time invalid (before 2020), waiting for NTP sync");
         rtcTimeValid = false;
+        logEvent("rtc_time_invalid", nullptr);
       }
     }
   } else {
     rtcAvailable = false;
     DEBUG_PRINTLN("DS3231 RTC not found - using NTP only");
+    logEvent("rtc_not_found", nullptr);
   }
   
   // Initialize NTP (syncs in background)
@@ -137,12 +142,17 @@ void syncRtcFromNtp() {
   time_t now = time(nullptr);
   if (now <= MIN_VALID_TIME) {
     DEBUG_PRINTLN("Cannot sync RTC - NTP time not valid");
+    logEvent("rtc_sync_failed", "{\"reason\":\"ntp_invalid\"}");
     return;
   }
   
   // Get UTC time (RTC stores UTC)
   struct tm timeinfo;
   gmtime_r(&now, &timeinfo);
+  
+  // Read current RTC time to calculate drift
+  DateTime rtcTime = rtc.now();
+  int32_t driftSeconds = (int32_t)now - (int32_t)rtcTime.unixtime();
   
   // Update RTC
   rtc.adjust(DateTime(
@@ -169,6 +179,18 @@ void syncRtcFromNtp() {
   DEBUG_PRINT(timeinfo.tm_min);
   DEBUG_PRINT(":");
   DEBUG_PRINTLN(timeinfo.tm_sec);
+  
+  // Log drift correction if significant (>1 second)
+  if (abs(driftSeconds) > 1) {
+    static char eventData[48];
+    snprintf(eventData, sizeof(eventData), "{\"drift_seconds\":%ld}", driftSeconds);
+    logEvent("rtc_drift_corrected", eventData);
+    DEBUG_PRINT("RTC drift corrected: ");
+    DEBUG_PRINT(driftSeconds);
+    DEBUG_PRINTLN(" seconds");
+  }
+  
+  logEvent("rtc_synced_from_ntp", nullptr);
 }
 
 // ============================================================================
@@ -251,6 +273,7 @@ bool isTimeSynced() {
       if (now > MIN_VALID_TIME) {
         ntpSynced = true;
         DEBUG_PRINTLN("NTP sync detected");
+        logEvent("ntp_sync_success", nullptr);
         
         // Update RTC from NTP immediately if available
         if (rtcAvailable) {

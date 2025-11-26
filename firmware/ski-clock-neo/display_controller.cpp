@@ -16,6 +16,7 @@
 #include "display_core.h"
 #include "data_time.h"
 #include "data_temperature.h"
+#include "event_log.h"
 #include "timing_helpers.h"
 #include "debug.h"
 
@@ -158,9 +159,16 @@ void initDisplayController() {
 // Set display mode (normal or timer)
 void setDisplayMode(DisplayMode mode) {
   if (currentMode != mode) {
+    const char* oldModeName = (currentMode == MODE_NORMAL) ? "normal" : "timer";
+    const char* newModeName = (mode == MODE_NORMAL) ? "normal" : "timer";
     currentMode = mode;
     DEBUG_PRINT("Display mode changed to: ");
-    DEBUG_PRINTLN(mode == MODE_NORMAL ? "NORMAL" : "TIMER");
+    DEBUG_PRINTLN(newModeName);
+    
+    // Log mode change event
+    static char eventData[64];
+    snprintf(eventData, sizeof(eventData), "{\"from\":\"%s\",\"to\":\"%s\"}", oldModeName, newModeName);
+    logEvent("display_mode_change", eventData);
   }
 }
 

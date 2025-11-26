@@ -14,6 +14,7 @@
 
 #include "data_button.h"
 #include "ski-clock-neo_config.h"
+#include "event_log.h"
 #include "debug.h"
 
 // ============================================================================
@@ -142,6 +143,7 @@ void updateButton() {
       // Button pressed (active LOW)
       pressTime = now;
       DEBUG_PRINTLN("Button pressed");
+      logEvent("button_press", nullptr);
       if (pressCallback != nullptr) {
         pressCallback();
       }
@@ -151,6 +153,12 @@ void updateButton() {
       DEBUG_PRINT("Button released (held for ");
       DEBUG_PRINT(holdTime);
       DEBUG_PRINTLN("ms)");
+      
+      // Log release with hold duration
+      static char eventData[32];
+      snprintf(eventData, sizeof(eventData), "{\"hold_ms\":%lu}", holdTime);
+      logEvent("button_release", eventData);
+      
       if (releaseCallback != nullptr) {
         releaseCallback();
       }

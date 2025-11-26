@@ -310,18 +310,46 @@ bool publishMqttPayload(const String& topic, const String& payload) {
 // HEARTBEAT PUBLISHING
 // ============================================================================
 
+// Thresholds for warning events (only log once per crossing)
+const int32_t RSSI_WARNING_THRESHOLD = -75;     // dBm - weak signal
+const uint32_t HEAP_WARNING_THRESHOLD = 20000;  // bytes - low memory
+
+static bool lastRssiWasLow = false;
+static bool lastHeapWasLow = false;
+
 void publishHeartbeat() {
   if (!mqttClient.connected()) return;
+  
+  int32_t rssi = WiFi.RSSI();
+  uint32_t freeHeap = ESP.getFreeHeap();
+  
+  // Check for low RSSI (log only when crossing threshold)
+  bool rssiIsLow = (rssi < RSSI_WARNING_THRESHOLD);
+  if (rssiIsLow && !lastRssiWasLow) {
+    static char eventData[48];
+    snprintf(eventData, sizeof(eventData), "{\"rssi\":%ld,\"threshold\":%ld}", rssi, RSSI_WARNING_THRESHOLD);
+    logEvent("wifi_rssi_low", eventData);
+  }
+  lastRssiWasLow = rssiIsLow;
+  
+  // Check for low heap (log only when crossing threshold)
+  bool heapIsLow = (freeHeap < HEAP_WARNING_THRESHOLD);
+  if (heapIsLow && !lastHeapWasLow) {
+    static char eventData[48];
+    snprintf(eventData, sizeof(eventData), "{\"free_heap\":%lu,\"threshold\":%lu}", freeHeap, HEAP_WARNING_THRESHOLD);
+    logEvent("low_heap_warning", eventData);
+  }
+  lastHeapWasLow = heapIsLow;
   
   // Build JSON payload
   static char payload[384];
   snprintf(payload, sizeof(payload),
-    "{\"board\":\"%s\",\"version\":\"%s\",\"uptime\":%lu,\"rssi\":%d,\"free_heap\":%u,\"ssid\":\"%s\",\"ip\":\"%s\"}",
+    "{\"board\":\"%s\",\"version\":\"%s\",\"uptime\":%lu,\"rssi\":%ld,\"free_heap\":%lu,\"ssid\":\"%s\",\"ip\":\"%s\"}",
     getBoardType().c_str(),
     FIRMWARE_VERSION,
     millis() / 1000,
-    WiFi.RSSI(),
-    ESP.getFreeHeap(),
+    rssi,
+    freeHeap,
     WiFi.SSID().c_str(),
     WiFi.localIP().toString().c_str()
   );

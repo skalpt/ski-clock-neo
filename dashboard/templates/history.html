@@ -562,7 +562,24 @@
             'mqtt_connect': '🔗',
             'mqtt_disconnect': '🔓',
             'temperature_read': '🌡️',
-            'temperature_error': '⚠️'
+            'temperature_error': '⚠️',
+            'temp_sensor_not_found': '❌',
+            'temp_read_invalid': '⚠️',
+            'temp_read_crc_error': '⚠️',
+            'button_press': '👆',
+            'button_release': '✋',
+            'display_mode_change': '🖥️',
+            'low_heap_warning': '⚠️',
+            'wifi_rssi_low': '📉',
+            'ntp_sync_success': '🕐',
+            'ntp_sync_failed': '⏰',
+            'rtc_initialized': '⏱️',
+            'rtc_not_found': '❌',
+            'rtc_lost_power': '🔋',
+            'rtc_time_invalid': '⏰',
+            'rtc_synced_from_ntp': '🔄',
+            'rtc_sync_failed': '⚠️',
+            'rtc_drift_corrected': '🔧'
         };
         return icons[eventType] || '📌';
     }
@@ -576,7 +593,24 @@
             'mqtt_connect': 'MQTT Connect',
             'mqtt_disconnect': 'MQTT Disconnect',
             'temperature_read': 'Temperature',
-            'temperature_error': 'Temperature Error'
+            'temperature_error': 'Temperature Error',
+            'temp_sensor_not_found': 'Temp Sensor Missing',
+            'temp_read_invalid': 'Temp Read Invalid',
+            'temp_read_crc_error': 'Temp CRC Error',
+            'button_press': 'Button Press',
+            'button_release': 'Button Release',
+            'display_mode_change': 'Display Mode',
+            'low_heap_warning': 'Low Heap',
+            'wifi_rssi_low': 'Weak WiFi',
+            'ntp_sync_success': 'NTP Synced',
+            'ntp_sync_failed': 'NTP Failed',
+            'rtc_initialized': 'RTC Init',
+            'rtc_not_found': 'RTC Missing',
+            'rtc_lost_power': 'RTC Lost Power',
+            'rtc_time_invalid': 'RTC Invalid',
+            'rtc_synced_from_ntp': 'RTC Synced',
+            'rtc_sync_failed': 'RTC Sync Failed',
+            'rtc_drift_corrected': 'RTC Drift Fixed'
         };
         return labels[eventType] || eventType;
     }
@@ -609,6 +643,42 @@
                     return data.celsius !== undefined ? `${data.celsius.toFixed(1)}°C` : '-';
                 case 'temperature_error':
                     return data.error ? escapeHtml(data.error) : 'Sensor error';
+                case 'temp_read_invalid':
+                    if (data.reason) return `${escapeHtml(data.reason)}${data.raw !== undefined ? ` (${data.raw}°C)` : ''}`;
+                    return data.raw !== undefined ? `Raw: ${data.raw}°C` : 'Invalid reading';
+                case 'temp_read_crc_error':
+                    return 'CRC checksum error';
+                case 'temp_sensor_not_found':
+                    return 'Sensor disconnected';
+                case 'button_press':
+                    return 'Pressed';
+                case 'button_release':
+                    return data.hold_ms !== undefined ? `Held ${data.hold_ms}ms` : 'Released';
+                case 'display_mode_change':
+                    if (data.from && data.to) return `${escapeHtml(data.from)} → ${escapeHtml(data.to)}`;
+                    return data.to ? `Mode: ${escapeHtml(data.to)}` : '-';
+                case 'low_heap_warning':
+                    return data.free_heap !== undefined ? `${Math.round(data.free_heap / 1024)}KB free (threshold: ${Math.round(data.threshold / 1024)}KB)` : 'Low memory';
+                case 'wifi_rssi_low':
+                    return data.rssi !== undefined ? `${data.rssi} dBm (threshold: ${data.threshold} dBm)` : 'Weak signal';
+                case 'ntp_sync_success':
+                    return 'Time synchronized';
+                case 'ntp_sync_failed':
+                    return data.reason ? escapeHtml(data.reason) : 'Sync failed';
+                case 'rtc_initialized':
+                    return 'RTC found and ready';
+                case 'rtc_not_found':
+                    return 'RTC not detected on I2C';
+                case 'rtc_lost_power':
+                    return 'Battery depleted, time reset';
+                case 'rtc_time_invalid':
+                    return 'RTC time before 2020';
+                case 'rtc_synced_from_ntp':
+                    return 'RTC updated from NTP';
+                case 'rtc_sync_failed':
+                    return data.reason ? escapeHtml(data.reason) : 'Sync failed';
+                case 'rtc_drift_corrected':
+                    return data.drift_seconds !== undefined ? `Drift: ${data.drift_seconds}s` : 'Drift corrected';
                 default:
                     return JSON.stringify(data);
             }
