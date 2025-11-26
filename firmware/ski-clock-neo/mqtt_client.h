@@ -40,6 +40,7 @@ extern const char MQTT_TOPIC_OTA_START[];
 extern const char MQTT_TOPIC_OTA_PROGRESS[];
 extern const char MQTT_TOPIC_OTA_COMPLETE[];
 extern const char MQTT_TOPIC_DISPLAY_SNAPSHOT[];
+extern const char MQTT_TOPIC_EVENTS[];
 
 // MQTT client objects
 extern WiFiClientSecure wifiSecureClient;

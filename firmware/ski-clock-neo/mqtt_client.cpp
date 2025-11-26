@@ -35,6 +35,7 @@ const char MQTT_TOPIC_OTA_START[] = "skiclock/ota/start";
 const char MQTT_TOPIC_OTA_PROGRESS[] = "skiclock/ota/progress";
 const char MQTT_TOPIC_OTA_COMPLETE[] = "skiclock/ota/complete";
 const char MQTT_TOPIC_DISPLAY_SNAPSHOT[] = "skiclock/display/snapshot";
+const char MQTT_TOPIC_EVENTS[] = "skiclock/event";
 
 // Timing constants
 const unsigned long HEARTBEAT_INTERVAL = 60000;           // 60 seconds

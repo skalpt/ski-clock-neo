@@ -292,26 +292,19 @@ def handle_ota_start(client, payload, topic):
     
     Device ID is extracted from topic: skiclock/ota/start/{device_id}
     """
-    # Extract device_id from topic (primary source)
     device_id = extract_device_id_from_topic(topic, MQTT_TOPIC_OTA_START)
-    
-    # Fallback to payload for backward compatibility with older firmware
     if not device_id:
-        device_id = payload.get('device_id')
+        print(f"⚠ Invalid OTA start topic format: {topic}")
+        return
     
-    session_id = payload.get('session_id')
+    session_id = payload.get('session_id') or str(uuid.uuid4())
     platform = payload.get('platform')
     old_version = payload.get('old_version')
     new_version = payload.get('new_version')
     
-    if not device_id or not platform or not new_version:
-        print(f"⚠ Invalid OTA start message: missing required fields (device_id={device_id}, platform={platform})")
+    if not platform or not new_version:
+        print(f"⚠ Invalid OTA start message: missing required fields (platform={platform}, new_version={new_version})")
         return
-    
-    # Generate fallback session ID if not provided (backward compatibility)
-    if not session_id:
-        session_id = str(uuid.uuid4())
-        print(f"ℹ️  Generated fallback session_id: {session_id}")
     
     if _app_context:
         from models import OTAUpdateLog, db
@@ -336,12 +329,10 @@ def handle_ota_progress(client, payload, topic):
     
     Device ID is extracted from topic: skiclock/ota/progress/{device_id}
     """
-    # Extract device_id from topic (primary source)
     device_id = extract_device_id_from_topic(topic, MQTT_TOPIC_OTA_PROGRESS)
-    
-    # Fallback to payload for backward compatibility with older firmware
     if not device_id:
-        device_id = payload.get('device_id')
+        print(f"⚠ Invalid OTA progress topic format: {topic}")
+        return
     
     session_id = payload.get('session_id')
     progress = payload.get('progress', 0)
@@ -380,12 +371,10 @@ def handle_ota_complete(client, payload, topic):
     
     Device ID is extracted from topic: skiclock/ota/complete/{device_id}
     """
-    # Extract device_id from topic (primary source)
     device_id = extract_device_id_from_topic(topic, MQTT_TOPIC_OTA_COMPLETE)
-    
-    # Fallback to payload for backward compatibility with older firmware
     if not device_id:
-        device_id = payload.get('device_id')
+        print(f"⚠ Invalid OTA complete topic format: {topic}")
+        return
     
     session_id = payload.get('session_id')
     
@@ -453,14 +442,12 @@ def handle_display_snapshot(client, payload, topic):
     2. Mono: 'mono' field with bit-packed data + 'monoColor' [R,G,B,brightness]
     3. Color: 'color' field with 4-bytes-per-pixel RGBW data (full color per pixel)
     """
-    # Extract device_id from topic (primary source)
     device_id = extract_device_id_from_topic(topic, MQTT_TOPIC_DISPLAY_SNAPSHOT)
-    
-    # Fallback to payload for backward compatibility with older firmware
     if not device_id:
-        device_id = payload.get('device_id')
+        print(f"⚠ Invalid display snapshot topic format: {topic}")
+        return
     
-    if device_id and _app_context:
+    if _app_context:
         with _app_context.app_context():
             from models import Device, DisplaySnapshot, db
             

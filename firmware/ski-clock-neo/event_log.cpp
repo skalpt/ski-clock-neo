@@ -183,7 +183,7 @@ void flushEventQueue() {
   }
   EVENT_EXIT_CRITICAL();
   
-  String topic = buildDeviceTopic("skiclock/event/");
+  String topic = buildDeviceTopic(MQTT_TOPIC_EVENTS);
   uint32_t now = millis();
   int flushed = 0;
   

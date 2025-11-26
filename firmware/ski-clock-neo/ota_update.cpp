@@ -28,12 +28,10 @@ bool otaUpdateInProgress = false;
 // ============================================================================
 
 // Publish OTA start message (to device-specific topic)
-// Note: device_id included in payload for backward compatibility during rollout
 void publishOTAStart(String newVersion) {
   static char payload[256];
   snprintf(payload, sizeof(payload),
-    "{\"device_id\":\"%s\",\"platform\":\"%s\",\"old_version\":\"%s\",\"new_version\":\"%s\"}",
-    getDeviceID().c_str(),
+    "{\"platform\":\"%s\",\"old_version\":\"%s\",\"new_version\":\"%s\"}",
     getPlatform().c_str(),
     FIRMWARE_VERSION,
     newVersion.c_str()
@@ -43,31 +41,21 @@ void publishOTAStart(String newVersion) {
 }
 
 // Publish OTA progress message (0-100%, to device-specific topic)
-// Note: device_id included in payload for backward compatibility during rollout
 void publishOTAProgress(int progress) {
-  static char payload[128];
-  snprintf(payload, sizeof(payload),
-    "{\"device_id\":\"%s\",\"progress\":%d}",
-    getDeviceID().c_str(),
-    progress
-  );
+  static char payload[32];
+  snprintf(payload, sizeof(payload), "{\"progress\":%d}", progress);
   
   publishMqttPayload(buildDeviceTopic(MQTT_TOPIC_OTA_PROGRESS), payload);
 }
 
 // Publish OTA complete message (to device-specific topic)
-// Note: device_id included in payload for backward compatibility during rollout
 void publishOTAComplete(bool success, String errorMessage) {
-  static char payload[384];
+  static char payload[256];
   if (success) {
-    snprintf(payload, sizeof(payload),
-      "{\"device_id\":\"%s\",\"status\":\"success\"}",
-      getDeviceID().c_str()
-    );
+    snprintf(payload, sizeof(payload), "{\"status\":\"success\"}");
   } else {
     snprintf(payload, sizeof(payload),
-      "{\"device_id\":\"%s\",\"status\":\"failed\",\"error\":\"%s\"}",
-      getDeviceID().c_str(),
+      "{\"status\":\"failed\",\"error\":\"%s\"}",
       errorMessage.c_str()
     );
   }
