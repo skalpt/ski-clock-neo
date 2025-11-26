@@ -41,14 +41,43 @@
                 <label for="event-type-filter">Event Type</label>
                 <select id="event-type-filter">
                     <option value="">All Types</option>
-                    <option value="heartbeat">Heartbeat</option>
-                    <option value="boot">Boot</option>
-                    <option value="wifi_connect">WiFi Connect</option>
-                    <option value="wifi_disconnect">WiFi Disconnect</option>
-                    <option value="mqtt_connect">MQTT Connect</option>
-                    <option value="mqtt_disconnect">MQTT Disconnect</option>
-                    <option value="temperature_read">Temperature Read</option>
-                    <option value="temperature_error">Temperature Error</option>
+                    <optgroup label="System">
+                        <option value="boot">Boot</option>
+                        <option value="heartbeat">Heartbeat</option>
+                        <option value="low_heap_warning">Low Heap</option>
+                    </optgroup>
+                    <optgroup label="Connectivity">
+                        <option value="wifi_connect">WiFi Connect</option>
+                        <option value="wifi_disconnect">WiFi Disconnect</option>
+                        <option value="wifi_rssi_low">Weak WiFi</option>
+                        <option value="mqtt_connect">MQTT Connect</option>
+                        <option value="mqtt_disconnect">MQTT Disconnect</option>
+                    </optgroup>
+                    <optgroup label="Temperature">
+                        <option value="temperature_read">Temperature Read</option>
+                        <option value="temperature_error">Temperature Error</option>
+                        <option value="temp_sensor_not_found">Sensor Missing</option>
+                        <option value="temp_read_invalid">Invalid Reading</option>
+                        <option value="temp_read_crc_error">CRC Error</option>
+                    </optgroup>
+                    <optgroup label="RTC/Time">
+                        <option value="rtc_initialized">RTC Init</option>
+                        <option value="rtc_not_found">RTC Missing</option>
+                        <option value="rtc_lost_power">RTC Lost Power</option>
+                        <option value="rtc_time_invalid">RTC Invalid</option>
+                        <option value="rtc_synced_from_ntp">RTC Synced</option>
+                        <option value="rtc_sync_failed">RTC Sync Failed</option>
+                        <option value="rtc_drift_corrected">RTC Drift Fixed</option>
+                        <option value="ntp_sync_success">NTP Synced</option>
+                        <option value="ntp_sync_failed">NTP Failed</option>
+                    </optgroup>
+                    <optgroup label="User Input">
+                        <option value="button_press">Button Press</option>
+                        <option value="button_release">Button Release</option>
+                    </optgroup>
+                    <optgroup label="Display">
+                        <option value="display_mode_change">Mode Change</option>
+                    </optgroup>
                 </select>
             </div>
             
