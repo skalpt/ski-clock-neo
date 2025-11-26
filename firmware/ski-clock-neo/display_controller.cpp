@@ -1,9 +1,9 @@
 #include "display_controller.h"
 
-#include "display.h"
+#include "display_core.h"
 #include "data_time.h"
 #include "data_temperature.h"
-#include "timer_task.h"
+#include "timing_helpers.h"
 #include "debug.h"
 
 // Controller state

@@ -1,7 +1,7 @@
-#include "display.h"
+#include "display_core.h"
 #include "display_controller.h"
 #include "neopixel_render.h"
-#include "timer_task.h"
+#include "timing_helpers.h"
 #include "debug.h"
 #include <string.h>
 

@@ -3,7 +3,7 @@
 #include "ski-clock-neo_config.h" // For TEMPERATURE_PIN
 #include "display_controller.h"   // For updateTemperatureDisplay callback
 #include "event_log.h"            // For logging temperature events
-#include "timer_task.h"           // For unified timer abstraction
+#include "timing_helpers.h"       // For unified timer abstraction
 #include "debug.h"                // For serial debugging
 #include <OneWire.h>              // OneWire library for DS18B20
 #include <DallasTemperature.h>    // Main library for DS18B20

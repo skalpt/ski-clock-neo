@@ -1,5 +1,5 @@
-#ifndef TIMER_TASK_H
-#define TIMER_TASK_H
+#ifndef TIMING_HELPERS_H
+#define TIMING_HELPERS_H
 
 #include <Arduino.h>
 #include "debug.h"

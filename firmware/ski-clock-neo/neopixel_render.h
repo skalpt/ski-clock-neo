@@ -6,7 +6,7 @@
 #include <Adafruit_NeoPixel.h>
 #include "font_5x7.h"
 #include "debug.h"
-#include "display.h"
+#include "display_core.h"
 
 // ==================== GLOBAL STATE ====================
 // Static storage buffer for NeoPixel objects (no heap allocation)

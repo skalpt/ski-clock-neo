@@ -1,7 +1,7 @@
 #include "mqtt_client.h"
 #include "led_indicator.h"   // For LED status patterns when MQTT connection state changes
 #include "ota_update.h"      // For triggering an OTA update
-#include "display.h"         // For sending the display snapshot
+#include "display_core.h"    // For sending the display snapshot
 #include "event_log.h"       // For flushing event queue on connect
 #include "ski-clock-neo_config.h"  // For DISPLAY_COLOR_R/G/B and BRIGHTNESS
 

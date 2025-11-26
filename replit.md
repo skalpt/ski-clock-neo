@@ -14,7 +14,7 @@ The project consists of two primary components:
 
 **1. Firmware (Embedded C++ for ESP32/ESP8266):**
 *   **Features**: Drives 16x16 NeoPixel matrices with a custom 5x7 pixel font, supports multi-panel setups, includes a freeze-proof LED status indicator using hardware interrupt timers, and manages WiFi via `AutoConnect`. Secure non-blocking OTA updates are handled via a custom server with API key authentication and HTTPS. NeoPixel updates utilize FreeRTOS tasks on ESP32 for smooth rendering.
-*   **Modular Display Architecture**: Hardware configuration is centralized in `display_config.h`. A generic `display.{h,cpp}` library manages a bit-packed display buffer and text content, which is hardware-agnostic. The `neopixel_render.h` renderer handles pixel transformations (rotation, serpentine wiring) and commits unified frames. This architecture supports future migration to HUB75 panels.
+*   **Modular Display Architecture**: Hardware configuration is centralized in `display_config.h`. The generic `display_core.{h,cpp}` library manages a bit-packed display buffer and text content, which is hardware-agnostic. The `neopixel_render.h` renderer handles pixel transformations (rotation, serpentine wiring) and commits unified frames. This architecture supports future migration to HUB75 panels.
 *   **FreeRTOS Display Task**: Display rendering runs in a dedicated FreeRTOS task (ESP32) or Ticker callback (ESP8266) for immediate, non-blocking display updates.
 *   **Deterministic Display Controller Task**: Content scheduling (e.g., time/date toggling) runs in a dedicated FreeRTOS task (ESP32) or TickTwo library (ESP8266) to prevent display "freezing" during network operations.
 *   **Centralized LED Connectivity State Management**: A priority-based system tracks WiFi and MQTT status, with a single API `setConnectivityState(wifi, mqtt)` to prevent race conditions. OTA updates use an override mode.
@@ -26,12 +26,12 @@ The project consists of two primary components:
 *   **Display Content System**: Alternates time and date every 4 seconds. Temperature (DS18B20 sensor) is displayed with non-blocking reads. Event-driven updates via `setText()` callbacks are used for all data libraries.
 *   **RTC Integration**: DS3231 RTC module provides instant time on boot (before WiFi/NTP connects). NTP automatically syncs the RTC hourly to maintain accuracy. Falls back gracefully to NTP-only if no RTC is present.
 *   **Time Change Callbacks**: Precise minute/date change detection via callback system. The data_time library tracks last minute and day, calling registered callbacks with flags (TIME_CHANGE_MINUTE, TIME_CHANGE_DATE) when changes occur. A 1-second polling timer detects changes reliably.
-*   **Unified Timer Library**: The `timer_task` library provides complete platform abstraction for all timing needs:
+*   **Unified Timer Library**: The `timing_helpers` library provides complete platform abstraction for all timing needs:
     - Periodic timers via `createTimer()` - FreeRTOS tasks on ESP32, TickTwo tickers on ESP8266
     - One-shot timers via `createOneShotTimer()`/`triggerTimer()` - ESP32 Ticker.once_ms, ESP8266 TickTwo with iterations=1
     - Notification-based tasks via `createNotificationTask()`/`notifyTask()` (ESP32 only) - for event-driven wake patterns
     - All ESP8266 timers updated via single `updateTimers()` call in main loop
-    - Used by: display (1ms render/notification), display_controller (4s toggle), data_time (1s time check), data_temperature (30s poll + 750ms read delay)
+    - Used by: display_core (1ms render/notification), display_controller (4s toggle), data_time (1s time check), data_temperature (30s poll + 750ms read delay)
 *   **Clean Separation of Concerns**: Temperature polling and time/date toggling are owned by their respective libraries, which update the display controller via callbacks, ensuring independent timing logic.
 *   **Event Logging System**: A ring buffer stores device events with timestamps, publishing them to MQTT when connected. Events include boot, WiFi connect/disconnect, MQTT connect/disconnect, and temperature readings.
 

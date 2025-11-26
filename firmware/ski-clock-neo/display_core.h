@@ -1,5 +1,5 @@
-#ifndef DISPLAY_H
-#define DISPLAY_H
+#ifndef DISPLAY_CORE_H
+#define DISPLAY_CORE_H
 
 #include <Arduino.h>
 #include "ski-clock-neo_config.h"
