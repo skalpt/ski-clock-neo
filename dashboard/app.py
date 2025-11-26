@@ -1593,6 +1593,101 @@ def get_all_snapshots():
         'offset': offset
     }), 200
 
+@app.route('/api/firmware-history')
+@login_required
+def get_firmware_history():
+    """Get all firmware versions grouped by platform (for version pinning UI)
+    
+    Returns all historical versions per platform, ordered by upload date descending.
+    """
+    from sqlalchemy import desc
+    
+    # Get all firmware versions ordered by platform and upload date
+    all_versions = FirmwareVersion.query.order_by(
+        FirmwareVersion.platform,
+        desc(FirmwareVersion.uploaded_at)
+    ).all()
+    
+    # Group by platform
+    platforms = {}
+    for fw in all_versions:
+        if fw.platform not in platforms:
+            platforms[fw.platform] = []
+        
+        version_info = fw.to_dict()
+        version_info['id'] = fw.id
+        version_info['is_latest'] = len(platforms[fw.platform]) == 0  # First one is latest
+        platforms[fw.platform].append(version_info)
+    
+    return jsonify({
+        'platforms': platforms,
+        'total_versions': len(all_versions)
+    }), 200
+
+@app.route('/api/devices/<device_id>/pin-version', methods=['POST', 'DELETE'])
+@login_required
+def pin_device_version(device_id):
+    """Pin or unpin a firmware version for a device
+    
+    POST: Pin device to a specific version
+    - Body: {"version": "2025.11.26.80"} to pin, {"version": null} to unpin
+    
+    DELETE: Unpin device (follow latest)
+    """
+    device = Device.query.filter_by(device_id=device_id).first()
+    
+    if not device:
+        return jsonify({'error': 'Device not found'}), 404
+    
+    if request.method == 'DELETE':
+        # Unpin - device will follow latest version
+        device.pinned_firmware_version = None
+        db.session.commit()
+        print(f"📌 Unpinned device {device_id} - will follow latest version")
+        return jsonify({
+            'success': True,
+            'message': f'Device {device_id} unpinned - will follow latest version',
+            'pinned_firmware_version': None
+        }), 200
+    
+    # POST - pin to specific version
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Request body required'}), 400
+    
+    version = data.get('version')
+    
+    if version is None:
+        # Unpin via POST with null version
+        device.pinned_firmware_version = None
+        db.session.commit()
+        print(f"📌 Unpinned device {device_id} - will follow latest version")
+        return jsonify({
+            'success': True,
+            'message': f'Device {device_id} unpinned - will follow latest version',
+            'pinned_firmware_version': None
+        }), 200
+    
+    # Verify version exists for device's platform
+    platform = device.board_type
+    fw = FirmwareVersion.query.filter_by(platform=platform, version=version).first()
+    
+    if not fw:
+        return jsonify({
+            'error': f'Version {version} not found for platform {platform}'
+        }), 404
+    
+    # Pin the device
+    device.pinned_firmware_version = version
+    db.session.commit()
+    print(f"📌 Pinned device {device_id} to version {version}")
+    
+    return jsonify({
+        'success': True,
+        'message': f'Device {device_id} pinned to version {version}',
+        'pinned_firmware_version': version
+    }), 200
+
 @app.route('/api/events')
 @login_required
 def get_events():

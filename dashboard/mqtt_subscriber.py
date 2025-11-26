@@ -232,6 +232,7 @@ def handle_heartbeat(client, payload, topic):
             # Check for firmware updates based on board type
             # Map board type to platform using authoritative mapping
             from app import get_firmware_version
+            from models import FirmwareVersion
             platform = BOARD_TYPE_TO_PLATFORM.get(board_type)
             
             if not platform:
@@ -239,30 +240,54 @@ def handle_heartbeat(client, payload, topic):
                 if board_type != 'Unknown':
                     print(f"⚠ No platform mapping for board type '{board_type}'")
             else:
-                # Use get_firmware_version() which handles cache properly
-                version_info = get_firmware_version(platform)
+                # Check if device has a pinned firmware version
+                pinned_version = device.pinned_firmware_version
+                target_version = None
                 
-                if version_info:
-                    latest_version = version_info.get('version', 'Unknown')
+                if pinned_version:
+                    # Device is pinned - verify the pinned version exists
+                    pinned_fw = FirmwareVersion.query.filter_by(
+                        platform=platform, 
+                        version=pinned_version
+                    ).first()
+                    
+                    if pinned_fw:
+                        target_version = pinned_version
+                        print(f"📌 Device {device_id} is pinned to version {pinned_version}")
+                    else:
+                        # Pinned version doesn't exist - fall back to latest
+                        print(f"⚠ Pinned version {pinned_version} not found for {platform}, falling back to latest")
+                        version_info = get_firmware_version(platform)
+                        if version_info:
+                            target_version = version_info.get('version')
+                else:
+                    # Not pinned - use latest version
+                    version_info = get_firmware_version(platform)
+                    if version_info:
+                        target_version = version_info.get('version')
+                
+                if target_version:
                     # Normalize versions by removing 'v' prefix for comparison
                     normalized_current = current_version.lstrip('vV')
-                    normalized_latest = latest_version.lstrip('vV')
-                    update_available = normalized_latest != normalized_current
+                    normalized_target = target_version.lstrip('vV')
+                    update_available = normalized_target != normalized_current
                     
                     if update_available:
                         # Send version response to notify device of update
                         session_id = str(uuid.uuid4())
                         response_topic = f"{MQTT_TOPIC_VERSION_RESPONSE}/{device_id}"
                         response_payload = {
-                            'latest_version': latest_version,
+                            'latest_version': target_version,
                             'current_version': current_version,
                             'update_available': True,
                             'platform': platform,
                             'session_id': session_id,
-                            'subscriber_id': _subscriber_id  # Track which thread sent this
+                            'subscriber_id': _subscriber_id,  # Track which thread sent this
+                            'pinned': pinned_version is not None  # Let device know if this is a pinned version
                         }
                         client.publish(response_topic, json.dumps(response_payload), qos=1)
-                        print(f"📤 Version response sent to {device_id}: {latest_version} (update: True) [subscriber: {_subscriber_id}]")
+                        pin_status = "pinned" if pinned_version else "latest"
+                        print(f"📤 Version response sent to {device_id}: {target_version} (update: True, {pin_status}) [subscriber: {_subscriber_id}]")
                 else:
                     # Log when platform exists in mapping but no firmware in cache
                     print(f"⚠ No firmware found for platform '{platform}' (board type: '{board_type}')")
