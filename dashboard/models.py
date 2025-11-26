@@ -110,8 +110,13 @@ class FirmwareVersion(db.Model):
     __tablename__ = 'firmware_versions'
     
     id = db.Column(db.Integer, primary_key=True)
-    platform = db.Column(db.String(32), unique=True, nullable=False, index=True)
+    platform = db.Column(db.String(32), nullable=False, index=True)
     version = db.Column(db.String(32), nullable=False)
+    
+    # Composite unique constraint: one record per platform+version combination
+    __table_args__ = (
+        db.UniqueConstraint('platform', 'version', name='uix_platform_version'),
+    )
     filename = db.Column(db.String(128), nullable=False)
     size = db.Column(db.Integer, nullable=False)
     sha256 = db.Column(db.String(64), nullable=False)
@@ -214,6 +219,7 @@ class Device(db.Model):
     ssid = db.Column(db.String(64))
     ip_address = db.Column(db.String(45))
     display_snapshot = db.Column(db.JSON)  # Stores display dimensions and base64-encoded pixel data
+    pinned_firmware_version = db.Column(db.String(32))  # Optional: pin device to specific firmware version
     
     # Relationships
     ota_update_logs = db.relationship('OTAUpdateLog', back_populates='device', cascade='all, delete-orphan')
@@ -283,7 +289,8 @@ class Device(db.Model):
             'status': status,
             'degraded': is_degraded,
             'minutes_since_last_seen': round(minutes_since_last_seen, 1),
-            'display_snapshot': self.display_snapshot
+            'display_snapshot': self.display_snapshot,
+            'pinned_firmware_version': self.pinned_firmware_version
         }
 
 

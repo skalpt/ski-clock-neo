@@ -188,7 +188,7 @@ LATEST_VERSIONS = {}
 def refresh_firmware_cache(platform):
     """Refresh cache for a specific platform and all its aliases
     
-    Loads firmware from database and updates LATEST_VERSIONS cache
+    Loads the LATEST firmware version from database and updates LATEST_VERSIONS cache
     for both the canonical platform and all mapped aliases.
     
     Args:
@@ -196,8 +196,8 @@ def refresh_firmware_cache(platform):
     """
     global LATEST_VERSIONS
     
-    # Load from database
-    fw = FirmwareVersion.query.filter_by(platform=platform).first()
+    # Load latest version from database (ordered by uploaded_at descending)
+    fw = FirmwareVersion.query.filter_by(platform=platform).order_by(FirmwareVersion.uploaded_at.desc()).first()
     
     if not fw:
         # Clear canonical platform and all aliases when firmware is missing
@@ -253,12 +253,19 @@ def load_versions_from_db():
     return LATEST_VERSIONS
 
 def save_version_to_db(platform, version_info):
-    """Save or update a firmware version in the database"""
-    fw = FirmwareVersion.query.filter_by(platform=platform).first()
+    """Save or update a firmware version in the database.
+    
+    Now supports version history: each platform+version combination is unique.
+    If the same version is re-uploaded, it updates the existing record.
+    New versions create new records, preserving history.
+    """
+    version = version_info['version']
+    
+    # Check for existing platform+version combination
+    fw = FirmwareVersion.query.filter_by(platform=platform, version=version).first()
     
     if fw:
-        # Update existing
-        fw.version = version_info['version']
+        # Update existing version (re-upload of same version)
         fw.filename = version_info['filename']
         fw.size = version_info['size']
         fw.sha256 = version_info['sha256']
@@ -284,11 +291,12 @@ def save_version_to_db(platform, version_info):
         fw.partitions_object_path = version_info.get('partitions_object_path')
         fw.partitions_object_name = version_info.get('partitions_object_name')
         fw.partitions_local_path = version_info.get('partitions_local_path')
+        print(f"✓ Updated existing {platform} v{version} in database")
     else:
-        # Create new
+        # Create new version record (preserves history)
         fw = FirmwareVersion(
             platform=platform,
-            version=version_info['version'],
+            version=version,
             filename=version_info['filename'],
             size=version_info['size'],
             sha256=version_info['sha256'],
@@ -315,9 +323,9 @@ def save_version_to_db(platform, version_info):
             partitions_local_path=version_info.get('partitions_local_path')
         )
         db.session.add(fw)
+        print(f"✓ Added new {platform} v{version} to database")
     
     db.session.commit()
-    print(f"✓ Saved {platform} v{version_info['version']} to database")
     
     # Refresh cache for this platform and all aliases
     refresh_firmware_cache(platform)
