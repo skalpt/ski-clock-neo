@@ -898,7 +898,24 @@
             'mqtt_connect': '🔗',
             'mqtt_disconnect': '🔓',
             'temperature_read': '🌡️',
-            'temperature_error': '⚠️'
+            'temperature_error': '⚠️',
+            'low_heap_warning': '🧠',
+            'wifi_rssi_low': '📉',
+            'temp_sensor_not_found': '🔍',
+            'temp_read_invalid': '❌',
+            'temp_read_crc_error': '🔢',
+            'rtc_initialized': '🕐',
+            'rtc_not_found': '🔍',
+            'rtc_lost_power': '🔋',
+            'rtc_time_invalid': '⏰',
+            'rtc_synced_from_ntp': '🔄',
+            'rtc_sync_failed': '❌',
+            'rtc_drift_corrected': '✅',
+            'ntp_sync_success': '🌐',
+            'ntp_sync_failed': '🌐',
+            'button_press': '👆',
+            'button_release': '👆',
+            'display_mode_change': '🖥️'
         };
         return icons[eventType] || '📌';
     }
@@ -912,7 +929,24 @@
             'mqtt_connect': 'MQTT Connect',
             'mqtt_disconnect': 'MQTT Disconnect',
             'temperature_read': 'Temperature',
-            'temperature_error': 'Temperature Error'
+            'temperature_error': 'Temperature Error',
+            'low_heap_warning': 'Low Heap Warning',
+            'wifi_rssi_low': 'Weak WiFi Signal',
+            'temp_sensor_not_found': 'Sensor Not Found',
+            'temp_read_invalid': 'Invalid Reading',
+            'temp_read_crc_error': 'CRC Error',
+            'rtc_initialized': 'RTC Ready',
+            'rtc_not_found': 'RTC Not Found',
+            'rtc_lost_power': 'RTC Battery Low',
+            'rtc_time_invalid': 'RTC Time Invalid',
+            'rtc_synced_from_ntp': 'RTC Synced',
+            'rtc_sync_failed': 'RTC Sync Failed',
+            'rtc_drift_corrected': 'RTC Drift Corrected',
+            'ntp_sync_success': 'NTP Sync OK',
+            'ntp_sync_failed': 'NTP Sync Failed',
+            'button_press': 'Button Press',
+            'button_release': 'Button Release',
+            'display_mode_change': 'Display Mode'
         };
         return labels[eventType] || eventType;
     }
