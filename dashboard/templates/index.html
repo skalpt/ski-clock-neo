@@ -50,14 +50,42 @@
                         <th>Filename</th>
                         <th>Version</th>
                         <th class="flash-column">Flash to Device</th>
+                        <th>History</th>
                     </tr>
                 </thead>
                 <tbody id="firmware-body">
                     <tr>
-                        <td colspan="3" class="muted-text text-center">Loading...</td>
+                        <td colspan="5" class="muted-text text-center">Loading...</td>
                     </tr>
                 </tbody>
             </table>
+        </div>
+    </div>
+    
+    <div id="version-modal" class="modal hidden">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h3 id="version-modal-title">Version History</h3>
+                <button class="modal-close" onclick="closeVersionModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="version-modal-body">
+                <div class="empty-state">Loading versions...</div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="push-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="push-modal-title">Push Version to Device</h3>
+                <button class="modal-close" onclick="closePushModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="push-modal-body">
+                <p>Select a device to push this version to:</p>
+                <div id="push-device-list" class="device-select-list">
+                    <div class="empty-state">Loading devices...</div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -681,6 +709,11 @@
                                 <td class="flash-column">
                                     ${flashButtons}
                                 </td>
+                                <td>
+                                    <button class="btn-secondary btn-small" onclick="showVersionHistory('${platform}')">
+                                        📜 History
+                                    </button>
+                                </td>
                             </tr>
                         `;
                     } else {
@@ -690,12 +723,17 @@
                                 <td>${escapeHtml(fw.filename || 'Unknown')}</td>
                                 <td>${escapeHtml(fw.version || 'Unknown')}</td>
                                 <td class="flash-column"><span class="muted-text">No Permission</span></td>
+                                <td>
+                                    <button class="btn-secondary btn-small" onclick="showVersionHistory('${platform}')">
+                                        📜 History
+                                    </button>
+                                </td>
                             </tr>
                         `;
                     }
                 }).join('');
 
-            tbody.innerHTML = rows || '<tr><td colspan="4" class="muted-text text-center">No firmware uploaded yet</td></tr>';
+            tbody.innerHTML = rows || '<tr><td colspan="5" class="muted-text text-center">No firmware uploaded yet</td></tr>';
         } catch (error) {
             console.error('Failed to load firmware:', error);
         }
@@ -979,6 +1017,219 @@
             return '-';
         }
     }
+
+    // Version history and push functionality
+    let firmwareHistoryCache = null;
+    let selectedPushVersion = null;
+    let selectedPushPlatform = null;
+    
+    async function loadFirmwareHistory() {
+        if (firmwareHistoryCache) return firmwareHistoryCache;
+        
+        try {
+            const response = await fetch('/api/firmware-history');
+            const data = await response.json();
+            firmwareHistoryCache = data;
+            return data;
+        } catch (error) {
+            console.error('Failed to load firmware history:', error);
+            return null;
+        }
+    }
+    
+    async function showVersionHistory(platform) {
+        const modal = document.getElementById('version-modal');
+        const title = document.getElementById('version-modal-title');
+        const body = document.getElementById('version-modal-body');
+        
+        title.textContent = `Version History - ${platform.toUpperCase()}`;
+        body.innerHTML = '<div class="empty-state">Loading versions...</div>';
+        modal.classList.remove('hidden');
+        
+        const data = await loadFirmwareHistory();
+        
+        if (!data || !data.platforms || !data.platforms[platform]) {
+            body.innerHTML = '<div class="empty-state">No version history available</div>';
+            return;
+        }
+        
+        const versions = data.platforms[platform];
+        
+        const rows = versions.map(fw => {
+            const uploadDate = new Date(fw.uploaded_at).toLocaleString();
+            const latestBadge = fw.is_latest ? '<span class="badge badge-success">Latest</span>' : '';
+            const sizeMB = (fw.size / 1024 / 1024).toFixed(2);
+            
+            return `
+                <tr>
+                    <td>
+                        ${escapeHtml(fw.version)}
+                        ${latestBadge}
+                    </td>
+                    <td>${sizeMB} MB</td>
+                    <td>${uploadDate}</td>
+                    <td>
+                        <button class="btn-primary btn-small" onclick="showPushModal('${platform}', '${escapeHtml(fw.version)}')">
+                            📤 Push to Device
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+        
+        body.innerHTML = `
+            <div class="table-responsive">
+                <table class="firmware-table">
+                    <thead>
+                        <tr>
+                            <th>Version</th>
+                            <th>Size</th>
+                            <th>Uploaded</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+    
+    function closeVersionModal() {
+        document.getElementById('version-modal').classList.add('hidden');
+    }
+    
+    async function showPushModal(platform, version) {
+        selectedPushPlatform = platform;
+        selectedPushVersion = version;
+        
+        const modal = document.getElementById('push-modal');
+        const title = document.getElementById('push-modal-title');
+        const deviceList = document.getElementById('push-device-list');
+        
+        title.textContent = `Push v${version} to Device`;
+        deviceList.innerHTML = '<div class="empty-state">Loading devices...</div>';
+        modal.classList.remove('hidden');
+        
+        try {
+            const response = await fetch('/api/devices');
+            const data = await response.json();
+            
+            // Filter devices that match the platform
+            const matchingDevices = data.devices.filter(d => {
+                // Map board types to platforms (simplified mapping)
+                const boardToPlatform = {
+                    'ESP32-C3': 'esp32c3',
+                    'ESP32-S3': 'esp32s3',
+                    'ESP32': 'esp32',
+                    'ESP-12F': 'esp12f',
+                    'ESP-01': 'esp01',
+                    'D1 Mini': 'd1mini',
+                    'ESP8266': 'esp8266'
+                };
+                return boardToPlatform[d.board] === platform || d.board.toLowerCase().includes(platform.toLowerCase());
+            });
+            
+            if (matchingDevices.length === 0) {
+                deviceList.innerHTML = `<div class="empty-state">No ${platform.toUpperCase()} devices found</div>`;
+                return;
+            }
+            
+            const deviceItems = matchingDevices.map(d => {
+                const statusClass = d.online ? (d.status === 'degraded' ? 'degraded' : 'online') : 'offline';
+                const statusIcon = d.online ? (d.status === 'degraded' ? '🟡' : '🟢') : '🔴';
+                const pinnedBadge = d.pinned_firmware_version ? 
+                    `<span class="badge badge-warning">Pinned: ${escapeHtml(d.pinned_firmware_version)}</span>` : '';
+                const currentVersion = d.version || 'Unknown';
+                
+                return `
+                    <div class="device-select-item ${statusClass}" onclick="pinDeviceVersion('${d.device_id}', '${selectedPushVersion}')">
+                        <div class="device-select-info">
+                            <strong>${statusIcon} ${escapeHtml(d.device_id)}</strong>
+                            <span class="muted-text">v${escapeHtml(currentVersion)}</span>
+                            ${pinnedBadge}
+                        </div>
+                        <button class="btn-primary btn-small">Pin to v${escapeHtml(selectedPushVersion)}</button>
+                    </div>
+                `;
+            }).join('');
+            
+            deviceList.innerHTML = deviceItems;
+            
+        } catch (error) {
+            console.error('Failed to load devices:', error);
+            deviceList.innerHTML = '<div class="empty-state">Failed to load devices</div>';
+        }
+    }
+    
+    function closePushModal() {
+        document.getElementById('push-modal').classList.add('hidden');
+        selectedPushVersion = null;
+        selectedPushPlatform = null;
+    }
+    
+    async function pinDeviceVersion(deviceId, version) {
+        try {
+            const response = await fetch(`/api/devices/${deviceId}/pin-version`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ version: version })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                alert(data.message || `Device ${deviceId} pinned to version ${version}`);
+                closePushModal();
+                closeVersionModal();
+                loadDevices(); // Refresh device list
+            } else {
+                alert(`Failed to pin device: ${data.error}`);
+            }
+        } catch (error) {
+            console.error('Failed to pin device:', error);
+            alert('Failed to pin device');
+        }
+    }
+    
+    async function unpinDeviceVersion(deviceId) {
+        if (!confirm(`Remove version pin from device ${deviceId}? It will follow the latest version again.`)) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/devices/${deviceId}/pin-version`, {
+                method: 'DELETE'
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                alert(data.message || `Device ${deviceId} unpinned`);
+                loadDevices(); // Refresh device list
+            } else {
+                alert(`Failed to unpin device: ${data.error}`);
+            }
+        } catch (error) {
+            console.error('Failed to unpin device:', error);
+            alert('Failed to unpin device');
+        }
+    }
+    
+    // Close modals on outside click
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('modal')) {
+            e.target.classList.add('hidden');
+        }
+    });
+    
+    // Close modals on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal').forEach(modal => modal.classList.add('hidden'));
+        }
+    });
 
     // Initial load
     checkWebSerialSupport();
