@@ -105,6 +105,18 @@ inline void IRAM_ATTR ledOff() {
   }
 #endif
 
+// Connectivity state tracking
+struct ConnectivityState {
+  bool wifiConnected;
+  bool mqttConnected;
+};
+
+ConnectivityState currentConnectivity = {false, false};
+
+// LED override state (for OTA updates)
+bool ledOverrideActive = false;
+LedPattern ledOverridePattern = LED_OFF;
+
 // Current pattern and state (volatile for interrupt safety)
 volatile LedPattern currentPattern = LED_OFF;
 volatile uint8_t flashCount = 0;
@@ -233,14 +245,10 @@ void initLedIndicator() {
   setLedPattern(LED_WIFI_DISCONNECTED);  // Start with "disconnected" status
 }
 
-// Set LED pattern
+// Internal function to physically set LED pattern (called by state management functions)
 void setLedPattern(LedPattern pattern) {
   if (pattern == currentPattern) {
     return;  // No change needed
-  }
-
-  if (pattern == LED_MQTT_DISCONNECTED && currentPattern == LED_WIFI_DISCONNECTED)) {
-    return; // Special case: prioritise WiFi disconnection status over MQTT disconnection status
   }
   
   #if defined(ESP32)
@@ -275,6 +283,50 @@ void setLedPattern(LedPattern pattern) {
     
     // Timer1 keeps running regardless of pattern (LED_OFF just turns it off in ISR)
   #endif
+}
+
+// Update LED pattern based on current connectivity state
+// Uses priority ranking: WiFi disconnected > MQTT disconnected > Connected
+void updateLedStatus() {
+  // If override is active (e.g., during OTA), don't change pattern
+  if (ledOverrideActive) {
+    return;
+  }
+  
+  // Determine pattern based on connectivity state (priority order)
+  LedPattern newPattern;
+  if (!currentConnectivity.wifiConnected) {
+    newPattern = LED_WIFI_DISCONNECTED;
+  } else if (!currentConnectivity.mqttConnected) {
+    newPattern = LED_MQTT_DISCONNECTED;
+  } else {
+    newPattern = LED_CONNECTED;
+  }
+  
+  setLedPattern(newPattern);
+}
+
+// PUBLIC API: Update connectivity state and refresh LED pattern
+// Call this from WiFi and MQTT event handlers
+void setConnectivityState(bool wifiConnected, bool mqttConnected) {
+  currentConnectivity.wifiConnected = wifiConnected;
+  currentConnectivity.mqttConnected = mqttConnected;
+  updateLedStatus();
+}
+
+// PUBLIC API: Begin LED override mode (for OTA updates)
+// Saves current context and sets override pattern
+void beginLedOverride(LedPattern pattern) {
+  ledOverrideActive = true;
+  ledOverridePattern = pattern;
+  setLedPattern(pattern);
+}
+
+// PUBLIC API: End LED override mode
+// Restores LED pattern based on actual connectivity state
+void endLedOverride() {
+  ledOverrideActive = false;
+  updateLedStatus();  // Restore pattern based on actual connectivity
 }
 
 #endif
