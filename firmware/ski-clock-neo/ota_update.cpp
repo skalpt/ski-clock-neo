@@ -1,11 +1,33 @@
-#include "ota_update.h"
-#include "led_indicator.h"   // For LED status patterns when entering/existing OTA mode
-#include "mqtt_client.h"     // For MQTT topics and mqttClient
+// ============================================================================
+// ota_update.cpp - Over-the-Air firmware update handling
+// ============================================================================
+// This library handles OTA firmware updates:
+// - Secure HTTPS downloads from update server
+// - API key authentication
+// - Progress reporting via MQTT
+// - LED indication during update
+// - Supports both ESP32 and ESP8266
+// ============================================================================
 
-// Global state
+// ============================================================================
+// INCLUDES
+// ============================================================================
+
+#include "ota_update.h"
+#include "led_indicator.h"
+#include "mqtt_client.h"
+
+// ============================================================================
+// STATE VARIABLES
+// ============================================================================
+
 bool otaUpdateInProgress = false;
 
-// Publish OTA start message to MQTT
+// ============================================================================
+// MQTT PROGRESS REPORTING
+// ============================================================================
+
+// Publish OTA start message
 void publishOTAStart(String newVersion) {
   if (!mqttClient.connected()) {
     return;
@@ -25,7 +47,7 @@ void publishOTAStart(String newVersion) {
   DEBUG_PRINTLN(payload);
 }
 
-// Publish OTA progress message to MQTT
+// Publish OTA progress message (0-100%)
 void publishOTAProgress(int progress) {
   if (!mqttClient.connected()) {
     return;
@@ -44,7 +66,7 @@ void publishOTAProgress(int progress) {
   DEBUG_PRINTLN("%");
 }
 
-// Publish OTA complete message to MQTT
+// Publish OTA complete message
 void publishOTAComplete(bool success, String errorMessage) {
   if (!mqttClient.connected()) {
     return;
@@ -68,6 +90,10 @@ void publishOTAComplete(bool success, String errorMessage) {
   DEBUG_PRINT("OTA complete published: ");
   DEBUG_PRINTLN(payload);
 }
+
+// ============================================================================
+// OTA UPDATE EXECUTION
+// ============================================================================
 
 // Perform OTA update from custom server
 bool performOTAUpdate(String version) {
@@ -101,11 +127,12 @@ bool performOTAUpdate(String version) {
   HTTPClient http;
   bool isHttps = binaryUrl.startsWith("https://");
   
-  // Track client type to ensure proper deletion
+  // Track client type for proper cleanup
   WiFiClientSecure* secureClientPtr = nullptr;
   WiFiClient* plainClientPtr = nullptr;
   WiFiClient* clientPtr = nullptr;
   
+  // Setup HTTP connection
   if (isHttps) {
     secureClientPtr = new WiFiClientSecure();
     secureClientPtr->setInsecure();
@@ -133,6 +160,7 @@ bool performOTAUpdate(String version) {
     }
   }
   
+  // Add authentication headers
   http.addHeader("X-API-Key", DOWNLOAD_API_KEY);
   http.addHeader("User-Agent", "SkiClockNeo-OTA");
   
@@ -166,6 +194,7 @@ bool performOTAUpdate(String version) {
     return false;
   }
   
+  // Begin OTA update
   bool canBegin = Update.begin(contentLength);
   if (!canBegin) {
     DEBUG_PRINTLN("Not enough space for OTA");
@@ -197,7 +226,7 @@ bool performOTAUpdate(String version) {
         publishOTAComplete(false, "Write error during OTA");
         http.end();
         if (secureClientPtr) delete secureClientPtr;
-    if (plainClientPtr) delete plainClientPtr;
+        if (plainClientPtr) delete plainClientPtr;
         endLedOverride();
         otaUpdateInProgress = false;
         return false;
@@ -232,13 +261,14 @@ bool performOTAUpdate(String version) {
     return false;
   }
   
+  // Finalize update
   if (Update.end()) {
     if (Update.isFinished()) {
       DEBUG_PRINTLN("OTA Update successful! Rebooting...");
       publishOTAComplete(true);
       http.end();
       if (secureClientPtr) delete secureClientPtr;
-    if (plainClientPtr) delete plainClientPtr;
+      if (plainClientPtr) delete plainClientPtr;
       delay(2000);
       ESP.restart();
       return true;
@@ -267,11 +297,12 @@ bool performOTAUpdate(String version) {
   HTTPClient http;
   bool isHttps = binaryUrl.startsWith("https://");
   
-  // Track client type to ensure proper deletion
+  // Track client type for proper cleanup
   WiFiClientSecure* secureClientPtr = nullptr;
   WiFiClient* plainClientPtr = nullptr;
   WiFiClient* clientPtr = nullptr;
   
+  // Setup HTTP connection
   if (isHttps) {
     secureClientPtr = new WiFiClientSecure();
     secureClientPtr->setInsecure();
@@ -299,6 +330,7 @@ bool performOTAUpdate(String version) {
     }
   }
   
+  // Add authentication headers
   http.addHeader("X-API-Key", DOWNLOAD_API_KEY);
   http.addHeader("User-Agent", "SkiClockNeo-OTA");
   
@@ -332,6 +364,7 @@ bool performOTAUpdate(String version) {
     return false;
   }
   
+  // Begin OTA update
   bool canBegin = Update.begin(contentLength);
   if (!canBegin) {
     DEBUG_PRINTLN("Not enough space for OTA");
@@ -363,7 +396,7 @@ bool performOTAUpdate(String version) {
         publishOTAComplete(false, "Write error during OTA");
         http.end();
         if (secureClientPtr) delete secureClientPtr;
-    if (plainClientPtr) delete plainClientPtr;
+        if (plainClientPtr) delete plainClientPtr;
         endLedOverride();
         otaUpdateInProgress = false;
         return false;
@@ -398,13 +431,14 @@ bool performOTAUpdate(String version) {
     return false;
   }
   
+  // Finalize update
   if (Update.end()) {
     if (Update.isFinished()) {
       DEBUG_PRINTLN("OTA Update successful! Rebooting...");
       publishOTAComplete(true);
       http.end();
       if (secureClientPtr) delete secureClientPtr;
-    if (plainClientPtr) delete plainClientPtr;
+      if (plainClientPtr) delete plainClientPtr;
       delay(2000);
       ESP.restart();
       return true;
@@ -429,6 +463,10 @@ bool performOTAUpdate(String version) {
   
   return false;
 }
+
+// ============================================================================
+// PUBLIC API
+// ============================================================================
 
 // Trigger OTA update when MQTT version response indicates update available
 void triggerOTAUpdate(String newVersion) {

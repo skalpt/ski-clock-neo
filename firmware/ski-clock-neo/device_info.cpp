@@ -1,6 +1,24 @@
+// ============================================================================
+// device_info.cpp - Device identification and version parsing
+// ============================================================================
+// This library provides device identification functions:
+// - Unique device ID from ESP chip ID
+// - Board type detection for display purposes
+// - Platform identifier for firmware downloads
+// - Version string parsing for OTA comparisons
+// ============================================================================
+
+// ============================================================================
+// INCLUDES
+// ============================================================================
+
 #include "device_info.h"
 
-// Get unique device ID
+// ============================================================================
+// DEVICE IDENTIFICATION
+// ============================================================================
+
+// Get unique device ID (hex string derived from chip ID)
 String getDeviceID() {
   #if defined(ESP32)
     uint64_t chipid = ESP.getEfuseMac();
@@ -10,7 +28,7 @@ String getDeviceID() {
   #endif
 }
 
-// Get board type as human-readable string
+// Get board type as human-readable string (for display/logging)
 String getBoardType() {
   #if defined(BOARD_ESP32)
     return "ESP32";
@@ -29,7 +47,7 @@ String getBoardType() {
   #endif
 }
 
-// Get platform identifier for firmware downloads
+// Get platform identifier for firmware downloads (matches server naming)
 String getPlatform() {
 #if defined(ESP32)
   // Detect ESP32 variant using Arduino board defines
@@ -72,7 +90,12 @@ String getPlatform() {
 #endif
 }
 
+// ============================================================================
+// VERSION PARSING
+// ============================================================================
+
 // Parse version string to comparable integer
+// Supports both timestamp format (2025.11.19.1) and semantic format (v1.2.3)
 long parseVersion(String version) {
   // Remove 'v' prefix if present
   if (version.startsWith("v") || version.startsWith("V")) {

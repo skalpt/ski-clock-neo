@@ -1,19 +1,43 @@
-#include "display_controller.h"
+// ============================================================================
+// display_controller.cpp - Display content scheduling and mode management
+// ============================================================================
+// This library manages what content is shown on the display. It handles:
+// - Time/date alternation on row 0 (toggles every 4 seconds)
+// - Temperature display on row 1
+// - Time change detection for immediate updates
+// - Display mode switching (normal vs timer modes)
+// ============================================================================
 
+// ============================================================================
+// INCLUDES
+// ============================================================================
+
+#include "display_controller.h"
 #include "display_core.h"
 #include "data_time.h"
 #include "data_temperature.h"
 #include "timing_helpers.h"
 #include "debug.h"
 
-// Controller state
-static DisplayMode currentMode = MODE_NORMAL;
-static volatile bool showingTime = true;  // Toggle: true = time, false = date (volatile for ESP8266 ISR safety)
+// ============================================================================
+// STATE VARIABLES
+// ============================================================================
 
-// Forward declarations
+static DisplayMode currentMode = MODE_NORMAL;        // Current display mode
+static volatile bool showingTime = true;             // Toggle: true = time, false = date
+
+// ============================================================================
+// FORWARD DECLARATIONS
+// ============================================================================
+
+void toggleTimerCallback();
+void onTimeChange(uint8_t flags);
 void updateRow0();
 void updateRow1();
-void onTimeChange(uint8_t flags);
+
+// ============================================================================
+// TIMER CALLBACKS
+// ============================================================================
 
 // Timer callback for 4-second time/date toggle
 void toggleTimerCallback() {
@@ -21,7 +45,7 @@ void toggleTimerCallback() {
   updateRow0();
 }
 
-// Callback for time changes - forces display update
+// Callback for time changes - forces display update when minute or date changes
 void onTimeChange(uint8_t flags) {
   DEBUG_PRINT("Time change detected, flags: ");
   DEBUG_PRINTLN(flags);
@@ -39,10 +63,14 @@ void onTimeChange(uint8_t flags) {
   }
 }
 
+// ============================================================================
+// ROW UPDATE HELPERS
+// ============================================================================
+
+// Update row 0 with time or date (depending on toggle state)
 void updateRow0() {
   // Check if NTP is synced before attempting to display time/date
   if (!isTimeSynced()) {
-    // NTP not synced yet, show placeholder
     setText(0, "~~.~~");
     DEBUG_PRINTLN("Row 0: Waiting for NTP sync");
     return;
@@ -68,21 +96,19 @@ void updateRow0() {
         DEBUG_PRINT("Row 0: Date = ");
         DEBUG_PRINTLN(buffer);
       } else {
-        // Don't set text here - keep showing time if date format fails
         DEBUG_PRINTLN("Row 0: Date format failed");
       }
     }
   } else {
     // MODE_TIMER: Reserved for future implementation
-    // Will rotate between time, date, and temperature
     setText(0, "TIMER");
   }
 }
 
+// Update row 1 with temperature
 void updateRow1() {
   char buffer[32];
   
-  // Row 1: Always shows temperature
   if (formatTemperature(buffer, sizeof(buffer))) {
     setText(1, buffer);
     DEBUG_PRINT("Row 1: Temp = ");
@@ -93,19 +119,25 @@ void updateRow1() {
   }
 }
 
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
+
 void initDisplayController() {
   DEBUG_PRINTLN("Initializing display controller");
   
-  showingTime = true;    // Start with time display
-  forceDisplayUpdate();  // Force initial update
-  renderNow();           // Force immediate render (don't wait for next tick)
+  // Set initial state
+  showingTime = true;
+  forceDisplayUpdate();
+  renderNow();  // Force immediate render (don't wait for next tick)
   
-  // Create 4-second toggle timer (uses timer_task library for platform abstraction)
+  // Create 4-second toggle timer using timing_helpers library
   createTimer("DispToggle", 4000, toggleTimerCallback);
   
   DEBUG_PRINTLN("Display controller initialized");
   
   // Initialize data libraries LAST - allows display to show immediately during boot
+  
   // Time library: NTP sync for Sweden timezone (CET/CEST)
   // Also starts 1-second time change detection timer internally
   initTimeData();
@@ -119,6 +151,11 @@ void initDisplayController() {
   initTemperatureData();
 }
 
+// ============================================================================
+// PUBLIC API
+// ============================================================================
+
+// Set display mode (normal or timer)
 void setDisplayMode(DisplayMode mode) {
   if (currentMode != mode) {
     currentMode = mode;
@@ -127,16 +164,18 @@ void setDisplayMode(DisplayMode mode) {
   }
 }
 
+// Get current display mode
 DisplayMode getDisplayMode() {
   return currentMode;
 }
 
+// Force update of all display rows
 void forceDisplayUpdate() {
   updateRow0();
   updateRow1();
 }
 
+// Called by data_temperature library when temperature value changes
 void updateTemperatureDisplay() {
-  // Called by data_temperature library when temperature changes
   updateRow1();
 }

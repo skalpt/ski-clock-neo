@@ -1,5 +1,19 @@
-#include "data_time.h"
+// ============================================================================
+// data_time.cpp - RTC and NTP time management
+// ============================================================================
+// This library manages time using DS3231 RTC and NTP:
+// - RTC provides instant time on boot (before WiFi/NTP connects)
+// - NTP syncs RTC hourly to maintain accuracy
+// - Falls back gracefully to NTP-only if no RTC present
+// - Detects minute and date changes via 1-second polling timer
+// - Configured for Sweden timezone (CET/CEST)
+// ============================================================================
 
+// ============================================================================
+// INCLUDES
+// ============================================================================
+
+#include "data_time.h"
 #include "debug.h"
 #include "timing_helpers.h"
 #include <time.h>
@@ -7,9 +21,11 @@
 #include <Wire.h>
 #include <RTClib.h>
 
-// Sweden timezone: CET-1CEST,M3.5.0,M10.5.0/3
-// CET (UTC+1) from last Sunday of October to last Sunday of March
-// CEST (UTC+2) from last Sunday of March to last Sunday of October
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+// Sweden timezone: CET (UTC+1) winter, CEST (UTC+2) summer
 const char* SWEDEN_TZ = "CET-1CEST,M3.5.0,M10.5.0/3";
 
 // NTP servers (prioritize European servers for Sweden)
@@ -17,28 +33,33 @@ const char* NTP_SERVER_1 = "se.pool.ntp.org";
 const char* NTP_SERVER_2 = "europe.pool.ntp.org";
 const char* NTP_SERVER_3 = "pool.ntp.org";
 
-// RTC object
-static RTC_DS3231 rtc;
-
-// State tracking
-static bool timeInitialized = false;
-static bool rtcAvailable = false;
-static bool rtcTimeValid = false;
-static bool ntpSynced = false;
-static unsigned long lastNtpCheck = 0;
-static unsigned long lastRtcSync = 0;
-
-// Time change detection
-static int8_t lastMinute = -1;
-static int8_t lastDay = -1;
-static TimeChangeCallback timeChangeCallback = nullptr;
-
 // Check intervals (milliseconds)
 const unsigned long NTP_CHECK_INTERVAL = 10000;    // Check NTP every 10 seconds until synced
 const unsigned long RTC_SYNC_INTERVAL = 3600000;   // Sync RTC from NTP every hour
 
 // Minimum valid timestamp (2020-01-01 00:00:00 UTC)
 const time_t MIN_VALID_TIME = 1577836800;
+
+// ============================================================================
+// STATE VARIABLES
+// ============================================================================
+
+static RTC_DS3231 rtc;                              // RTC object
+static bool timeInitialized = false;                // True after init
+static bool rtcAvailable = false;                   // True if RTC found on I2C
+static bool rtcTimeValid = false;                   // True if RTC has valid time
+static bool ntpSynced = false;                      // True after first NTP sync
+static unsigned long lastNtpCheck = 0;              // Last NTP check timestamp
+static unsigned long lastRtcSync = 0;               // Last RTC sync timestamp
+
+// Time change detection
+static int8_t lastMinute = -1;                      // Last known minute (-1 = uninitialized)
+static int8_t lastDay = -1;                         // Last known day of month
+static TimeChangeCallback timeChangeCallback = nullptr;
+
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
 
 void initTimeData() {
   DEBUG_PRINTLN("Initializing time system (RTC + NTP)");
@@ -89,7 +110,7 @@ void initTimeData() {
     DEBUG_PRINTLN("DS3231 RTC not found - using NTP only");
   }
   
-  // Initialize NTP (will sync in background)
+  // Initialize NTP (syncs in background)
   DEBUG_PRINTLN("Initializing NTP time sync for Sweden (Europe/Stockholm)");
   
   #if defined(ESP32)
@@ -99,55 +120,17 @@ void initTimeData() {
   #endif
   
   // Create 1-second timer for time change detection
-  // Uses timer_task library for platform abstraction (FreeRTOS on ESP32, TickTwo on ESP8266)
   createTimer("TimeCheck", 1000, []() { checkTimeChange(); });
   
   timeInitialized = true;
   DEBUG_PRINTLN("Time system initialized");
 }
 
-bool isTimeSynced() {
-  if (!timeInitialized) return false;
-  
-  // Check if NTP has synced
-  if (!ntpSynced) {
-    // Check more frequently if RTC is invalid (needs immediate sync)
-    // Otherwise use interval to reduce overhead
-    bool shouldCheck = !rtcTimeValid || (millis() - lastNtpCheck > NTP_CHECK_INTERVAL);
-    
-    if (shouldCheck) {
-      lastNtpCheck = millis();
-      time_t now = time(nullptr);
-      if (now > MIN_VALID_TIME) {
-        ntpSynced = true;
-        DEBUG_PRINTLN("NTP sync detected");
-        
-        // Update RTC from NTP immediately if available
-        if (rtcAvailable) {
-          syncRtcFromNtp();
-        }
-      }
-    }
-  }
-  
-  // If RTC has valid time, we're synced
-  if (rtcAvailable && rtcTimeValid) {
-    return true;
-  }
-  
-  // No valid RTC - check NTP sync
-  time_t now = time(nullptr);
-  if (now > MIN_VALID_TIME) {
-    return true;
-  }
-  
-  return false;
-}
+// ============================================================================
+// RTC/NTP SYNC
+// ============================================================================
 
-bool isRtcAvailable() {
-  return rtcAvailable;
-}
-
+// Sync RTC from NTP (called hourly after NTP is available)
 void syncRtcFromNtp() {
   if (!rtcAvailable) return;
   
@@ -188,79 +171,11 @@ void syncRtcFromNtp() {
   DEBUG_PRINTLN(timeinfo.tm_sec);
 }
 
-bool formatTime(char* output, size_t outputSize) {
-  if (!isTimeSynced() || outputSize < 6) {
-    return false;
-  }
-  
-  time_t now = time(nullptr);
-  struct tm timeinfo;
-  
-  #if defined(ESP32)
-    if (!getLocalTime(&timeinfo)) {
-      return false;
-    }
-  #elif defined(ESP8266)
-    localtime_r(&now, &timeinfo);
-  #endif
-  
-  // Format as "hh.mm" (with leading zeros)
-  snprintf(output, outputSize, "%02d.%02d", timeinfo.tm_hour, timeinfo.tm_min);
-  
-  // Periodic RTC sync from NTP (every hour)
-  if (rtcAvailable && ntpSynced && (millis() - lastRtcSync > RTC_SYNC_INTERVAL)) {
-    syncRtcFromNtp();
-  }
-  
-  return true;
-}
+// ============================================================================
+// TIME CHANGE DETECTION
+// ============================================================================
 
-bool formatDate(char* output, size_t outputSize) {
-  if (!isTimeSynced() || outputSize < 6) {
-    return false;
-  }
-  
-  time_t now = time(nullptr);
-  struct tm timeinfo;
-  
-  #if defined(ESP32)
-    if (!getLocalTime(&timeinfo)) {
-      return false;
-    }
-  #elif defined(ESP8266)
-    localtime_r(&now, &timeinfo);
-  #endif
-  
-  // Format as "dd-mm" (with leading zeros)
-  snprintf(output, outputSize, "%02d-%02d", timeinfo.tm_mday, timeinfo.tm_mon + 1);
-  return true;
-}
-
-void resyncTime() {
-  DEBUG_PRINTLN("Forcing NTP resync");
-  ntpSynced = false;
-  lastNtpCheck = 0;  // Reset so next isTimeSynced() check triggers immediately
-  lastRtcSync = 0;   // Reset so RTC updates immediately when NTP syncs
-  
-  #if defined(ESP32)
-    configTzTime(SWEDEN_TZ, NTP_SERVER_1, NTP_SERVER_2, NTP_SERVER_3);
-  #elif defined(ESP8266)
-    configTime(SWEDEN_TZ, NTP_SERVER_1, NTP_SERVER_2, NTP_SERVER_3);
-  #endif
-}
-
-time_t getCurrentTime() {
-  if (!isTimeSynced()) {
-    return 0;
-  }
-  return time(nullptr);
-}
-
-void setTimeChangeCallback(TimeChangeCallback callback) {
-  timeChangeCallback = callback;
-  DEBUG_PRINTLN("Time change callback registered");
-}
-
+// Check for minute or date changes (called every 1 second)
 bool checkTimeChange() {
   if (!isTimeSynced()) {
     return false;
@@ -309,4 +224,129 @@ bool checkTimeChange() {
   }
   
   return changeFlags != 0;
+}
+
+// Set callback for time change events
+void setTimeChangeCallback(TimeChangeCallback callback) {
+  timeChangeCallback = callback;
+  DEBUG_PRINTLN("Time change callback registered");
+}
+
+// ============================================================================
+// PUBLIC API
+// ============================================================================
+
+// Check if time is available (either from RTC or NTP)
+bool isTimeSynced() {
+  if (!timeInitialized) return false;
+  
+  // Check if NTP has synced
+  if (!ntpSynced) {
+    // Check more frequently if RTC is invalid (needs immediate sync)
+    bool shouldCheck = !rtcTimeValid || (millis() - lastNtpCheck > NTP_CHECK_INTERVAL);
+    
+    if (shouldCheck) {
+      lastNtpCheck = millis();
+      time_t now = time(nullptr);
+      if (now > MIN_VALID_TIME) {
+        ntpSynced = true;
+        DEBUG_PRINTLN("NTP sync detected");
+        
+        // Update RTC from NTP immediately if available
+        if (rtcAvailable) {
+          syncRtcFromNtp();
+        }
+      }
+    }
+  }
+  
+  // If RTC has valid time, we're synced
+  if (rtcAvailable && rtcTimeValid) {
+    return true;
+  }
+  
+  // No valid RTC - check NTP sync
+  time_t now = time(nullptr);
+  if (now > MIN_VALID_TIME) {
+    return true;
+  }
+  
+  return false;
+}
+
+// Check if RTC is available
+bool isRtcAvailable() {
+  return rtcAvailable;
+}
+
+// Format time as "hh.mm"
+bool formatTime(char* output, size_t outputSize) {
+  if (!isTimeSynced() || outputSize < 6) {
+    return false;
+  }
+  
+  time_t now = time(nullptr);
+  struct tm timeinfo;
+  
+  #if defined(ESP32)
+    if (!getLocalTime(&timeinfo)) {
+      return false;
+    }
+  #elif defined(ESP8266)
+    localtime_r(&now, &timeinfo);
+  #endif
+  
+  // Format as "hh.mm" (with leading zeros)
+  snprintf(output, outputSize, "%02d.%02d", timeinfo.tm_hour, timeinfo.tm_min);
+  
+  // Periodic RTC sync from NTP (every hour)
+  if (rtcAvailable && ntpSynced && (millis() - lastRtcSync > RTC_SYNC_INTERVAL)) {
+    syncRtcFromNtp();
+  }
+  
+  return true;
+}
+
+// Format date as "dd-mm"
+bool formatDate(char* output, size_t outputSize) {
+  if (!isTimeSynced() || outputSize < 6) {
+    return false;
+  }
+  
+  time_t now = time(nullptr);
+  struct tm timeinfo;
+  
+  #if defined(ESP32)
+    if (!getLocalTime(&timeinfo)) {
+      return false;
+    }
+  #elif defined(ESP8266)
+    localtime_r(&now, &timeinfo);
+  #endif
+  
+  // Format as "dd-mm" (with leading zeros)
+  snprintf(output, outputSize, "%02d-%02d", timeinfo.tm_mday, timeinfo.tm_mon + 1);
+  return true;
+}
+
+// Force NTP resync
+void resyncTime() {
+  DEBUG_PRINTLN("Forcing NTP resync");
+  ntpSynced = false;
+  lastNtpCheck = 0;
+  lastRtcSync = 0;
+  
+  #if defined(ESP32)
+    configTzTime(SWEDEN_TZ, NTP_SERVER_1, NTP_SERVER_2, NTP_SERVER_3);
+  #elif defined(ESP8266)
+    configTime(SWEDEN_TZ, NTP_SERVER_1, NTP_SERVER_2, NTP_SERVER_3);
+  #endif
+}
+
+// Get current time as Unix timestamp
+time_t getCurrentTime() {
+  if (!isTimeSynced()) {
+    return 0;
+  }
+  return time(nullptr);
 }

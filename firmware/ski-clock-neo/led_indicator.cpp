@@ -1,3 +1,20 @@
+// ============================================================================
+// led_indicator.cpp - Status LED control using hardware interrupts
+// ============================================================================
+// This library manages the onboard LED to indicate connectivity status:
+// - 1 flash = WiFi + MQTT connected (healthy)
+// - 2 flashes = WiFi connected, MQTT disconnected
+// - 3 flashes = WiFi disconnected
+// - Quick flashing = OTA update in progress
+//
+// Uses hardware timers (ESP32 Timer0 / ESP8266 Timer1) for freeze-proof
+// operation even during blocking network operations.
+// ============================================================================
+
+// ============================================================================
+// INCLUDES
+// ============================================================================
+
 #include "led_indicator.h"
 
 #if defined(ESP8266)
@@ -5,6 +22,10 @@
     #include "user_interface.h"
   }
 #endif
+
+// ============================================================================
+// STATE VARIABLES
+// ============================================================================
 
 // Hardware timer for LED updates
 #if defined(ESP32)
@@ -24,7 +45,11 @@ volatile LedPattern currentPattern = LED_OFF;
 volatile uint8_t flashCount = 0;
 volatile bool ledState = false;
 
-// LED update callback - called by hardware interrupt timer
+// ============================================================================
+// HARDWARE TIMER CALLBACK
+// ============================================================================
+
+// LED update callback - called by hardware interrupt timer every 100ms
 // IRAM_ATTR ensures function is in RAM for ESP32/ESP8266 interrupt execution
 void IRAM_ATTR ledTimerCallback() {
   #if defined(ESP32)
@@ -33,7 +58,7 @@ void IRAM_ATTR ledTimerCallback() {
   
   switch (currentPattern) {
     case LED_OTA_PROGRESS:
-      // Quick flashing (100ms on/off)
+      // Quick flashing (100ms on/off) during OTA
       ledState = !ledState;
       if (ledState) {
         ledOn();
@@ -51,7 +76,6 @@ void IRAM_ATTR ledTimerCallback() {
         ledOff();
         flashCount = 2;
       } else {
-        // Pause - do nothing
         flashCount++;
         if (flashCount >= 20) {  // 20 * 100ms = 2 seconds
           flashCount = 0;
@@ -62,7 +86,6 @@ void IRAM_ATTR ledTimerCallback() {
     case LED_MQTT_DISCONNECTED:
       // 2 quick flashes followed by 2 second pause
       if (flashCount < 4) {
-        // Flash 2 times (on/off/on/off)
         ledState = (flashCount % 2 == 0);
         if (ledState) {
           ledOn();
@@ -71,9 +94,8 @@ void IRAM_ATTR ledTimerCallback() {
         }
         flashCount++;
       } else {
-        // Pause
         flashCount++;
-        if (flashCount >= 20) {  // 20 * 100ms = 2 seconds
+        if (flashCount >= 20) {
           flashCount = 0;
         }
       }
@@ -82,7 +104,6 @@ void IRAM_ATTR ledTimerCallback() {
     case LED_WIFI_DISCONNECTED:
       // 3 quick flashes followed by 2 second pause
       if (flashCount < 6) {
-        // Flash 3 times (on/off/on/off/on/off)
         ledState = (flashCount % 2 == 0);
         if (ledState) {
           ledOn();
@@ -91,9 +112,8 @@ void IRAM_ATTR ledTimerCallback() {
         }
         flashCount++;
       } else {
-        // Pause
         flashCount++;
-        if (flashCount >= 20) {  // 20 * 100ms = 2 seconds
+        if (flashCount >= 20) {
           flashCount = 0;
         }
       }
@@ -114,12 +134,16 @@ void IRAM_ATTR ledTimerCallback() {
 #if defined(ESP8266)
 void ICACHE_RAM_ATTR onTimer1ISR() {
   ledTimerCallback();
-  timer1_write(500000);  // Reset timer for next interrupt (100ms at 5MHz = 500,000 ticks)
+  timer1_write(500000);  // Reset timer for next interrupt (100ms at 5MHz)
 }
 #endif
 
-// Initialize LED indicator
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
+
 void initLedIndicator() {
+  // Configure LED pin
   pinMode(LED_PIN, OUTPUT);
   ledOff();
   DEBUG_PRINT("LED indicator initialized on GPIO");
@@ -128,29 +152,32 @@ void initLedIndicator() {
   // Initialize hardware timer
   #if defined(ESP32)
     // ESP32: Use hardware timer 0, divider 80 (1MHz tick rate)
-    ledTimer = timerBegin(0, 80, true);  // Timer 0, divider 80, count up
-    timerAttachInterrupt(ledTimer, &ledTimerCallback, true);  // Attach ISR, edge triggered
-    timerAlarmWrite(ledTimer, 100000, true);  // 100ms interval (100,000 microseconds), auto-reload
-    // Don't enable yet - will enable when pattern is set
+    ledTimer = timerBegin(0, 80, true);
+    timerAttachInterrupt(ledTimer, &ledTimerCallback, true);
+    timerAlarmWrite(ledTimer, 100000, true);  // 100ms interval
     DEBUG_PRINTLN("ESP32 hardware timer initialized (100ms interval)");
     
   #elif defined(ESP8266)
     // ESP8266: Use Timer1 (hardware timer)
     timer1_isr_init();
     timer1_attachInterrupt(onTimer1ISR);
-    timer1_enable(TIM_DIV16, TIM_EDGE, TIM_LOOP);  // 80MHz / 16 = 5MHz, edge, loop mode
-    timer1_write(500000);  // 500,000 ticks = 100ms at 5MHz
-    // Timer1 starts automatically
+    timer1_enable(TIM_DIV16, TIM_EDGE, TIM_LOOP);  // 5MHz tick rate
+    timer1_write(500000);  // 100ms at 5MHz
     DEBUG_PRINTLN("ESP8266 Timer1 initialized (100ms interval)");
   #endif
 
-  setLedPattern(LED_WIFI_DISCONNECTED);  // Start with "disconnected" status
+  // Start with "disconnected" status
+  setLedPattern(LED_WIFI_DISCONNECTED);
 }
 
-// Internal function to physically set LED pattern (called by state management functions)
+// ============================================================================
+// PATTERN MANAGEMENT
+// ============================================================================
+
+// Internal function to set LED pattern
 void setLedPattern(LedPattern pattern) {
   if (pattern == currentPattern) {
-    return;  // No change needed
+    return;
   }
   
   #if defined(ESP32)
@@ -168,13 +195,11 @@ void setLedPattern(LedPattern pattern) {
     
     // Start new pattern
     if (pattern != LED_OFF) {
-      // Enable hardware timer for all active patterns
       timerAlarmEnable(ledTimer);
     }
     
   #elif defined(ESP8266)
     // ESP8266: Timer1 is always running, just update the pattern
-    // Use noInterrupts/interrupts for critical section
     noInterrupts();
     flashCount = 0;
     ledState = false;
@@ -182,13 +207,10 @@ void setLedPattern(LedPattern pattern) {
     interrupts();
     
     ledOff();
-    
-    // Timer1 keeps running regardless of pattern (LED_OFF just turns it off in ISR)
   #endif
 }
 
 // Update LED pattern based on current connectivity state
-// Uses priority ranking: WiFi disconnected > MQTT disconnected > Connected
 void updateLedStatus() {
   // If override is active (e.g., during OTA), don't change pattern
   if (ledOverrideActive) {
@@ -208,25 +230,26 @@ void updateLedStatus() {
   setLedPattern(newPattern);
 }
 
-// PUBLIC API: Update connectivity state and refresh LED pattern
-// Call this from WiFi and MQTT event handlers
+// ============================================================================
+// PUBLIC API
+// ============================================================================
+
+// Update connectivity state and refresh LED pattern
 void setConnectivityState(bool wifiConnected, bool mqttConnected) {
   currentConnectivity.wifiConnected = wifiConnected;
   currentConnectivity.mqttConnected = mqttConnected;
   updateLedStatus();
 }
 
-// PUBLIC API: Begin LED override mode (for OTA updates)
-// Saves current context and sets override pattern
+// Begin LED override mode (for OTA updates)
 void beginLedOverride(LedPattern pattern) {
   ledOverrideActive = true;
   ledOverridePattern = pattern;
   setLedPattern(pattern);
 }
 
-// PUBLIC API: End LED override mode
-// Restores LED pattern based on actual connectivity state
+// End LED override mode and restore normal connectivity indication
 void endLedOverride() {
   ledOverrideActive = false;
-  updateLedStatus();  // Restore pattern based on actual connectivity
+  updateLedStatus();
 }

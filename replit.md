@@ -34,6 +34,14 @@ The project consists of two primary components:
     - Used by: display_core (1ms render/notification), display_controller (4s toggle), data_time (1s time check), data_temperature (30s poll + 750ms read delay)
 *   **Clean Separation of Concerns**: Temperature polling and time/date toggling are owned by their respective libraries, which update the display controller via callbacks, ensuring independent timing logic.
 *   **Event Logging System**: A ring buffer stores device events with timestamps, publishing them to MQTT when connected. Events include boot, WiFi connect/disconnect, MQTT connect/disconnect, and temperature readings.
+*   **Code Organization Convention**: All .cpp files follow a consistent structure with section headers:
+    - File banner comment explaining module purpose
+    - INCLUDES section
+    - CONSTANTS section (where applicable)
+    - STATE VARIABLES section
+    - FORWARD DECLARATIONS section (for callbacks used before definition)
+    - Grouped function sections (e.g., INITIALIZATION, TIMER CALLBACKS, PUBLIC API)
+    - Comments explain each section's purpose for easy navigation
 
 **2. Dashboard Server (Python Flask application):**
 *   **Features**: Provides an API for firmware distribution for multiple platforms, supporting uploads with API key authentication, platform aliasing, and SHA256 checksums. Integrates with PostgreSQL for persistent device tracking and offers an interactive web dashboard.

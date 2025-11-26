@@ -1,11 +1,39 @@
+// ============================================================================
+// timing_helpers.cpp - Unified timer abstraction for ESP32 and ESP8266
+// ============================================================================
+// This library provides a consistent timer API across platforms:
+// - ESP32: Uses FreeRTOS tasks with vTaskDelayUntil for periodic timers
+// - ESP8266: Uses TickTwo library for non-blocking timer callbacks
+// 
+// Features:
+// - Periodic timers via createTimer()
+// - One-shot timers via createOneShotTimer() and triggerTimer()
+// - Notification-based tasks via createNotificationTask() (ESP32 only)
+// - Zero runtime overhead (inline wrappers in header)
+// ============================================================================
+
+// ============================================================================
+// INCLUDES
+// ============================================================================
+
 #include "timing_helpers.h"
 
+// ============================================================================
+// SINGLETON INSTANCE
+// ============================================================================
+
+// Get singleton instance of TimerTaskManager
 TimerTaskManager& TimerTaskManager::getInstance() {
   static TimerTaskManager instance;
   return instance;
 }
 
+// ============================================================================
+// CONSTRUCTOR
+// ============================================================================
+
 TimerTaskManager::TimerTaskManager() : timerCount(0) {
+  // Initialize all timer slots to inactive
   for (uint8_t i = 0; i < MAX_TIMERS; i++) {
     timers[i].isActive = false;
     timers[i].isOneShot = false;
@@ -20,6 +48,11 @@ TimerTaskManager::TimerTaskManager() : timerCount(0) {
   }
 }
 
+// ============================================================================
+// TIMER LOOKUP
+// ============================================================================
+
+// Find timer by name (returns nullptr if not found)
 TimerConfig* TimerTaskManager::findTimer(const char* name) {
   for (uint8_t i = 0; i < timerCount; i++) {
     if (timers[i].name != nullptr && strcmp(timers[i].name, name) == 0) {
@@ -29,7 +62,12 @@ TimerConfig* TimerTaskManager::findTimer(const char* name) {
   return nullptr;
 }
 
+// ============================================================================
+// ESP32 TASK WRAPPER
+// ============================================================================
+
 #if defined(ESP32)
+// FreeRTOS task wrapper for periodic timers
 void TimerTaskManager::taskWrapper(void* parameter) {
   TimerConfig* config = static_cast<TimerConfig*>(parameter);
   
@@ -48,6 +86,11 @@ void TimerTaskManager::taskWrapper(void* parameter) {
 }
 #endif
 
+// ============================================================================
+// PERIODIC TIMER CREATION
+// ============================================================================
+
+// Create a periodic timer that fires at regular intervals
 bool TimerTaskManager::createTimer(const char* name, uint32_t intervalMs, TimerCallback callback, uint16_t stackSize) {
   if (timerCount >= MAX_TIMERS) {
     DEBUG_PRINTLN("ERROR: Maximum timer count reached");
@@ -59,6 +102,7 @@ bool TimerTaskManager::createTimer(const char* name, uint32_t intervalMs, TimerC
     return false;
   }
   
+  // Configure timer slot
   TimerConfig* config = &timers[timerCount];
   config->name = name;
   config->intervalMs = intervalMs;
@@ -67,9 +111,11 @@ bool TimerTaskManager::createTimer(const char* name, uint32_t intervalMs, TimerC
   config->isActive = true;
   config->isOneShot = false;
   
+  // Platform-specific timer creation
   #if defined(ESP32)
     config->espTicker = nullptr;
     #if defined(CONFIG_IDF_TARGET_ESP32C3)
+      // ESP32-C3: Single-core RISC-V, use xTaskCreate
       xTaskCreate(
         taskWrapper,
         name,
@@ -80,6 +126,7 @@ bool TimerTaskManager::createTimer(const char* name, uint32_t intervalMs, TimerC
       );
       DEBUG_PRINT("Timer created (ESP32-C3 FreeRTOS): ");
     #else
+      // ESP32/ESP32-S3: Dual-core Xtensa, pin to Core 1
       xTaskCreatePinnedToCore(
         taskWrapper,
         name,
@@ -92,6 +139,7 @@ bool TimerTaskManager::createTimer(const char* name, uint32_t intervalMs, TimerC
       DEBUG_PRINT("Timer created (ESP32 FreeRTOS, Core 1): ");
     #endif
   #elif defined(ESP8266)
+    // ESP8266: Use TickTwo library
     config->ticker = new TickTwo(callback, intervalMs, 0, MILLIS);
     config->ticker->start();
     DEBUG_PRINT("Timer created (ESP8266 TickTwo): ");
@@ -106,6 +154,11 @@ bool TimerTaskManager::createTimer(const char* name, uint32_t intervalMs, TimerC
   return true;
 }
 
+// ============================================================================
+// ONE-SHOT TIMER CREATION
+// ============================================================================
+
+// Create a one-shot timer (dormant until triggered)
 bool TimerTaskManager::createOneShotTimer(const char* name, uint32_t intervalMs, TimerCallback callback) {
   if (timerCount >= MAX_TIMERS) {
     DEBUG_PRINTLN("ERROR: Maximum timer count reached");
@@ -117,14 +170,16 @@ bool TimerTaskManager::createOneShotTimer(const char* name, uint32_t intervalMs,
     return false;
   }
   
+  // Configure timer slot
   TimerConfig* config = &timers[timerCount];
   config->name = name;
   config->intervalMs = intervalMs;
   config->callback = callback;
   config->stackSize = 0;
-  config->isActive = false;
+  config->isActive = false;  // Dormant until triggered
   config->isOneShot = true;
   
+  // Platform-specific timer setup
   #if defined(ESP32)
     config->taskHandle = nullptr;
     config->espTicker = new Ticker();
@@ -142,6 +197,11 @@ bool TimerTaskManager::createOneShotTimer(const char* name, uint32_t intervalMs,
   return true;
 }
 
+// ============================================================================
+// ONE-SHOT TIMER TRIGGER
+// ============================================================================
+
+// Trigger a previously registered one-shot timer
 bool TimerTaskManager::triggerTimer(const char* name) {
   TimerConfig* config = findTimer(name);
   if (config == nullptr) {
@@ -156,6 +216,7 @@ bool TimerTaskManager::triggerTimer(const char* name) {
     return false;
   }
   
+  // Platform-specific trigger
   #if defined(ESP32)
     if (config->espTicker != nullptr) {
       config->espTicker->once_ms(config->intervalMs, config->callback);
@@ -172,7 +233,12 @@ bool TimerTaskManager::triggerTimer(const char* name) {
   return true;
 }
 
+// ============================================================================
+// NOTIFICATION-BASED TASKS (ESP32 only)
+// ============================================================================
+
 #if defined(ESP32)
+// Create a task that waits for notifications (event-driven wakeup)
 TaskHandle_t TimerTaskManager::createNotificationTask(const char* name, TaskFunction taskFn, uint16_t stackSize, uint8_t priority) {
   if (taskFn == nullptr) {
     DEBUG_PRINTLN("ERROR: Task function is null");
@@ -182,7 +248,7 @@ TaskHandle_t TimerTaskManager::createNotificationTask(const char* name, TaskFunc
   TaskHandle_t taskHandle = NULL;
   
   #if defined(CONFIG_IDF_TARGET_ESP32C3)
-    // ESP32-C3 (single-core RISC-V): Run on Core 0
+    // ESP32-C3: Single-core RISC-V
     xTaskCreate(
       taskFn,
       name,
@@ -193,7 +259,7 @@ TaskHandle_t TimerTaskManager::createNotificationTask(const char* name, TaskFunc
     );
     DEBUG_PRINT("Notification task created (ESP32-C3): ");
   #else
-    // ESP32/ESP32-S3 (dual-core Xtensa): Pin to Core 1 (APP_CPU)
+    // ESP32/ESP32-S3: Dual-core Xtensa, pin to Core 1
     xTaskCreatePinnedToCore(
       taskFn,
       name,
@@ -210,6 +276,7 @@ TaskHandle_t TimerTaskManager::createNotificationTask(const char* name, TaskFunc
   return taskHandle;
 }
 
+// Send notification to wake a task
 bool TimerTaskManager::notifyTask(TaskHandle_t taskHandle) {
   if (taskHandle == NULL) {
     return false;
@@ -219,6 +286,11 @@ bool TimerTaskManager::notifyTask(TaskHandle_t taskHandle) {
 }
 #endif
 
+// ============================================================================
+// ESP8266 UPDATE LOOP
+// ============================================================================
+
+// Update all TickTwo timers (ESP8266 only, call from main loop)
 void TimerTaskManager::updateAll() {
   #if defined(ESP8266)
     for (uint8_t i = 0; i < timerCount; i++) {
@@ -229,6 +301,11 @@ void TimerTaskManager::updateAll() {
   #endif
 }
 
+// ============================================================================
+// TIMER CONTROL
+// ============================================================================
+
+// Stop a specific timer by name
 void TimerTaskManager::stopTimer(const char* name) {
   TimerConfig* config = findTimer(name);
   if (config == nullptr || !config->isActive) {
@@ -248,11 +325,13 @@ void TimerTaskManager::stopTimer(const char* name) {
       config->ticker->stop();
     }
   #endif
+  
   config->isActive = false;
   DEBUG_PRINT("Timer stopped: ");
   DEBUG_PRINTLN(name);
 }
 
+// Stop all timers
 void TimerTaskManager::stopAll() {
   for (uint8_t i = 0; i < timerCount; i++) {
     if (timers[i].isActive) {

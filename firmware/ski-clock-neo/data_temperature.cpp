@@ -1,26 +1,97 @@
+// ============================================================================
+// data_temperature.cpp - DS18B20 temperature sensor management
+// ============================================================================
+// This library handles the DS18B20 temperature sensor using non-blocking reads:
+// - 30-second polling interval for temperature requests
+// - 750ms one-shot delay for sensor conversion (12-bit resolution)
+// - Automatic display update via callback to display_controller
+// - Event logging for temperature readings
+// ============================================================================
+
+// ============================================================================
+// INCLUDES
+// ============================================================================
+
 #include "data_temperature.h"
+#include "ski-clock-neo_config.h"
+#include "display_controller.h"
+#include "event_log.h"
+#include "timing_helpers.h"
+#include "debug.h"
+#include <OneWire.h>
+#include <DallasTemperature.h>
 
-#include "ski-clock-neo_config.h" // For TEMPERATURE_PIN
-#include "display_controller.h"   // For updateTemperatureDisplay callback
-#include "event_log.h"            // For logging temperature events
-#include "timing_helpers.h"       // For unified timer abstraction
-#include "debug.h"                // For serial debugging
-#include <OneWire.h>              // OneWire library for DS18B20
-#include <DallasTemperature.h>    // Main library for DS18B20
+// ============================================================================
+// STATE VARIABLES
+// ============================================================================
 
-// Forward declarations for timer callbacks
+static OneWire* oneWire = nullptr;              // OneWire bus instance
+static DallasTemperature* sensors = nullptr;    // DallasTemperature library instance
+static bool initialized = false;                // True after successful init
+static float lastTemperature = 0.0;             // Last valid temperature reading
+static bool lastReadValid = false;              // True if last reading was valid
+static bool temperatureRequestPending = false;  // True while waiting for conversion
+static bool firstTemperatureRead = true;        // True until first successful read
+
+// ============================================================================
+// FORWARD DECLARATIONS
+// ============================================================================
+
 void temperaturePollCallback();
 void temperatureReadCallback();
 
-// Global sensor objects (initialized in initTemperatureData)
-static OneWire* oneWire = nullptr;
-static DallasTemperature* sensors = nullptr;
-static bool initialized = false;
-static float lastTemperature = 0.0;
-static bool lastReadValid = false;
+// ============================================================================
+// TIMER CALLBACKS
+// ============================================================================
 
-static bool temperatureRequestPending = false;
-static bool firstTemperatureRead = true;
+// Called every 30 seconds to start a new temperature conversion
+void temperaturePollCallback() {
+  if (!temperatureRequestPending) {
+    // Request new temperature reading
+    requestTemperature();
+    temperatureRequestPending = true;
+    DEBUG_PRINTLN("Temperature read requested (timer)");
+    
+    // Trigger one-shot read timer (750ms delay for sensor conversion)
+    triggerTimer("TempRead");
+  }
+}
+
+// Called 750ms after temperature request to read the result
+void temperatureReadCallback() {
+  float temp;
+  if (getTemperature(&temp)) {
+    // Update display via callback to display_controller
+    updateTemperatureDisplay();
+    DEBUG_PRINT("Temperature updated: ");
+    DEBUG_PRINTLN(temp);
+    
+    // Log temperature_read event with temperature value
+    char tempStr[16];
+    dtostrf(temp, 4, 1, tempStr);
+    String tempData = "{\"celsius\":";
+    tempData += tempStr;
+    tempData += "}";
+    logEvent("temperature_read", tempData.c_str());
+    
+    // First read complete
+    if (firstTemperatureRead) {
+      firstTemperatureRead = false;
+      DEBUG_PRINTLN("First temperature read complete");
+    }
+  } else {
+    // Failed to read temperature - retry on next poll
+    DEBUG_PRINTLN("Temperature read failed, will retry on next poll");
+    logEvent("temperature_error", "{\"reason\":\"read_failed\"}");
+  }
+  
+  // Always clear flag to allow next poll (ensures recovery from failed reads)
+  temperatureRequestPending = false;
+}
+
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
 
 void initTemperatureData() {
   DEBUG_PRINT("Initializing DS18B20 temperature sensor on GPIO ");
@@ -46,34 +117,37 @@ void initTemperatureData() {
   // Set resolution to 12-bit for best accuracy (conversion time ~750ms)
   sensors->setResolution(12);
   
-  // Disable blocking wait - we'll handle conversion time manually
+  // Disable blocking wait - we handle conversion time with one-shot timer
   sensors->setWaitForConversion(false);
   
   initialized = true;
   
-  // Create temperature timers using timer_task library
+  // Create temperature timers using timing_helpers library
   // Poll timer: 30-second interval for triggering temperature conversions
   createTimer("TempPoll", 30000, temperaturePollCallback);
   
   // Read timer: 750ms one-shot, triggered after conversion starts
   createOneShotTimer("TempRead", 750, temperatureReadCallback);
   
-  // Trigger first poll immediately (requests conversion and schedules read after 750ms)
-  // Clear flag first to ensure callback executes
+  // Trigger first poll immediately
   temperatureRequestPending = false;
   temperaturePollCallback();
   DEBUG_PRINTLN("Temperature sensor initialized (non-blocking mode, first poll triggered)");
 }
 
+// ============================================================================
+// SENSOR OPERATIONS
+// ============================================================================
+
+// Request temperature conversion (non-blocking)
 void requestTemperature() {
   if (!initialized || sensors == nullptr) {
     return;
   }
-  
-  // Start asynchronous temperature conversion
   sensors->requestTemperatures();
 }
 
+// Read temperature from sensor (call 750ms after request)
 bool getTemperature(float* temperature) {
   if (!initialized || sensors == nullptr || temperature == nullptr) {
     return false;
@@ -94,70 +168,28 @@ bool getTemperature(float* temperature) {
   return true;
 }
 
+// ============================================================================
+// PUBLIC API
+// ============================================================================
+
+// Format temperature as string (e.g., "23*C" or "-5*C")
 bool formatTemperature(char* output, size_t outputSize) {
   if (!initialized || !lastReadValid || output == nullptr || outputSize < 5) {
     return false;
   }
   
   // Round to nearest integer (correctly handles negative temperatures)
-  // lroundf() rounds toward nearest integer for both positive and negative
   int tempInt = (int)lroundf(lastTemperature);
   
   // Format as "XX*C" where * will be rendered as degree symbol
-  // Handle negative temperatures (e.g., "-5*C")
   snprintf(output, outputSize, "%d*C", tempInt);
   return true;
 }
 
+// Check if sensor is connected
 bool isSensorConnected() {
   if (!initialized || sensors == nullptr) {
     return false;
   }
-  
   return (sensors->getDeviceCount() > 0);
-}
-
-// Temperature timer callbacks (managed by timer_task library)
-void temperaturePollCallback() {
-  if (!temperatureRequestPending) {
-    // Request new temperature reading
-    requestTemperature();
-    temperatureRequestPending = true;
-    DEBUG_PRINTLN("Temperature read requested (timer)");
-    
-    // Trigger one-shot read timer (750ms delay for sensor conversion)
-    triggerTimer("TempRead");
-  }
-}
-
-void temperatureReadCallback() {
-  float temp;
-  if (getTemperature(&temp)) {
-    // Update display via callback to display_controller
-    updateTemperatureDisplay();
-    DEBUG_PRINT("Temperature updated: ");
-    DEBUG_PRINTLN(temp);
-    
-    // Log temperature_read event with temperature value
-    // Use dtostrf for portable float-to-string conversion
-    char tempStr[16];
-    dtostrf(temp, 4, 1, tempStr);
-    String tempData = "{\"celsius\":";
-    tempData += tempStr;
-    tempData += "}";
-    logEvent("temperature_read", tempData.c_str());
-    
-    // First read complete
-    if (firstTemperatureRead) {
-      firstTemperatureRead = false;
-      DEBUG_PRINTLN("First temperature read complete");
-    }
-  } else {
-    // Failed to read temperature - retry on next poll
-    DEBUG_PRINTLN("Temperature read failed, will retry on next poll");
-    logEvent("temperature_error", "{\"reason\":\"read_failed\"}");
-  }
-  
-  // Always clear flag to allow next poll (ensures recovery from failed reads)
-  temperatureRequestPending = false;
 }
