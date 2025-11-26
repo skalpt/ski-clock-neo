@@ -19,8 +19,8 @@ void setup() {
   DEBUG_PRINTLN(FIRMWARE_VERSION);
 
   // Initialize event logging and log boot event
-  initEventLog();
-  logBootEvent();
+  //initEventLog();
+  //logBootEvent();
 
   // Initialize onboard LED indicator
   initLedIndicator();
