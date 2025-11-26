@@ -34,7 +34,7 @@ const char MQTT_TOPIC_COMMAND[] = "skiclock/command";
 const char MQTT_TOPIC_OTA_START[] = "skiclock/ota/start";
 const char MQTT_TOPIC_OTA_PROGRESS[] = "skiclock/ota/progress";
 const char MQTT_TOPIC_OTA_COMPLETE[] = "skiclock/ota/complete";
-const char MQTT_TOPIC_DISPLAY_SNAPSHOT[] = "skiclock/display/snapshot";
+const char MQTT_TOPIC_DISPLAY_SNAPSHOT[] = "skiclock/display/snapshot/";
 
 // Timing constants
 const unsigned long HEARTBEAT_INTERVAL = 60000;           // 60 seconds
@@ -262,19 +262,51 @@ void updateMQTT() {
 }
 
 // ============================================================================
+// MQTT PUBLISHING HELPERS
+// ============================================================================
+
+// Build a device-specific topic by appending device ID to base topic
+String buildDeviceTopic(const char* baseTopic) {
+  return String(baseTopic) + getDeviceID();
+}
+
+// Publish payload to topic with connection check and logging (char* overloads)
+bool publishMqttPayload(const char* topic, const char* payload) {
+  if (!mqttClient.connected()) {
+    DEBUG_PRINTLN("MQTT not connected, cannot publish");
+    return false;
+  }
+  
+  if (mqttClient.publish(topic, payload)) {
+    DEBUG_PRINT("Published to ");
+    DEBUG_PRINT(topic);
+    DEBUG_PRINT(": ");
+    DEBUG_PRINTLN(payload);
+    return true;
+  } else {
+    DEBUG_PRINT("Failed to publish to ");
+    DEBUG_PRINTLN(topic);
+    return false;
+  }
+}
+
+bool publishMqttPayload(const String& topic, const char* payload) {
+  return publishMqttPayload(topic.c_str(), payload);
+}
+
+bool publishMqttPayload(const String& topic, const String& payload) {
+  return publishMqttPayload(topic.c_str(), payload.c_str());
+}
+
+// ============================================================================
 // HEARTBEAT PUBLISHING
 // ============================================================================
 
 void publishHeartbeat() {
-  if (!mqttClient.connected()) {
-    return;
-  }
-  
-  // Build topic with device ID
-  String topic = String(MQTT_TOPIC_HEARTBEAT) + getDeviceID();
+  if (!mqttClient.connected()) return;
   
   // Build JSON payload
-  char payload[384];
+  static char payload[384];
   snprintf(payload, sizeof(payload),
     "{\"board\":\"%s\",\"version\":\"%s\",\"uptime\":%lu,\"rssi\":%d,\"free_heap\":%u,\"ssid\":\"%s\",\"ip\":\"%s\"}",
     getBoardType().c_str(),
@@ -286,14 +318,7 @@ void publishHeartbeat() {
     WiFi.localIP().toString().c_str()
   );
   
-  if (mqttClient.publish(topic.c_str(), payload)) {
-    DEBUG_PRINT("Heartbeat published to ");
-    DEBUG_PRINT(topic);
-    DEBUG_PRINT(": ");
-    DEBUG_PRINTLN(payload);
-  } else {
-    DEBUG_PRINTLN("Failed to publish heartbeat");
-  }
+  publishMqttPayload(buildDeviceTopic(MQTT_TOPIC_HEARTBEAT), payload);
 }
 
 // ============================================================================
@@ -384,15 +409,15 @@ void publishDisplaySnapshot() {
   }
   rowTextJson += "]";
   
-  // Build JSON payload
-  char rowsStr[8], colsStr[8], widthStr[8], heightStr[8];
+  // Build JSON payload (static buffers to avoid stack churn)
+  static char rowsStr[8], colsStr[8], widthStr[8], heightStr[8];
   snprintf(rowsStr, sizeof(rowsStr), "%u", cfg.rows);
   snprintf(colsStr, sizeof(colsStr), "%u", cfg.panelsPerRow);
   snprintf(widthStr, sizeof(widthStr), "%u", totalWidth);
   snprintf(heightStr, sizeof(heightStr), "%u", totalHeight);
   
   // Build monoColor array [R, G, B, brightness]
-  char monoColorStr[32];
+  static char monoColorStr[32];
   snprintf(monoColorStr, sizeof(monoColorStr), "[%u,%u,%u,%u]", 
            DISPLAY_COLOR_R, DISPLAY_COLOR_G, DISPLAY_COLOR_B, BRIGHTNESS);
   
@@ -414,14 +439,10 @@ void publishDisplaySnapshot() {
   }
   
   // Publish to device-specific snapshot topic
-  String snapshotTopic = String(MQTT_TOPIC_DISPLAY_SNAPSHOT) + "/" + getDeviceID();
-  
-  if (mqttClient.publish(snapshotTopic.c_str(), payload.c_str())) {
-    DEBUG_PRINT("Display snapshot published (");
+  if (publishMqttPayload(buildDeviceTopic(MQTT_TOPIC_DISPLAY_SNAPSHOT), payload)) {
+    DEBUG_PRINT("Display snapshot size: ");
     DEBUG_PRINT(payload.length());
-    DEBUG_PRINTLN(" bytes)");
-  } else {
-    DEBUG_PRINTLN("Failed to publish display snapshot");
+    DEBUG_PRINTLN(" bytes");
   }
 }
 

@@ -66,6 +66,12 @@ void handleRollbackCommand(String message);
 void handleRestartCommand();
 String base64Encode(const uint8_t* data, uint16_t length);
 
+// MQTT publishing helpers (reduces code duplication across modules)
+String buildDeviceTopic(const char* baseTopic);
+bool publishMqttPayload(const char* topic, const char* payload);
+bool publishMqttPayload(const String& topic, const char* payload);
+bool publishMqttPayload(const String& topic, const String& payload);
+
 // WiFi event handlers
 #if defined(ESP32)
   void onWiFiConnected(WiFiEvent_t event, WiFiEventInfo_t info);

@@ -183,11 +183,12 @@ void flushEventQueue() {
   }
   EVENT_EXIT_CRITICAL();
   
-  String deviceId = getDeviceID();
-  String topic = String("skiclock/event/") + deviceId;
-  
+  String topic = buildDeviceTopic("skiclock/event/");
   uint32_t now = millis();
   int flushed = 0;
+  
+  // Static buffer for event payloads (reused across iterations)
+  static char payload[256];
   
   // Process all queued events
   while (true) {
@@ -217,31 +218,21 @@ void flushEventQueue() {
       // Calculate time offset from now
       uint32_t offset_ms = now - timestamp;
       
-      // Build JSON payload
-      String payload = "{\"type\":\"";
-      payload += type;
-      payload += "\"";
-      
+      // Build JSON payload using snprintf
       if (data[0] != '\0') {
-        payload += ",\"data\":";
-        payload += data;
+        snprintf(payload, sizeof(payload),
+          "{\"type\":\"%s\",\"data\":%s,\"offset_ms\":%lu}",
+          type, data, offset_ms);
+      } else {
+        snprintf(payload, sizeof(payload),
+          "{\"type\":\"%s\",\"offset_ms\":%lu}",
+          type, offset_ms);
       }
       
-      payload += ",\"offset_ms\":";
-      payload += offset_ms;
-      payload += "}";
-      
-      // Publish to MQTT
-      if (mqttClient.publish(topic.c_str(), payload.c_str())) {
-        DEBUG_PRINT("Event flushed: ");
-        DEBUG_PRINT(type);
-        DEBUG_PRINT(" (offset: ");
-        DEBUG_PRINT(offset_ms);
-        DEBUG_PRINTLN("ms)");
+      // Publish to MQTT using helper
+      if (publishMqttPayload(topic, payload)) {
         flushed++;
       } else {
-        DEBUG_PRINT("Failed to publish event: ");
-        DEBUG_PRINTLN(type);
         break;
       }
     }

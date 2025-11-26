@@ -279,6 +279,7 @@ TaskHandle_t TimerTaskManager::createNotificationTask(const char* name, TaskFunc
 // Send notification to wake a task
 bool TimerTaskManager::notifyTask(TaskHandle_t taskHandle) {
   if (taskHandle == NULL) {
+    DEBUG_PRINTLN("ERROR: notifyTask called with NULL handle");
     return false;
   }
   xTaskNotifyGive(taskHandle);

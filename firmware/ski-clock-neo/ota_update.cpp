@@ -29,11 +29,7 @@ bool otaUpdateInProgress = false;
 
 // Publish OTA start message
 void publishOTAStart(String newVersion) {
-  if (!mqttClient.connected()) {
-    return;
-  }
-  
-  char payload[256];
+  static char payload[256];
   snprintf(payload, sizeof(payload),
     "{\"device_id\":\"%s\",\"platform\":\"%s\",\"old_version\":\"%s\",\"new_version\":\"%s\"}",
     getDeviceID().c_str(),
@@ -42,37 +38,24 @@ void publishOTAStart(String newVersion) {
     newVersion.c_str()
   );
   
-  mqttClient.publish(MQTT_TOPIC_OTA_START, payload);
-  DEBUG_PRINT("OTA start published: ");
-  DEBUG_PRINTLN(payload);
+  publishMqttPayload(MQTT_TOPIC_OTA_START, payload);
 }
 
 // Publish OTA progress message (0-100%)
 void publishOTAProgress(int progress) {
-  if (!mqttClient.connected()) {
-    return;
-  }
-  
-  char payload[128];
+  static char payload[128];
   snprintf(payload, sizeof(payload),
     "{\"device_id\":\"%s\",\"progress\":%d}",
     getDeviceID().c_str(),
     progress
   );
   
-  mqttClient.publish(MQTT_TOPIC_OTA_PROGRESS, payload);
-  DEBUG_PRINT("OTA progress: ");
-  DEBUG_PRINT(progress);
-  DEBUG_PRINTLN("%");
+  publishMqttPayload(MQTT_TOPIC_OTA_PROGRESS, payload);
 }
 
 // Publish OTA complete message
 void publishOTAComplete(bool success, String errorMessage) {
-  if (!mqttClient.connected()) {
-    return;
-  }
-  
-  char payload[384];
+  static char payload[384];
   if (success) {
     snprintf(payload, sizeof(payload),
       "{\"device_id\":\"%s\",\"status\":\"success\"}",
@@ -86,9 +69,7 @@ void publishOTAComplete(bool success, String errorMessage) {
     );
   }
   
-  mqttClient.publish(MQTT_TOPIC_OTA_COMPLETE, payload);
-  DEBUG_PRINT("OTA complete published: ");
-  DEBUG_PRINTLN(payload);
+  publishMqttPayload(MQTT_TOPIC_OTA_COMPLETE, payload);
 }
 
 // ============================================================================

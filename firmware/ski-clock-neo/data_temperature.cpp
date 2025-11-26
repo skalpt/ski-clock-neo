@@ -67,12 +67,9 @@ void temperatureReadCallback() {
     DEBUG_PRINTLN(temp);
     
     // Log temperature_read event with temperature value
-    char tempStr[16];
-    dtostrf(temp, 4, 1, tempStr);
-    String tempData = "{\"celsius\":";
-    tempData += tempStr;
-    tempData += "}";
-    logEvent("temperature_read", tempData.c_str());
+    static char tempEventData[32];
+    snprintf(tempEventData, sizeof(tempEventData), "{\"celsius\":%.1f}", temp);
+    logEvent("temperature_read", tempEventData);
     
     // First read complete
     if (firstTemperatureRead) {
@@ -150,6 +147,7 @@ void requestTemperature() {
 // Read temperature from sensor (call 750ms after request)
 bool getTemperature(float* temperature) {
   if (!initialized || sensors == nullptr || temperature == nullptr) {
+    DEBUG_PRINTLN("getTemperature: Not initialized or null pointer");
     return false;
   }
   
@@ -158,6 +156,8 @@ bool getTemperature(float* temperature) {
   
   // Check if reading is valid (DS18B20 returns -127°C on error)
   if (tempC == DEVICE_DISCONNECTED_C || tempC < -55.0 || tempC > 125.0) {
+    DEBUG_PRINT("Temperature sensor error, raw value: ");
+    DEBUG_PRINTLN(tempC);
     lastReadValid = false;
     return false;
   }

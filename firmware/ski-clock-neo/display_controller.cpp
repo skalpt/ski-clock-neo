@@ -76,7 +76,7 @@ void updateRow0() {
     return;
   }
   
-  char buffer[32];
+  static char buffer[32];
   
   if (currentMode == MODE_NORMAL) {
     if (showingTime) {
@@ -107,7 +107,7 @@ void updateRow0() {
 
 // Update row 1 with temperature
 void updateRow1() {
-  char buffer[32];
+  static char buffer[32];
   
   if (formatTemperature(buffer, sizeof(buffer))) {
     setText(1, buffer);
