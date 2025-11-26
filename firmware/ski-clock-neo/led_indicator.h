@@ -277,17 +277,4 @@ void setLedPattern(LedPattern pattern) {
   #endif
 }
 
-// Update LED pattern based on WiFi & MQTT status (called from ticker)
-void updateLedStatus() {
-  if (WiFi.status() == WL_CONNECTED) {
-    if (mqttClient.connected()) {
-      setLedPattern(LED_ONE_FLASH);
-    } else {
-      setLedPattern(LED_TWO_FLASH);
-    }
-  } else {
-    setLedPattern(LED_THREE_FLASH);
-  }
-}
-
 #endif
