@@ -1,0 +1,51 @@
+15:30:48.943 -> Rebooting...
+15:30:48.943 -> ESP-ROM:esp32c3-api1-20210207
+15:30:48.943 -> Build:Feb  7 2021
+15:30:48.943 -> rst:0x3 (RTC_SW_SYS_RST),boot:0xd (SPI_FAST_FLASH_BOOT)
+15:30:48.943 -> Saved PC:0x40382970
+15:30:48.943 -> SPIWP:0xee
+15:30:48.943 -> mode:DIO, clock div:1
+15:30:48.943 -> load:0x3fcd5810,len:0x438
+15:30:48.943 -> load:0x403cc710,len:0x90c
+15:30:48.943 -> load:0x403ce710,len:0x262
+15:30:48.943 -> NeoPixel row 1 (GPIO 4) initialised.
+15:30:48.943 -> NeoPixel row 2 (GPIO 3) initialised.
+15:30:48.943 -> NeoPixel renderer ready (event-driven, no timers)
+15:30:48.943 -> Display FreeRTOS task started - waiting for notifications
+15:30:48.943 -> Notification task created (ESP32-C3): Display
+15:30:48.943 -> Initializing display coFreeRTOS task started: DispToggle
+15:30:48.943 -> Timer created (ESP32-C3 FreeRTOS): DispToggle @ 4000ms
+15:30:48.943 -> Display controller initialized
+15:30:48.943 -> Initializing time system (RTC + NTP)
+15:30:48.943 -> DS3231 RTC not found - using NTP only
+15:30:48.943 -> Event queued: rtc_not_found (queue: 2)
+15:30:48.943 -> Initializing NTP time sync for Sweden (Europe/Stockholm)
+15:30:48.943 -> FreeRTOS task started: TimeCheck
+15:30:48.943 -> Timer created (ESP32-C3 FreeRTOS): TimeCheck @ 1000ms
+15:30:48.943 -> Time system initialized
+15:30:48.943 -> Time change callback registered
+15:30:48.943 -> Initializing DS18B20 temperature sensor on GPIO 2
+15:30:48.943 -> Found 0 DS18B20 device(s)
+15:30:48.943 -> WARNING: No DS18B20 sensor detected!
+15:30:48.943 -> Event queued: temp_sensor_not_found (queue: 3)
+15:30:48.943 -> FreeRTOS task started: TemperaturePoll
+15:30:48.943 -> Timer created (ESP32-C3 FreeRTOS): TemperaturePoll @ 30000ms
+15:30:48.943 -> One-shot timer registered: TemperatureRead @ 750ms (dormant)
+15:30:48.943 -> Temperature read requested (timer)
+15:30:48.943 -> One-shot timer triggered: TemperatureRead
+15:30:48.943 -> Temperature sensor initialized (non-blocking mode, first poll triggered)
+15:30:48.943 -> Initializing button on GPIO 0 (debounce: 50ms)
+15:30:48.943 -> Button initialized
+15:30:48.943 -> Registering WiFi connection event handlers...
+15:30:48.943 -> Initializing WiFi with AutoConnect...
+15:30:48.943 -> Generated AP SSID: SkiClockNeo-e8c5fbbdf5f0
+15:30:48.943 -> WiFi disconnected, stopping MQTT...
+15:30:48.943 -> Event queued: wifi_disconnect (queue: Guru Meditation Error: Core  0 panic'ed (Load access fault). Exception was unhandled.
+15:30:48.943 -> 
+15:30:48.943 -> Core  0 register dump:
+15:30:48.943 -> MEPC    : 0x420261e8  RA      : 0x42001c5e  SP      : 0x3fca91e0  GP      : 0x3fc8f800  
+15:30:48.943 -> TP      : 0x3fc7778c  T0      : 0xffffffff  T1      : 0x420225d0  T2      : 0x00000000  
+15:30:48.943 -> S0/FP   : 0x00000003  S1      : 0x3fc9a894  A0      : 0x00000000  A1      : 0x00000000  
+15:30:48.943 -> A2      : 0x00000000  A3      : 0x00000013  A4      : 0x00000000  A5      : 0x00000004  
+15:30:48.943 -> A6      : 0x00000000  A7      : 0x00000009  S2      : 0x3fc8f03c  S3      : 0x3fc94fa0  
+15:30:48.943 -> S4      : 0x3fcb06f

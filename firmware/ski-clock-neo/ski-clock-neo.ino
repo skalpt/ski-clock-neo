@@ -23,7 +23,7 @@ void setup() {
   logBootEvent();
 
   // Initialize onboard LED indicator
-  //initLedIndicator();
+  initLedIndicator();
 
   // Initialize display
   initDisplay();

@@ -304,7 +304,5 @@ RenderCallback getRenderCallback() {
 
 // Force immediate render (bypasses dirty flag check)
 void renderNow() {
-  DISPLAY_ENTER_CRITICAL();
   updateNeoPixels();
-  DISPLAY_EXIT_CRITICAL();
 }
