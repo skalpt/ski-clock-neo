@@ -33,7 +33,14 @@ The project consists of two primary components:
     - All ESP8266 timers updated via single `updateTimers()` call in main loop
     - Used by: display_core (1ms render/notification), display_controller (4s toggle), data_time (1s time check), data_temperature (30s poll + 750ms read delay)
 *   **Clean Separation of Concerns**: Temperature polling and time/date toggling are owned by their respective libraries, which update the display controller via callbacks, ensuring independent timing logic.
-*   **Event Logging System**: A ring buffer stores device events with timestamps, publishing them to MQTT when connected. Events include boot, WiFi connect/disconnect, MQTT connect/disconnect, and temperature readings.
+*   **Event Logging System**: A ring buffer stores device events with timestamps, publishing them to MQTT when connected. Comprehensive event types include:
+    - System: boot, heartbeat, low_heap_warning
+    - Connectivity: wifi_connect, wifi_disconnect, wifi_rssi_low, mqtt_connect, mqtt_disconnect
+    - Temperature: temperature_read, temperature_error, temp_sensor_not_found, temp_read_invalid, temp_read_crc_error
+    - RTC/Time: rtc_initialized, rtc_not_found, rtc_lost_power, rtc_time_invalid, rtc_synced_from_ntp, rtc_sync_failed, rtc_drift_corrected, ntp_sync_success, ntp_sync_failed
+    - User Input: button_press, button_release
+    - Display: display_mode_change
+    Health warning events (low_heap, wifi_rssi_low) use threshold crossing detection to avoid spam.
 *   **Code Organization Convention**: All .cpp files follow a consistent structure with section headers:
     - File banner comment explaining module purpose
     - INCLUDES section
