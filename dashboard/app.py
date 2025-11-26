@@ -14,6 +14,17 @@ from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from object_storage import ObjectStorageService, ObjectNotFoundError, ObjectStorageError
 from models import db, Device, FirmwareVersion, User, Role, PlatformPermission, DownloadLog
 
+# Map device board types (as reported by firmware) to platform identifiers
+# This must stay in sync with BOARD_TYPE_TO_PLATFORM in mqtt_subscriber.py
+BOARD_TYPE_TO_PLATFORM = {
+    'ESP32': 'esp32',
+    'ESP32-C3': 'esp32c3',
+    'ESP32-S3': 'esp32s3',
+    'ESP-12F': 'esp12f',
+    'ESP-01': 'esp01',
+    'Wemos D1 Mini': 'd1mini',
+}
+
 app = Flask(__name__)
 
 app.secret_key = os.environ.get("FLASK_SECRET_KEY") or "a secret key"
@@ -1669,12 +1680,15 @@ def pin_device_version(device_id):
         }), 200
     
     # Verify version exists for device's platform
-    platform = device.board_type
+    # Map board type to platform identifier (same mapping as MQTT handler)
+    board_type = device.board_type or ''
+    platform = BOARD_TYPE_TO_PLATFORM.get(board_type, board_type.lower().replace('-', '').replace(' ', ''))
+    
     fw = FirmwareVersion.query.filter_by(platform=platform, version=version).first()
     
     if not fw:
         return jsonify({
-            'error': f'Version {version} not found for platform {platform}'
+            'error': f'Version {version} not found for platform {platform} (device board: {board_type})'
         }), 404
     
     # Pin the device
