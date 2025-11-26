@@ -3,17 +3,12 @@
 #include "ski-clock-neo_config.h" // For TEMPERATURE_PIN
 #include "display_controller.h"   // For updateTemperatureDisplay callback
 #include "event_log.h"            // For logging temperature events
+#include "timer_task.h"           // For unified timer abstraction
 #include "debug.h"                // For serial debugging
 #include <OneWire.h>              // OneWire library for DS18B20
 #include <DallasTemperature.h>    // Main library for DS18B20
 
-#if defined(ESP32)
-  #include <Ticker.h>  // ESP32: Software ticker (loop-driven)
-#elif defined(ESP8266)
-  #include <TickTwo.h>  // ESP8266: Software ticker (loop-driven, non-ISR, WiFi-safe)
-#endif
-
-// Forward declarations for ticker callbacks (needed before use)
+// Forward declarations for timer callbacks
 void temperaturePollCallback();
 void temperatureReadCallback();
 
@@ -23,17 +18,6 @@ static DallasTemperature* sensors = nullptr;
 static bool initialized = false;
 static float lastTemperature = 0.0;
 static bool lastReadValid = false;
-
-// Temperature timing - platform specific
-#if defined(ESP32)
-  // ESP32: Use standard Ticker (loop-driven software ticker)
-  static Ticker temperaturePollTicker;
-  static Ticker temperatureReadTicker;
-#elif defined(ESP8266)
-  // ESP8266: Use TickTwo (loop-driven, non-ISR, WiFi-safe)
-  TickTwo temperaturePollTicker(temperaturePollCallback, 30000, 0, MILLIS);  // 30s, endless (extern in .h)
-  TickTwo temperatureReadTicker(temperatureReadCallback, 750, 1, MILLIS);  // 750ms, once (extern in .h)
-#endif
 
 static bool temperatureRequestPending = false;
 static bool firstTemperatureRead = true;
@@ -67,14 +51,12 @@ void initTemperatureData() {
   
   initialized = true;
   
-  // Start temperature polling ticker (30 seconds) - platform specific
-  #if defined(ESP32)
-    temperaturePollTicker.attach(30.0, temperaturePollCallback);
-    DEBUG_PRINTLN("Temperature poll ticker started (ESP32 Ticker - 30s)");
-  #elif defined(ESP8266)
-    temperaturePollTicker.start();
-    DEBUG_PRINTLN("Temperature poll ticker started (ESP8266 TickTwo - 30s, loop-driven)");
-  #endif
+  // Create temperature timers using timer_task library
+  // Poll timer: 30-second interval for triggering temperature conversions
+  createTimer("TempPoll", 30000, temperaturePollCallback);
+  
+  // Read timer: 750ms one-shot, triggered after conversion starts
+  createOneShotTimer("TempRead", 750, temperatureReadCallback);
   
   // Trigger first poll immediately (requests conversion and schedules read after 750ms)
   // Clear flag first to ensure callback executes
@@ -135,22 +117,16 @@ bool isSensorConnected() {
   return (sensors->getDeviceCount() > 0);
 }
 
-// Temperature ticker callbacks (software tickers, loop-driven, safe for setText)
-// ESP32: Software ticker (loop-driven via Ticker library)
-// ESP8266: TickTwo (loop-driven, non-ISR, WiFi-safe)
+// Temperature timer callbacks (managed by timer_task library)
 void temperaturePollCallback() {
   if (!temperatureRequestPending) {
     // Request new temperature reading
     requestTemperature();
     temperatureRequestPending = true;
-    DEBUG_PRINTLN("Temperature read requested (ticker)");
+    DEBUG_PRINTLN("Temperature read requested (timer)");
     
-    // Schedule read after 750ms - platform specific
-    #if defined(ESP32)
-      temperatureReadTicker.once(0.75f, temperatureReadCallback);  // 0.75 seconds
-    #elif defined(ESP8266)
-      temperatureReadTicker.start();  // TickTwo: start 750ms one-shot timer
-    #endif
+    // Trigger one-shot read timer (750ms delay for sensor conversion)
+    triggerTimer("TempRead");
   }
 }
 

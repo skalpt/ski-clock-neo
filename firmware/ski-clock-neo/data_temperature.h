@@ -26,11 +26,4 @@ bool formatTemperature(char* output, size_t outputSize);
 // Check if temperature sensor is connected and responding
 bool isSensorConnected();
 
-#if defined(ESP8266)
-  // Expose TickTwo tickers for ESP8266 (call .update() in loop)
-  #include <TickTwo.h>
-  extern TickTwo temperaturePollTicker;
-  extern TickTwo temperatureReadTicker;
-#endif
-
 #endif

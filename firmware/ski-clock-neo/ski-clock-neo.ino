@@ -57,9 +57,7 @@ void loop() {
   // Update timers (ESP8266 only - loop-driven, non-ISR, WiFi-safe)
   // ESP32 uses FreeRTOS tasks, so no updates needed in loop
   #if defined(ESP8266)
-    displayTicker.update();             // Display rendering (1ms poll, safe for NeoPixel)
-    updateTimers();                     // All timer_task managed timers (toggle, time check)
-    temperaturePollTicker.update();     // Temperature poll (30s) - uses its own TickTwo
-    temperatureReadTicker.update();     // Temperature read delay (750ms) - uses its own TickTwo
+    displayTicker.update();             // Display rendering (1ms poll, notification-based)
+    updateTimers();                     // All timer_task managed timers
   #endif
 }
