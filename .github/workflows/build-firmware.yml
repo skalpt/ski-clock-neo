@@ -70,6 +70,7 @@ jobs:
           retry arduino-cli lib install "OneWire"
           retry arduino-cli lib install "DallasTemperature"
           retry arduino-cli lib install "TickTwo"
+          retry arduino-cli lib install "RTClib"
 
       - name: Generate timestamp version
         id: get_version
