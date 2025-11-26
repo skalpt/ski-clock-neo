@@ -62,6 +62,29 @@ void IRAM_ATTR ledTimerCallback() {
   // Debug: increment counter to verify ISR is firing
   ledIsrCount++;
   
+  // DEBUG: Temporarily use 5s on / 5s off for all patterns to diagnose LED issue
+  // 100ms timer interval, so 50 ticks = 5 seconds
+  flashCount++;
+  if (flashCount >= 100) {  // Full cycle = 10 seconds (50 on + 50 off)
+    flashCount = 0;
+  }
+  
+  if (flashCount < 50) {
+    // First 5 seconds: LED ON
+    if (!ledState) {
+      ledState = true;
+      ledOn();
+    }
+  } else {
+    // Next 5 seconds: LED OFF
+    if (ledState) {
+      ledState = false;
+      ledOff();
+    }
+  }
+  
+  // Original pattern logic commented out for debugging:
+  /*
   switch (currentPattern) {
     case LED_OTA_PROGRESS:
       // Quick flashing (100ms on/off) during OTA
@@ -130,6 +153,7 @@ void IRAM_ATTR ledTimerCallback() {
       ledOff();
       break;
   }
+  */
   
   #if defined(ESP32)
     portEXIT_CRITICAL_ISR(&ledTimerMux);
