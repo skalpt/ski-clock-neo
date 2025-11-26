@@ -1,19 +1,10 @@
-// ============================================================================
-// led_indicator.h - LED status indicator declarations
-// ============================================================================
-// Hardware interrupt-driven LED patterns for WiFi/MQTT status indication.
-// Uses ESP32 hardware timers or ESP8266 Timer1 for freeze-proof operation.
-// ============================================================================
-
 #ifndef LED_INDICATOR_H
 #define LED_INDICATOR_H
 
 #include <Arduino.h>
+#include "debug.h"
 
-// ============================================================================
-// LED PATTERNS
-// ============================================================================
-
+// LED patterns for WiFi status indication
 enum LedPattern {
   LED_OTA_PROGRESS,      // Fast blink (OTA in progress)
   LED_CONNECTED,         // 1 flash + pause (WiFi & MQTT connected)
@@ -21,19 +12,6 @@ enum LedPattern {
   LED_WIFI_DISCONNECTED, // 3 flashes + pause (WiFi disconnected)
   LED_OFF                // No flashing
 };
-
-// ============================================================================
-// CONNECTIVITY STATE
-// ============================================================================
-
-struct ConnectivityState {
-  bool wifiConnected;
-  bool mqttConnected;
-};
-
-// ============================================================================
-// LED PIN CONFIGURATION
-// ============================================================================
 
 // Fallback for boards that don't define LED_BUILTIN
 #ifndef LED_BUILTIN
@@ -56,19 +34,19 @@ struct ConnectivityState {
   #define LED_GPIO_OFF LOW
 #endif
 
-// ============================================================================
-// FAST GPIO MACROS (for interrupt context)
-// ============================================================================
-
+// Direct port manipulation for fast GPIO operations in interrupt context
 #if defined(ESP8266)
   #include <esp8266_peri.h>
   #define FAST_PIN_HIGH(pin) GPOS = (1 << (pin))
   #define FAST_PIN_LOW(pin)  GPOC = (1 << (pin))
 #elif defined(CONFIG_IDF_TARGET_ESP32C3)
+  // ESP32-C3 has only 22 GPIOs (bank 0 only, no out1 registers)
   #include <soc/gpio_reg.h>
   #define FAST_PIN_HIGH(pin) GPIO.out_w1ts.val = (1UL << (pin))
   #define FAST_PIN_LOW(pin)  GPIO.out_w1tc.val = (1UL << (pin))
 #elif defined(CONFIG_IDF_TARGET_ESP32S3)
+  // ESP32-S3 has 48 GPIOs (needs dual GPIO banks for pins 0-31 and 32-48)
+  // Bank 0: direct uint32_t (no .val), Bank 1: struct with .val
   #include <soc/gpio_reg.h>
   #define FAST_PIN_HIGH(pin) do { \
     if ((pin) < 32) { \
@@ -77,6 +55,7 @@ struct ConnectivityState {
       GPIO.out1_w1ts.val = (1UL << ((pin) - 32)); \
     } \
   } while(0)
+  
   #define FAST_PIN_LOW(pin) do { \
     if ((pin) < 32) { \
       GPIO.out_w1tc = (1UL << (pin)); \
@@ -85,18 +64,17 @@ struct ConnectivityState {
     } \
   } while(0)
 #elif defined(ESP32)
+  // ESP32 original - direct register access
   #include <soc/gpio_reg.h>
   #define FAST_PIN_HIGH(pin) GPIO.out_w1ts = (1 << (pin))
   #define FAST_PIN_LOW(pin)  GPIO.out_w1tc = (1 << (pin))
 #else
+  // Fallback to digitalWrite for other platforms
   #define FAST_PIN_HIGH(pin) digitalWrite(pin, HIGH)
   #define FAST_PIN_LOW(pin)  digitalWrite(pin, LOW)
 #endif
 
-// ============================================================================
-// INLINE HELPER FUNCTIONS (safe to include in header)
-// ============================================================================
-
+// Helper functions to handle LED on/off with inverted logic
 inline void IRAM_ATTR ledOn() {
   if (LED_GPIO_ON == LOW) {
     FAST_PIN_LOW(LED_PIN);
@@ -113,26 +91,37 @@ inline void IRAM_ATTR ledOff() {
   }
 }
 
-// ============================================================================
-// PUBLIC API - Function declarations
-// ============================================================================
+// Connectivity state tracking
+struct ConnectivityState {
+  bool wifiConnected;
+  bool mqttConnected;
+};
 
-// Initialize LED indicator hardware and timer
+// External variable declarations (definitions in led_indicator.cpp)
+#if defined(ESP32)
+  extern hw_timer_t *ledTimer;
+  extern portMUX_TYPE ledTimerMux;
+#endif
+
+extern ConnectivityState currentConnectivity;
+extern bool ledOverrideActive;
+extern LedPattern ledOverridePattern;
+extern volatile LedPattern currentPattern;
+extern volatile uint8_t flashCount;
+extern volatile bool ledState;
+
+// Function declarations
 void initLedIndicator();
-
-// Set LED pattern directly (internal use - prefer setConnectivityState)
 void setLedPattern(LedPattern pattern);
-
-// Update LED based on current connectivity state
 void updateLedStatus();
-
-// PUBLIC API: Update connectivity state and refresh LED pattern
 void setConnectivityState(bool wifiConnected, bool mqttConnected);
-
-// PUBLIC API: Begin LED override mode (for OTA updates)
 void beginLedOverride(LedPattern pattern);
-
-// PUBLIC API: End LED override mode
 void endLedOverride();
 
-#endif // LED_INDICATOR_H
+// ISR callbacks (declared but not exposed as public API)
+void IRAM_ATTR ledTimerCallback();
+#if defined(ESP8266)
+  void ICACHE_RAM_ATTR onTimer1ISR();
+#endif
+
+#endif
