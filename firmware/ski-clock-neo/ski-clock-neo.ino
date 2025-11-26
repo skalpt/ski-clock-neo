@@ -19,23 +19,23 @@ void setup() {
   DEBUG_PRINTLN(FIRMWARE_VERSION);
 
   // Initialize event logging and log boot event
-  //initEventLog();
-  //logBootEvent();
+  initEventLog();
+  logBootEvent();
 
   // Initialize onboard LED indicator
   initLedIndicator();
 
   // Initialize display
-  //initDisplay();
+  initDisplay();
   
   // Initialize button
-  //initButton();
+  initButton();
 
   // Initialise WiFi
-  //initWiFi();
+  initWiFi();
   
   // Initialize MQTT system
-  //initMQTT();
+  initMQTT();
     
   DEBUG_PRINTLN("===========================================");
   DEBUG_PRINTLN("Setup complete - entering main loop");
@@ -44,13 +44,13 @@ void setup() {
 
 void loop() {
   // Handle WiFi tasks (config portal or reconnection)
-  //updateWiFi();
+  updateWiFi();
 
   // Handle MQTT updates (subscriptions and version requests)
-  //updateMQTT();
+  updateMQTT();
   
   // Update button state (debouncing and callbacks)
-  //updateButton();
+  updateButton();
   
   // Update timers (ESP8266 only - loop-driven, non-ISR, WiFi-safe)
   // ESP32 uses FreeRTOS tasks, so no updates needed in loop
