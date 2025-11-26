@@ -88,6 +88,39 @@
             </div>
         </div>
     </div>
+    
+    <div id="flash-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="flash-modal-title">USB Flash</h3>
+                <button class="modal-close" onclick="closeFlashModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="flash-modal-body">
+                <p>Connect your device via USB and click a button below to flash:</p>
+                <div class="flash-options">
+                    <div class="flash-option">
+                        <esp-web-install-button id="flash-modal-installer-quick" manifest="">
+                            <button slot="activate" class="btn-primary flash-option-btn">
+                                <span class="flash-btn-icon">⚡</span>
+                                <span>Quick Flash</span>
+                                <span class="flash-option-desc">App only - faster, keeps settings</span>
+                            </button>
+                        </esp-web-install-button>
+                    </div>
+                    <div class="flash-option" id="flash-modal-full-option">
+                        <esp-web-install-button id="flash-modal-installer-full" manifest="">
+                            <button slot="activate" class="btn-secondary flash-option-btn">
+                                <span class="flash-btn-icon">🔧</span>
+                                <span>Full Flash (Recovery)</span>
+                                <span class="flash-option-desc">Complete erase - use for recovery</span>
+                            </button>
+                        </esp-web-install-button>
+                    </div>
+                </div>
+                <p class="flash-version-info" id="flash-version-info"></p>
+            </div>
+        </div>
+    </div>
 
     <div class="card">
         <div class="flex-between mb-15">
@@ -1066,6 +1099,7 @@
             const uploadDate = new Date(fw.uploaded_at).toLocaleString();
             const latestBadge = fw.is_latest ? '<span class="badge badge-success">Latest</span>' : '';
             const sizeMB = (fw.size / 1024 / 1024).toFixed(2);
+            const supportsFullFlash = fw.supports_full_flash || false;
             
             return `
                 <tr>
@@ -1075,9 +1109,12 @@
                     </td>
                     <td>${sizeMB} MB</td>
                     <td>${uploadDate}</td>
-                    <td>
+                    <td class="version-actions">
                         <button class="btn-primary btn-small" onclick="showPushModal('${platform}', '${escapeHtml(fw.version)}')">
-                            📤 Push to Device
+                            📤 OTA Push
+                        </button>
+                        <button class="btn-secondary btn-small" onclick="showFlashModal('${platform}', '${escapeHtml(fw.version)}', ${supportsFullFlash})">
+                            ⚡ USB Flash
                         </button>
                     </td>
                 </tr>
@@ -1174,6 +1211,33 @@
         document.getElementById('push-modal').classList.add('hidden');
         selectedPushVersion = null;
         selectedPushPlatform = null;
+    }
+    
+    function showFlashModal(platform, version, supportsFullFlash) {
+        const modal = document.getElementById('flash-modal');
+        const title = document.getElementById('flash-modal-title');
+        const versionInfo = document.getElementById('flash-version-info');
+        const fullOption = document.getElementById('flash-modal-full-option');
+        const quickInstaller = document.getElementById('flash-modal-installer-quick');
+        const fullInstaller = document.getElementById('flash-modal-installer-full');
+        
+        title.textContent = `USB Flash - ${platform.toUpperCase()} v${version}`;
+        versionInfo.textContent = `Flashing ${platform.toUpperCase()} firmware version ${version}`;
+        
+        quickInstaller.setAttribute('manifest', `/firmware/manifest/${platform}.json?mode=quick&version=${encodeURIComponent(version)}`);
+        
+        if (supportsFullFlash) {
+            fullOption.style.display = 'block';
+            fullInstaller.setAttribute('manifest', `/firmware/manifest/${platform}.json?mode=full&version=${encodeURIComponent(version)}`);
+        } else {
+            fullOption.style.display = 'none';
+        }
+        
+        modal.classList.remove('hidden');
+    }
+    
+    function closeFlashModal() {
+        document.getElementById('flash-modal').classList.add('hidden');
     }
     
     async function pinDeviceVersion(deviceId, version) {
