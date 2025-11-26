@@ -57,7 +57,6 @@ void loop() {
   // Update timers (ESP8266 only - loop-driven, non-ISR, WiFi-safe)
   // ESP32 uses FreeRTOS tasks, so no updates needed in loop
   #if defined(ESP8266)
-    displayTicker.update();             // Display rendering (1ms poll, notification-based)
-    updateTimers();                     // All timer_task managed timers
+    updateTimers();  // All timer_task managed timers (display, toggle, time check, temperature)
   #endif
 }

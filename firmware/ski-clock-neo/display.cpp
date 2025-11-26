@@ -1,12 +1,9 @@
 #include "display.h"
 #include "display_controller.h"
 #include "neopixel_render.h"
+#include "timer_task.h"
 #include "debug.h"
 #include <string.h>
-
-#if defined(ESP8266)
-  #include <TickTwo.h>  // Software ticker (loop-driven, non-ISR, safe for NeoPixel)
-#endif
 
 // Display buffer storage (final rendered output for MQTT)
 uint8_t displayBuffer[DISPLAY_BUFFER_SIZE] = {0};
@@ -24,57 +21,26 @@ static RenderCallback renderCallback = nullptr;
 // Spinlock for atomic buffer updates (ESP32 only)
 #if defined(ESP32)
   portMUX_TYPE spinlock = portMUX_INITIALIZER_UNLOCKED;
-#endif
-
-// FreeRTOS task handle for rendering (ESP32 only)
-#if defined(ESP32)
   static TaskHandle_t displayTaskHandle = NULL;
-#elif defined(ESP8266)
-  // ESP8266: Use TickTwo for rendering (loop-driven, non-ISR, safe for NeoPixel)
-  void displayTickerCallback();  // Forward declaration
-  TickTwo displayTicker(displayTickerCallback, 1, 0, MILLIS);  // 1ms, endless (extern in .h)
 #endif
 
-// Rendering task for ESP32 (blocks on task notification, woken immediately when display dirty)
-#if defined(ESP32)
-void displayTask(void* parameter) {
-  DEBUG_PRINTLN("Display FreeRTOS task started - waiting for notifications");
-  
-  for(;;) {
-    // Block until notified (wake immediately when setText() marks dirty)
-    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);  // Clear notification value on exit, wait forever
-    
-    // Drain all pending updates atomically
-    while (isDisplayDirty()) {
-      uint32_t startSeq = getUpdateSequence();
-      
-      // Render the display
-      updateNeoPixels();
-      
-      // Clear flags atomically - if concurrent update occurred, flags stay set and loop continues
-      bool flagsCleared = clearRenderFlagsIfUnchanged(startSeq);
-      
-      if (!flagsCleared) {
-        // Concurrent setText() detected during render - flags still set, loop will continue
-        DEBUG_PRINTLN("Concurrent setText() detected, re-rendering");
-      }
-      // If flags were cleared successfully, isDisplayDirty() will return false and loop exits
-    }
-  }
-}
-#elif defined(ESP8266)
-// ESP8266 ticker callback (TickTwo, loop-driven, safe for NeoPixel)
-void displayTickerCallback() {
-  // Only render if display is dirty (TickTwo runs continuously at 1ms)
+// Forward declaration for display callback
+void displayRenderCallback();
+
+// Display rendering callback - shared logic for both platforms
+// ESP32: Called from notification-based FreeRTOS task
+// ESP8266: Called from 1ms timer (only when dirty flag is set)
+void displayRenderCallback() {
+  // Only render if display is dirty
   if (!isDisplayDirty()) {
     return;
   }
   
-  // Drain all pending updates atomically (same logic as FreeRTOS task)
+  // Drain all pending updates atomically
   while (isDisplayDirty()) {
     uint32_t startSeq = getUpdateSequence();
     
-    // Render the display (safe: running in loop context, not ISR)
+    // Render the display
     updateNeoPixels();
     
     // Clear flags atomically - if concurrent update occurred, flags stay set and loop continues
@@ -85,6 +51,20 @@ void displayTickerCallback() {
       DEBUG_PRINTLN("Concurrent setText() detected, re-rendering");
     }
     // If flags were cleared successfully, isDisplayDirty() will return false and loop exits
+  }
+}
+
+#if defined(ESP32)
+// Rendering task for ESP32 (blocks on task notification, woken immediately when display dirty)
+void displayTask(void* parameter) {
+  DEBUG_PRINTLN("Display FreeRTOS task started - waiting for notifications");
+  
+  for(;;) {
+    // Block until notified (wake immediately when setText() marks dirty)
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);  // Clear notification value on exit, wait forever
+    
+    // Use shared render callback
+    displayRenderCallback();
   }
 }
 #endif
@@ -100,43 +80,14 @@ void initDisplay() {
   // Initialize hardware renderer (NeoPixels)
   initNeoPixels();
 
-  // Create FreeRTOS task for rendering (ESP32) or Ticker (ESP8266)
+  // Create display rendering task/timer using timer_task library
   #if defined(ESP32)
-    // ESP32: Use FreeRTOS task for guaranteed timing even during network operations
-    // Task will block on task notification and wake immediately when display becomes dirty
-    // Priority 2 = higher than networking (default priority 1)
-    // Stack size: 2KB should be plenty for display updates
-
-    #if defined(CONFIG_IDF_TARGET_ESP32C3)
-      // ESP32-C3 (single-core RISC-V): Run on Core 0 with high priority
-      xTaskCreate(
-        displayTask,            // Task function
-        "Display",              // Task name
-        2048,                   // Stack size (bytes)
-        NULL,                   // Task parameter
-        2,                      // Priority (2 = higher than default 1)
-        &displayTaskHandle      // Task handle (for task notifications)
-      );
-      DEBUG_PRINTLN("Display FreeRTOS task created (ESP32-C3: single-core, high priority)");
-    #else
-      // ESP32/ESP32-S3 (dual-core Xtensa): Pin to Core 1 (APP_CPU)
-      // Core 0 handles WiFi/networking, Core 1 handles display
-      xTaskCreatePinnedToCore(
-        displayTask,            // Task function
-        "Display",              // Task name
-        2048,                   // Stack size (bytes)
-        NULL,                   // Task parameter
-        2,                      // Priority
-        &displayTaskHandle,     // Task handle (for task notifications)
-        1                       // Core 1 (APP_CPU_NUM)
-      );
-      DEBUG_PRINTLN("Display FreeRTOS task created (dual-core: pinned to Core 1)");
-    #endif
-
+    // ESP32: Use notification-based task for immediate wake on setText()
+    // Task blocks on ulTaskNotifyTake() until notified
+    displayTaskHandle = createNotificationTask("Display", displayTask, 2048, 2);
   #elif defined(ESP8266)
-    // ESP8266: Start TickTwo for continuous polling (loop-driven, non-ISR, safe for NeoPixel)
-    displayTicker.start();
-    DEBUG_PRINTLN("Display ticker started (ESP8266 TickTwo - 1ms, loop-driven)");
+    // ESP8266: Use 1ms polling timer (checks dirty flag each iteration)
+    createTimer("Display", 1, displayRenderCallback, 0);
   #endif
 
   initDisplayController(); // Initialize controller to handle display logic
@@ -167,8 +118,8 @@ void setText(uint8_t row, const char* text) {
     portEXIT_CRITICAL(&spinlock);
     
     // Wake rendering task immediately (outside critical section)
-    if (textChanged && displayTaskHandle != NULL) {
-      xTaskNotifyGive(displayTaskHandle);  // Immediate wakeup, no delay!
+    if (textChanged) {
+      notifyTask(displayTaskHandle);  // Immediate wakeup, no delay!
     }
     
   #elif defined(ESP8266)

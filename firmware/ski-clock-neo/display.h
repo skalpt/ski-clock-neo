@@ -96,12 +96,6 @@ void setRenderCallback(RenderCallback callback);
 // Get the registered render callback
 RenderCallback getRenderCallback();
 
-#if defined(ESP8266)
-  // Expose TickTwo ticker for ESP8266 (call .update() in loop)
-  #include <TickTwo.h>
-  extern TickTwo displayTicker;
-#endif
-
 // Force immediate rendering of current display state
 void renderNow();
 

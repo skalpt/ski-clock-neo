@@ -172,6 +172,53 @@ bool TimerTaskManager::triggerTimer(const char* name) {
   return true;
 }
 
+#if defined(ESP32)
+TaskHandle_t TimerTaskManager::createNotificationTask(const char* name, TaskFunction taskFn, uint16_t stackSize, uint8_t priority) {
+  if (taskFn == nullptr) {
+    DEBUG_PRINTLN("ERROR: Task function is null");
+    return NULL;
+  }
+  
+  TaskHandle_t taskHandle = NULL;
+  
+  #if defined(CONFIG_IDF_TARGET_ESP32C3)
+    // ESP32-C3 (single-core RISC-V): Run on Core 0
+    xTaskCreate(
+      taskFn,
+      name,
+      stackSize,
+      NULL,
+      priority,
+      &taskHandle
+    );
+    DEBUG_PRINT("Notification task created (ESP32-C3): ");
+  #else
+    // ESP32/ESP32-S3 (dual-core Xtensa): Pin to Core 1 (APP_CPU)
+    xTaskCreatePinnedToCore(
+      taskFn,
+      name,
+      stackSize,
+      NULL,
+      priority,
+      &taskHandle,
+      1
+    );
+    DEBUG_PRINT("Notification task created (ESP32, Core 1): ");
+  #endif
+  
+  DEBUG_PRINTLN(name);
+  return taskHandle;
+}
+
+bool TimerTaskManager::notifyTask(TaskHandle_t taskHandle) {
+  if (taskHandle == NULL) {
+    return false;
+  }
+  xTaskNotifyGive(taskHandle);
+  return true;
+}
+#endif
+
 void TimerTaskManager::updateAll() {
   #if defined(ESP8266)
     for (uint8_t i = 0; i < timerCount; i++) {

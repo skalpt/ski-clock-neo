@@ -31,6 +31,9 @@ struct TimerConfig {
   #endif
 };
 
+// Task function type for notification-based tasks (ESP32 only)
+typedef void (*TaskFunction)(void* parameter);
+
 class TimerTaskManager {
 public:
   static TimerTaskManager& getInstance();
@@ -40,6 +43,16 @@ public:
   bool createOneShotTimer(const char* name, uint32_t intervalMs, TimerCallback callback);
   
   bool triggerTimer(const char* name);
+  
+  #if defined(ESP32)
+    // Create a notification-based task (ESP32 only)
+    // Task blocks on ulTaskNotifyTake() and wakes when notifyTask() is called
+    // Returns task handle for external notification, or NULL on failure
+    TaskHandle_t createNotificationTask(const char* name, TaskFunction taskFn, uint16_t stackSize = 2048, uint8_t priority = 2);
+    
+    // Notify a task to wake up (use with createNotificationTask)
+    bool notifyTask(TaskHandle_t taskHandle);
+  #endif
   
   void updateAll();
   
@@ -70,6 +83,16 @@ inline bool createOneShotTimer(const char* name, uint32_t intervalMs, TimerCallb
 inline bool triggerTimer(const char* name) {
   return TimerTaskManager::getInstance().triggerTimer(name);
 }
+
+#if defined(ESP32)
+inline TaskHandle_t createNotificationTask(const char* name, TaskFunction taskFn, uint16_t stackSize = 2048, uint8_t priority = 2) {
+  return TimerTaskManager::getInstance().createNotificationTask(name, taskFn, stackSize, priority);
+}
+
+inline bool notifyTask(TaskHandle_t taskHandle) {
+  return TimerTaskManager::getInstance().notifyTask(taskHandle);
+}
+#endif
 
 inline void updateTimers() {
   TimerTaskManager::getInstance().updateAll();

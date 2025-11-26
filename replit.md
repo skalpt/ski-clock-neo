@@ -26,7 +26,12 @@ The project consists of two primary components:
 *   **Display Content System**: Alternates time and date every 4 seconds. Temperature (DS18B20 sensor) is displayed with non-blocking reads. Event-driven updates via `setText()` callbacks are used for all data libraries.
 *   **RTC Integration**: DS3231 RTC module provides instant time on boot (before WiFi/NTP connects). NTP automatically syncs the RTC hourly to maintain accuracy. Falls back gracefully to NTP-only if no RTC is present.
 *   **Time Change Callbacks**: Precise minute/date change detection via callback system. The data_time library tracks last minute and day, calling registered callbacks with flags (TIME_CHANGE_MINUTE, TIME_CHANGE_DATE) when changes occur. A 1-second polling timer detects changes reliably.
-*   **Unified Timer Library**: The `timer_task` library provides platform abstraction for periodic timers - FreeRTOS tasks (priority 2, Core 1 on dual-core ESP32, Core 0 on C3) on ESP32 and TickTwo tickers on ESP8266. Supports both periodic timers (createTimer) and one-shot timers (createOneShotTimer/triggerTimer). Used by display_controller (4s toggle), data_time (1s time check), and data_temperature (30s poll + 750ms read delay).
+*   **Unified Timer Library**: The `timer_task` library provides complete platform abstraction for all timing needs:
+    - Periodic timers via `createTimer()` - FreeRTOS tasks on ESP32, TickTwo tickers on ESP8266
+    - One-shot timers via `createOneShotTimer()`/`triggerTimer()` - ESP32 Ticker.once_ms, ESP8266 TickTwo with iterations=1
+    - Notification-based tasks via `createNotificationTask()`/`notifyTask()` (ESP32 only) - for event-driven wake patterns
+    - All ESP8266 timers updated via single `updateTimers()` call in main loop
+    - Used by: display (1ms render/notification), display_controller (4s toggle), data_time (1s time check), data_temperature (30s poll + 750ms read delay)
 *   **Clean Separation of Concerns**: Temperature polling and time/date toggling are owned by their respective libraries, which update the display controller via callbacks, ensuring independent timing logic.
 *   **Event Logging System**: A ring buffer stores device events with timestamps, publishing them to MQTT when connected. Events include boot, WiFi connect/disconnect, MQTT connect/disconnect, and temperature readings.
 
