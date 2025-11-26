@@ -28,11 +28,4 @@ void forceDisplayUpdate();
 // Updates row 1 with new temperature reading
 void updateTemperatureDisplay();
 
-#if defined(ESP8266)
-  // Expose TickTwo tickers for ESP8266 (call .update() in loop)
-  #include <TickTwo.h>
-  extern TickTwo toggleTicker;
-  extern TickTwo timeCheckTicker;
-#endif
-
 #endif

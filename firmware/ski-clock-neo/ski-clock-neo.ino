@@ -5,6 +5,7 @@
 #include "display.h"
 #include "display_controller.h"
 #include "data_temperature.h"
+#include "timer_task.h"
 #include "button.h"
 #include "wifi_config.h"
 #include "mqtt_client.h"
@@ -53,13 +54,12 @@ void loop() {
   // Update button state (debouncing and callbacks)
   updateButton();
   
-  // Update TickTwo software tickers (ESP8266 only - loop-driven, non-ISR, WiFi-safe)
-  // ESP32 uses FreeRTOS tasks, so no ticker updates needed
+  // Update timers (ESP8266 only - loop-driven, non-ISR, WiFi-safe)
+  // ESP32 uses FreeRTOS tasks, so no updates needed in loop
   #if defined(ESP8266)
     displayTicker.update();             // Display rendering (1ms poll, safe for NeoPixel)
-    toggleTicker.update();              // Display time/date toggle (4s)
-    timeCheckTicker.update();           // Time change detection (1s)
-    temperaturePollTicker.update();     // Temperature poll (30s)
-    temperatureReadTicker.update();     // Temperature read delay (750ms)
+    updateTimers();                     // All timer_task managed timers (toggle, time check)
+    temperaturePollTicker.update();     // Temperature poll (30s) - uses its own TickTwo
+    temperatureReadTicker.update();     // Temperature read delay (750ms) - uses its own TickTwo
   #endif
 }

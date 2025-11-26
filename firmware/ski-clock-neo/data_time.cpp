@@ -1,6 +1,7 @@
 #include "data_time.h"
 
 #include "debug.h"
+#include "timer_task.h"
 #include <time.h>
 #include <sys/time.h>
 #include <Wire.h>
@@ -96,6 +97,10 @@ void initTimeData() {
   #elif defined(ESP8266)
     configTime(SWEDEN_TZ, NTP_SERVER_1, NTP_SERVER_2, NTP_SERVER_3);
   #endif
+  
+  // Create 1-second timer for time change detection
+  // Uses timer_task library for platform abstraction (FreeRTOS on ESP32, TickTwo on ESP8266)
+  createTimer("TimeCheck", 1000, []() { checkTimeChange(); });
   
   timeInitialized = true;
   DEBUG_PRINTLN("Time system initialized");
