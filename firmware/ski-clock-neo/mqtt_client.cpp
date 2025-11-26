@@ -180,10 +180,10 @@ bool connectMQTT() {
     setConnectivityState(true, true);
     mqttIsConnected = true;
 
-    // Start heartbeat ticker
-    heartbeatTicker.detach();
-    heartbeatTicker.attach_ms(HEARTBEAT_INTERVAL, publishHeartbeat);
-    publishHeartbeat();
+    // Log mqtt_connect event and flush any queued events
+    logEvent("mqtt_connect");
+    setEventLogReady(true);
+    flushEventQueue();
 
     // Subscribe to topics
     String versionResponseTopic = String(MQTT_TOPIC_VERSION_RESPONSE) + "/" + getDeviceID();
@@ -198,16 +198,16 @@ bool connectMQTT() {
       DEBUG_PRINTLN(commandTopic);
     }
     
+    // Start heartbeat ticker
+    heartbeatTicker.detach();
+    heartbeatTicker.attach_ms(HEARTBEAT_INTERVAL, publishHeartbeat);
+    publishHeartbeat();
+
     // Start display snapshot ticker (hourly)
     displaySnapshotTicker.detach();
     displaySnapshotTicker.attach_ms(DISPLAY_SNAPSHOT_INTERVAL, publishDisplaySnapshot);
     publishDisplaySnapshot();
-    
-    // Log mqtt_connect event and flush any queued events
-    logEvent("mqtt_connect");
-    setEventLogReady(true);
-    flushEventQueue();
-    
+        
     return true;
   } else {
     DEBUG_PRINT("MQTT broker connection failed, rc=");
