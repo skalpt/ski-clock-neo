@@ -26,16 +26,16 @@ void setup() {
   initLedIndicator();
 
   // Initialize display
-  initDisplay();
+  //initDisplay();
   
   // Initialize button
-  initButton();
+  //initButton();
 
   // Initialise WiFi
   //initWiFi();
   
   // Initialize MQTT system
-  initMQTT();
+  //initMQTT();
     
   DEBUG_PRINTLN("===========================================");
   DEBUG_PRINTLN("Setup complete - entering main loop");
@@ -47,10 +47,10 @@ void loop() {
   //updateWiFi();
 
   // Handle MQTT updates (subscriptions and version requests)
-  updateMQTT();
+  //updateMQTT();
   
   // Update button state (debouncing and callbacks)
-  updateButton();
+  //updateButton();
   
   // Update timers (ESP8266 only - loop-driven, non-ISR, WiFi-safe)
   // ESP32 uses FreeRTOS tasks, so no updates needed in loop
