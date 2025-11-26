@@ -19,6 +19,18 @@
 #include <string.h>
 
 // ============================================================================
+// PLATFORM-SPECIFIC MACROS
+// ============================================================================
+
+#if defined(ESP32)
+  #define DISPLAY_ENTER_CRITICAL() portENTER_CRITICAL(&spinlock)
+  #define DISPLAY_EXIT_CRITICAL() portEXIT_CRITICAL(&spinlock)
+#else
+  #define DISPLAY_ENTER_CRITICAL() noInterrupts()
+  #define DISPLAY_EXIT_CRITICAL() interrupts()
+#endif
+
+// ============================================================================
 // STATE VARIABLES
 // ============================================================================
 
@@ -135,46 +147,24 @@ void setText(uint8_t row, const char* text) {
   
   // All operations (compare, write, flag updates) must be atomic
   // to prevent torn reads from concurrent setText() or snapshotAllText()
+  DISPLAY_ENTER_CRITICAL();
+  if (strcmp(displayText[row], text) != 0) {
+    strncpy(displayText[row], text, MAX_TEXT_LENGTH - 1);
+    displayText[row][MAX_TEXT_LENGTH - 1] = '\0';
+    updateSequence++;
+    displayDirty = true;
+    renderRequested = true;
+    textChanged = true;
+  }
+  DISPLAY_EXIT_CRITICAL();
+  
   #if defined(ESP32)
-    portENTER_CRITICAL(&spinlock);
-    if (strcmp(displayText[row], text) != 0) {
-      strncpy(displayText[row], text, MAX_TEXT_LENGTH - 1);
-      displayText[row][MAX_TEXT_LENGTH - 1] = '\0';
-      updateSequence++;
-      displayDirty = true;
-      renderRequested = true;
-      textChanged = true;
-    }
-    portEXIT_CRITICAL(&spinlock);
-    
     // Wake rendering task immediately (outside critical section)
     if (textChanged) {
       notifyTask(displayTaskHandle);  // Immediate wakeup, no delay!
     }
-    
-  #elif defined(ESP8266)
-    noInterrupts();
-    if (strcmp(displayText[row], text) != 0) {
-      strncpy(displayText[row], text, MAX_TEXT_LENGTH - 1);
-      displayText[row][MAX_TEXT_LENGTH - 1] = '\0';
-      updateSequence++;
-      displayDirty = true;
-      renderRequested = true;
-      textChanged = true;
-    }
-    interrupts();
-    // TickTwo runs continuously and checks dirty flag - no trigger needed
-    (void)textChanged;  // Suppress unused warning
-    
   #else
-    // Fallback for other platforms (no atomic guarantee)
-    if (strcmp(displayText[row], text) != 0) {
-      strncpy(displayText[row], text, MAX_TEXT_LENGTH - 1);
-      displayText[row][MAX_TEXT_LENGTH - 1] = '\0';
-      updateSequence++;
-      displayDirty = true;
-      renderRequested = true;
-    }
+    (void)textChanged;  // Suppress unused warning on ESP8266
   #endif
 }
 
@@ -186,23 +176,11 @@ const char* getText(uint8_t row) {
 
 // Atomically copy all row text to destination buffer (prevents torn reads)
 void snapshotAllText(char dest[][MAX_TEXT_LENGTH]) {
-  #if defined(ESP32)
-    portENTER_CRITICAL(&spinlock);
-    for (uint8_t row = 0; row < DISPLAY_ROWS; row++) {
-      strncpy(dest[row], displayText[row], MAX_TEXT_LENGTH);
-    }
-    portEXIT_CRITICAL(&spinlock);
-  #elif defined(ESP8266)
-    noInterrupts();
-    for (uint8_t row = 0; row < DISPLAY_ROWS; row++) {
-      strncpy(dest[row], displayText[row], MAX_TEXT_LENGTH);
-    }
-    interrupts();
-  #else
-    for (uint8_t row = 0; row < DISPLAY_ROWS; row++) {
-      strncpy(dest[row], displayText[row], MAX_TEXT_LENGTH);
-    }
-  #endif
+  DISPLAY_ENTER_CRITICAL();
+  for (uint8_t row = 0; row < DISPLAY_ROWS; row++) {
+    strncpy(dest[row], displayText[row], MAX_TEXT_LENGTH);
+  }
+  DISPLAY_EXIT_CRITICAL();
 }
 
 // ============================================================================
@@ -249,17 +227,9 @@ void commitBuffer(const uint8_t* renderBuffer, uint16_t bufferSize) {
   }
   
   // Use critical section to ensure atomic update (prevents MQTT from reading half-updated buffer)
-  #if defined(ESP32)
-    taskENTER_CRITICAL(&spinlock);
-    memcpy(displayBuffer, renderBuffer, bufferSize);
-    taskEXIT_CRITICAL(&spinlock);
-  #elif defined(ESP8266)
-    noInterrupts();
-    memcpy(displayBuffer, renderBuffer, bufferSize);
-    interrupts();
-  #else
-    memcpy(displayBuffer, renderBuffer, bufferSize);
-  #endif
+  DISPLAY_ENTER_CRITICAL();
+  memcpy(displayBuffer, renderBuffer, bufferSize);
+  DISPLAY_EXIT_CRITICAL();
 }
 
 // Get pointer to display buffer (for MQTT snapshots)
@@ -316,29 +286,13 @@ uint32_t getUpdateSequence() {
 bool clearRenderFlagsIfUnchanged(uint32_t startSeq) {
   bool cleared = false;
   
-  #if defined(ESP32)
-    portENTER_CRITICAL(&spinlock);
+    DISPLAY_ENTER_CRITICAL();
     if (updateSequence == startSeq) {
       displayDirty = false;
       renderRequested = false;
       cleared = true;
     }
-    portEXIT_CRITICAL(&spinlock);
-  #elif defined(ESP8266)
-    noInterrupts();
-    if (updateSequence == startSeq) {
-      displayDirty = false;
-      renderRequested = false;
-      cleared = true;
-    }
-    interrupts();
-  #else
-    if (updateSequence == startSeq) {
-      displayDirty = false;
-      renderRequested = false;
-      cleared = true;
-    }
-  #endif
+    DISPLAY_EXIT_CRITICAL();
   
   return cleared;
 }
@@ -350,5 +304,7 @@ RenderCallback getRenderCallback() {
 
 // Force immediate render (bypasses dirty flag check)
 void renderNow() {
+  DISPLAY_ENTER_CRITICAL();
   updateNeoPixels();
+  DISPLAY_EXIT_CRITICAL();
 }
