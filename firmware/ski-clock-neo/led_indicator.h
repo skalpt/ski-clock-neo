@@ -74,17 +74,22 @@ enum LedPattern {
   #define FAST_PIN_LOW(pin)  digitalWrite(pin, LOW)
 #endif
 
-// Helper macros to handle LED on/off with inverted logic
-// Implemented as macros (not inline functions) to guarantee IRAM placement when called from ISR
-#define ledOn() do { \
-  if (LED_GPIO_ON == LOW) { FAST_PIN_LOW(LED_PIN); } \
-  else { FAST_PIN_HIGH(LED_PIN); } \
-} while(0)
+// Helper functions to handle LED on/off with inverted logic
+inline void IRAM_ATTR ledOn() {
+  if (LED_GPIO_ON == LOW) {
+    FAST_PIN_LOW(LED_PIN);
+  } else {
+    FAST_PIN_HIGH(LED_PIN);
+  }
+}
 
-#define ledOff() do { \
-  if (LED_GPIO_ON == LOW) { FAST_PIN_HIGH(LED_PIN); } \
-  else { FAST_PIN_LOW(LED_PIN); } \
-} while(0)
+inline void IRAM_ATTR ledOff() {
+  if (LED_GPIO_ON == LOW) {
+    FAST_PIN_HIGH(LED_PIN);
+  } else {
+    FAST_PIN_LOW(LED_PIN);
+  }
+}
 
 // Connectivity state tracking
 struct ConnectivityState {
@@ -112,10 +117,6 @@ void updateLedStatus();
 void setConnectivityState(bool wifiConnected, bool mqttConnected);
 void beginLedOverride(LedPattern pattern);
 void endLedOverride();
-
-// Debug functions
-uint32_t getLedIsrCount();
-void debugLedState();
 
 // ISR callbacks (declared but not exposed as public API)
 void IRAM_ATTR ledTimerCallback();

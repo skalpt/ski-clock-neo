@@ -45,9 +45,6 @@ volatile LedPattern currentPattern = LED_OFF;
 volatile uint8_t flashCount = 0;
 volatile bool ledState = false;
 
-// Debug counter to verify ISR is firing
-volatile uint32_t ledIsrCount = 0;
-
 // ============================================================================
 // HARDWARE TIMER CALLBACK
 // ============================================================================
@@ -59,32 +56,6 @@ void IRAM_ATTR ledTimerCallback() {
     portENTER_CRITICAL_ISR(&ledTimerMux);
   #endif
   
-  // Debug: increment counter to verify ISR is firing
-  ledIsrCount++;
-  
-  // DEBUG: Temporarily use 5s on / 5s off for all patterns to diagnose LED issue
-  // 100ms timer interval, so 50 ticks = 5 seconds
-  flashCount++;
-  if (flashCount >= 100) {  // Full cycle = 10 seconds (50 on + 50 off)
-    flashCount = 0;
-  }
-  
-  if (flashCount < 50) {
-    // First 5 seconds: LED ON
-    if (!ledState) {
-      ledState = true;
-      ledOn();
-    }
-  } else {
-    // Next 5 seconds: LED OFF
-    if (ledState) {
-      ledState = false;
-      ledOff();
-    }
-  }
-  
-  // Original pattern logic commented out for debugging:
-  /*
   switch (currentPattern) {
     case LED_OTA_PROGRESS:
       // Quick flashing (100ms on/off) during OTA
@@ -153,7 +124,6 @@ void IRAM_ATTR ledTimerCallback() {
       ledOff();
       break;
   }
-  */
   
   #if defined(ESP32)
     portEXIT_CRITICAL_ISR(&ledTimerMux);
@@ -209,37 +179,16 @@ void initLedIndicator() {
   #endif
 
   // Start with "disconnected" status
-  DEBUG_PRINTLN("[LED] Setting initial pattern to WIFI_DISCONNECTED");
   setLedPattern(LED_WIFI_DISCONNECTED);
-  DEBUG_PRINTLN("[LED] initLedIndicator complete");
 }
 
 // ============================================================================
 // PATTERN MANAGEMENT
 // ============================================================================
 
-// Helper to convert pattern to string for debugging
-const char* patternToString(LedPattern pattern) {
-  switch(pattern) {
-    case LED_OTA_PROGRESS: return "OTA_PROGRESS";
-    case LED_CONNECTED: return "CONNECTED";
-    case LED_MQTT_DISCONNECTED: return "MQTT_DISCONNECTED";
-    case LED_WIFI_DISCONNECTED: return "WIFI_DISCONNECTED";
-    case LED_OFF: return "OFF";
-    default: return "UNKNOWN";
-  }
-}
-
 // Internal function to set LED pattern
 void setLedPattern(LedPattern pattern) {
-  DEBUG_PRINT("[LED] setLedPattern called: ");
-  DEBUG_PRINT(patternToString(pattern));
-  DEBUG_PRINT(" (current: ");
-  DEBUG_PRINT(patternToString(currentPattern));
-  DEBUG_PRINTLN(")");
-  
   if (pattern == currentPattern) {
-    DEBUG_PRINTLN("[LED] Pattern unchanged, skipping");
     return;
   }
   
@@ -264,13 +213,9 @@ void setLedPattern(LedPattern pattern) {
     if (pattern != LED_OFF) {
       #if ESP_ARDUINO_VERSION_MAJOR >= 3
         timerStart(ledTimer);
-        DEBUG_PRINTLN("[LED] Timer started (Core 3.x)");
       #else
         timerAlarmEnable(ledTimer);
-        DEBUG_PRINTLN("[LED] Timer enabled (Core 2.x)");
       #endif
-    } else {
-      DEBUG_PRINTLN("[LED] Timer NOT started (pattern is OFF)");
     }
     
   #elif defined(ESP8266)
@@ -287,16 +232,8 @@ void setLedPattern(LedPattern pattern) {
 
 // Update LED pattern based on current connectivity state
 void updateLedStatus() {
-  DEBUG_PRINT("[LED] updateLedStatus: wifi=");
-  DEBUG_PRINT(currentConnectivity.wifiConnected ? "true" : "false");
-  DEBUG_PRINT(", mqtt=");
-  DEBUG_PRINT(currentConnectivity.mqttConnected ? "true" : "false");
-  DEBUG_PRINT(", override=");
-  DEBUG_PRINTLN(ledOverrideActive ? "true" : "false");
-  
   // If override is active (e.g., during OTA), don't change pattern
   if (ledOverrideActive) {
-    DEBUG_PRINTLN("[LED] Override active, skipping update");
     return;
   }
   
@@ -310,9 +247,6 @@ void updateLedStatus() {
     newPattern = LED_CONNECTED;
   }
   
-  DEBUG_PRINT("[LED] Determined pattern: ");
-  DEBUG_PRINTLN(patternToString(newPattern));
-  
   setLedPattern(newPattern);
 }
 
@@ -322,11 +256,6 @@ void updateLedStatus() {
 
 // Update connectivity state and refresh LED pattern
 void setConnectivityState(bool wifiConnected, bool mqttConnected) {
-  DEBUG_PRINT("[LED] setConnectivityState: wifi=");
-  DEBUG_PRINT(wifiConnected ? "true" : "false");
-  DEBUG_PRINT(", mqtt=");
-  DEBUG_PRINTLN(mqttConnected ? "true" : "false");
-  
   currentConnectivity.wifiConnected = wifiConnected;
   currentConnectivity.mqttConnected = mqttConnected;
   updateLedStatus();
@@ -334,9 +263,6 @@ void setConnectivityState(bool wifiConnected, bool mqttConnected) {
 
 // Begin LED override mode (for OTA updates)
 void beginLedOverride(LedPattern pattern) {
-  DEBUG_PRINT("[LED] beginLedOverride: ");
-  DEBUG_PRINTLN(patternToString(pattern));
-  
   ledOverrideActive = true;
   ledOverridePattern = pattern;
   setLedPattern(pattern);
@@ -344,25 +270,6 @@ void beginLedOverride(LedPattern pattern) {
 
 // End LED override mode and restore normal connectivity indication
 void endLedOverride() {
-  DEBUG_PRINTLN("[LED] endLedOverride");
-  
   ledOverrideActive = false;
   updateLedStatus();
-}
-
-// Debug function to check if timer ISR is firing
-uint32_t getLedIsrCount() {
-  return ledIsrCount;
-}
-
-// Debug function to get current LED state info
-void debugLedState() {
-  DEBUG_PRINT("[LED DEBUG] ISR count: ");
-  DEBUG_PRINT(ledIsrCount);
-  DEBUG_PRINT(", pattern: ");
-  DEBUG_PRINT(patternToString(currentPattern));
-  DEBUG_PRINT(", flashCount: ");
-  DEBUG_PRINT(flashCount);
-  DEBUG_PRINT(", ledState: ");
-  DEBUG_PRINTLN(ledState ? "ON" : "OFF");
 }

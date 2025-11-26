@@ -42,44 +42,7 @@ void setup() {
   DEBUG_PRINTLN("===========================================\n");
 }
 
-// Debug: track last LED debug print time
-static unsigned long lastLedDebug = 0;
-static bool ledTestDone = false;
-
 void loop() {
-  // DEBUG TEST: After 3 seconds, manually toggle LED from main loop to test GPIO8
-  if (!ledTestDone && millis() > 3000) {
-    ledTestDone = true;
-    DEBUG_PRINTLN("[LED TEST] Testing GPIO8 directly from main loop...");
-    
-    // Test 1: Direct register manipulation
-    DEBUG_PRINTLN("[LED TEST] ledOn() - should turn LED ON");
-    ledOn();
-    delay(2000);
-    
-    DEBUG_PRINTLN("[LED TEST] ledOff() - should turn LED OFF");
-    ledOff();
-    delay(2000);
-    
-    // Test 2: Try digitalWrite as comparison
-    DEBUG_PRINTLN("[LED TEST] digitalWrite(8, LOW) - should turn LED ON (inverted)");
-    digitalWrite(LED_PIN, LOW);
-    delay(2000);
-    
-    DEBUG_PRINTLN("[LED TEST] digitalWrite(8, HIGH) - should turn LED OFF (inverted)");
-    digitalWrite(LED_PIN, HIGH);
-    delay(2000);
-    
-    // Test 3: Re-run pinMode and try again
-    DEBUG_PRINTLN("[LED TEST] Re-running pinMode(8, OUTPUT) then ledOn()");
-    pinMode(LED_PIN, OUTPUT);
-    ledOn();
-    delay(2000);
-    ledOff();
-    
-    DEBUG_PRINTLN("[LED TEST] Test complete. Resuming normal operation.");
-  }
-  
   // Handle WiFi tasks (config portal or reconnection)
   updateWiFi();
 
@@ -94,10 +57,4 @@ void loop() {
   #if defined(ESP8266)
     updateTimers();  // All timer_task managed timers (display, toggle, time check, temperature)
   #endif
-  
-  // Debug: print LED state every 5 seconds
-  if (millis() - lastLedDebug > 5000) {
-    lastLedDebug = millis();
-    debugLedState();
-  }
 }
