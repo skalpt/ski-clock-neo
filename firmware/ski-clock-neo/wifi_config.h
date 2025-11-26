@@ -102,6 +102,9 @@ void initWiFi() {
   // Disable auto-reset when the user clicks "Disconnect" in the portal menu
   config.autoReset = false;
 
+  // Disable AutoConnect's built-in LED ticker to prevent GPIO8 conflict on ESP32-C3
+  config.ticker = false;
+
   // Apply configuration
   portal.config(config);
 
