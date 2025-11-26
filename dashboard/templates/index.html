@@ -255,7 +255,7 @@
                                 </div>
                                 <div class="device-info">
                                     <div><strong>Status:</strong> ${statusText}${device.status === 'degraded' ? ' (unstable connection)' : ''}</div>
-                                    <div><strong>Version:</strong> ${safeVersion}</div>
+                                    <div><strong>Version:</strong> ${safeVersion}${device.pinned_firmware_version ? ` <span class="badge badge-warning" title="Version pinned - device will not auto-update">📌 Pinned</span>` : ''}</div>
                                     <div><strong>Uptime:</strong> ${formatUptime(device.uptime)}</div>
                                     ${device.ssid ? `<div><strong>WiFi Network:</strong> ${safeSsid}</div>` : ''}
                                     ${device.ip_address ? `<div><strong>IP Address:</strong> ${device.online && isIPv4(device.ip_address) ? `<a href="http://${encodeURIComponent(device.ip_address)}/" target="_blank" rel="noopener noreferrer" class="device-ip-link" title="Open AutoConnect page (only works if you're on the same network)">${safeIpAddress}</a>` : safeIpAddress}</div>` : ''}
@@ -272,6 +272,11 @@
                                     <button class="device-btn restart-btn" data-device-id="${safeDeviceId}" data-action="restart" ${device.status === 'offline' ? 'disabled title="Device must be online"' : ''}>
                                         🔄 Restart
                                     </button>
+                                    ${device.pinned_firmware_version ? `
+                                    <button class="device-btn unpin-btn" data-device-id="${safeDeviceId}" data-action="unpin" title="Remove version pin - device will follow latest">
+                                        📌 Unpin
+                                    </button>
+                                    ` : ''}
                                     <button class="device-btn delete-btn" data-device-id="${safeDeviceId}" data-action="delete">
                                         🗑️ Remove
                                     </button>
@@ -341,6 +346,8 @@
                         flipCard(deviceId);
                     } else if (action === 'request-snapshot') {
                         requestSnapshot(deviceId);
+                    } else if (action === 'unpin') {
+                        unpinDeviceVersion(deviceId);
                     }
                 });
             });
