@@ -151,11 +151,23 @@ void initLedIndicator() {
   
   // Initialize hardware timer
   #if defined(ESP32)
-    // ESP32: Use hardware timer 0, divider 80 (1MHz tick rate)
-    ledTimer = timerBegin(0, 80, true);
-    timerAttachInterrupt(ledTimer, &ledTimerCallback, true);
-    timerAlarmWrite(ledTimer, 100000, true);  // 100ms interval
-    DEBUG_PRINTLN("ESP32 hardware timer initialized (100ms interval)");
+    // ESP32 Arduino Core 3.x changed the timer API significantly
+    // Core 3.x: timerBegin(frequency), timerAlarm(timer, us, reload, count)
+    // Core 2.x: timerBegin(num, divider, countUp), timerAlarmWrite(), timerAlarmEnable()
+    #if ESP_ARDUINO_VERSION_MAJOR >= 3
+      // ESP32 Arduino Core 3.x API
+      ledTimer = timerBegin(1000000);  // 1MHz timer frequency
+      timerAttachInterrupt(ledTimer, &ledTimerCallback);
+      timerAlarm(ledTimer, 100000, true, 0);  // 100000us = 100ms, auto-reload, unlimited
+      DEBUG_PRINTLN("ESP32 hardware timer initialized (Core 3.x, 100ms interval)");
+    #else
+      // ESP32 Arduino Core 2.x API
+      ledTimer = timerBegin(0, 80, true);  // Timer 0, divider 80 (1MHz)
+      timerAttachInterrupt(ledTimer, &ledTimerCallback, true);
+      timerAlarmWrite(ledTimer, 100000, true);  // 100ms interval
+      timerAlarmEnable(ledTimer);
+      DEBUG_PRINTLN("ESP32 hardware timer initialized (Core 2.x, 100ms interval)");
+    #endif
     
   #elif defined(ESP8266)
     // ESP8266: Use Timer1 (hardware timer)
@@ -182,7 +194,11 @@ void setLedPattern(LedPattern pattern) {
   
   #if defined(ESP32)
     // Stop current timer
-    timerAlarmDisable(ledTimer);
+    #if ESP_ARDUINO_VERSION_MAJOR >= 3
+      timerStop(ledTimer);
+    #else
+      timerAlarmDisable(ledTimer);
+    #endif
     
     // Reset state (use critical section for volatile variables)
     portENTER_CRITICAL(&ledTimerMux);
@@ -195,7 +211,11 @@ void setLedPattern(LedPattern pattern) {
     
     // Start new pattern
     if (pattern != LED_OFF) {
-      timerAlarmEnable(ledTimer);
+      #if ESP_ARDUINO_VERSION_MAJOR >= 3
+        timerStart(ledTimer);
+      #else
+        timerAlarmEnable(ledTimer);
+      #endif
     }
     
   #elif defined(ESP8266)
