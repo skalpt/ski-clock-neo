@@ -24,7 +24,13 @@ The project consists of two primary components:
 *   **MQTT Command Handling**: Subscribes to device-specific topics for remote management, supporting `rollback`, `restart`, and `snapshot` commands.
 *   **OTA Progress Reporting**: Publishes real-time OTA status to MQTT topics for granular tracking.
 *   **Display Content System**: Alternates time and date every 4 seconds. Temperature (DS18B20 sensor) is displayed with non-blocking reads. Event-driven updates via `setText()` callbacks are used for all data libraries.
-*   **RTC Integration**: DS3231 RTC module provides instant time on boot (before WiFi/NTP connects). NTP automatically syncs the RTC hourly to maintain accuracy. Falls back gracefully to NTP-only if no RTC is present.
+*   **Button-Controlled Timer Mode**: Physical button triggers stopwatch functionality:
+    - Press in NORMAL mode: Starts countdown (3, 2, 1) with top row cycling time/date/temp
+    - Press during COUNTDOWN: Cancels and returns to normal mode
+    - Press during TIMER: Stops timer, flashes elapsed time (0.5s intervals for 8s), then holds solid for 1 minute before auto-reverting to normal
+    - State machine: NORMAL → COUNTDOWN → TIMER → FLASHING_RESULT → DISPLAY_RESULT → NORMAL
+    - Transition lockout (200ms) prevents button bounce issues
+*   **RTC Integration**: DS3231 RTC module provides instant time on boot (before WiFi/NTP connects). NTP automatically syncs the RTC hourly to maintain accuracy. Falls back gracefully to NTP-only if no RTC is present. **Important**: ESP32-C3 requires explicit I2C pins via `Wire.begin(RTC_SDA_PIN, RTC_SCL_PIN)` to avoid conflict with default GPIO 8/9 (which conflicts with LED on GPIO 8).
 *   **Time Change Callbacks**: Precise minute/date change detection via callback system. The data_time library tracks last minute and day, calling registered callbacks with flags (TIME_CHANGE_MINUTE, TIME_CHANGE_DATE) when changes occur. A 1-second polling timer detects changes reliably.
 *   **Unified Timer Library**: The `timing_helpers` library provides complete platform abstraction for all timing needs:
     - Periodic timers via `createTimer()` - FreeRTOS tasks on ESP32, TickTwo tickers on ESP8266
