@@ -168,6 +168,36 @@ void setText(uint8_t row, const char* text) {
   #endif
 }
 
+// Set text for a specific row without triggering render (for batch updates)
+// Call triggerRender() after setting all rows to trigger a single render
+// Returns true if text was actually changed
+bool setTextNoRender(uint8_t row, const char* text) {
+  if (row >= displayConfig.rows) return false;  // Bounds check
+  
+  bool changed = false;
+  DISPLAY_ENTER_CRITICAL();
+  if (strcmp(displayText[row], text) != 0) {
+    strncpy(displayText[row], text, MAX_TEXT_LENGTH - 1);
+    displayText[row][MAX_TEXT_LENGTH - 1] = '\0';
+    updateSequence++;
+    displayDirty = true;
+    renderRequested = true;
+    changed = true;
+  }
+  DISPLAY_EXIT_CRITICAL();
+  return changed;
+}
+
+// Trigger render after batch updates (notifies render task on ESP32)
+void triggerRender() {
+  #if defined(ESP32)
+    if (displayTaskHandle != nullptr) {
+      notifyTask(displayTaskHandle);
+    }
+  #endif
+  // On ESP8266, the 1ms polling timer will pick up renderRequested flag
+}
+
 // Get text for a specific row (read-only)
 const char* getText(uint8_t row) {
   if (row >= displayConfig.rows) return "";

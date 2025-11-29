@@ -38,6 +38,14 @@ DisplayConfig getDisplayConfig();
 // Set text content for a row (called by main firmware)
 void setText(uint8_t row, const char* text);
 
+// Set text content for a row without triggering render (for batch updates)
+// Call triggerRender() after setting all rows to trigger a single render
+// Returns true if text was actually changed
+bool setTextNoRender(uint8_t row, const char* text);
+
+// Trigger render after batch updates (notifies render task on ESP32)
+void triggerRender();
+
 // Get text content for a row (called by render libraries)
 // WARNING: Not thread-safe for concurrent reads during setText()
 // Use snapshotAllText() for atomic multi-row reads during rendering

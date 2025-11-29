@@ -25,18 +25,20 @@
 // CONSTANTS
 // ============================================================================
 
-static const uint32_t TOGGLE_INTERVAL_MS = 4000;       // Time/date toggle interval
-static const uint32_t COUNTDOWN_INTERVAL_MS = 1000;    // Countdown tick (1 second)
-static const uint32_t TIMER_INTERVAL_MS = 1000;        // Timer tick (1 second)
-static const uint32_t FLASH_INTERVAL_MS = 500;         // Flash interval (0.5 seconds)
-static const uint32_t FLASH_DURATION_MS = 8000;        // Flash for 8 seconds
-static const uint32_t RESULT_DISPLAY_MS = 60000;       // Show result for 1 minute
+static const uint32_t TICK_INTERVAL_MS = 500;          // Unified tick interval (0.5 seconds)
+static const uint8_t TICKS_PER_TOGGLE = 8;             // 8 ticks = 4 seconds for time/date toggle
+static const uint8_t TICKS_PER_SECOND = 2;             // 2 ticks = 1 second for countdown/timer
+static const uint8_t FLASH_TICKS = 16;                 // 16 ticks = 8 seconds of flashing
+static const uint16_t RESULT_TICKS = 120;              // 120 ticks = 60 seconds result display
 
 // ============================================================================
 // STATE VARIABLES
 // ============================================================================
 
 static DisplayMode currentMode = MODE_NORMAL;          // Current display mode
+
+// Unified tick counter (reset on mode changes for synchronization)
+static volatile uint16_t tickCounter = 0;
 
 // Normal mode toggle state (time vs date)
 static volatile bool showingTime = true;
@@ -48,15 +50,10 @@ static volatile uint8_t timerTopRowState = 0;
 static int8_t countdownValue = 3;                      // Countdown: 3, 2, 1
 
 // Timer state
-static uint32_t timerStartMillis = 0;                  // When timer started
 static uint32_t elapsedSeconds = 0;                    // Elapsed time in seconds
 
 // Flash state
 static bool flashVisible = true;                       // Toggle for flashing display
-static uint32_t flashStartMillis = 0;                  // When flashing started
-
-// Result display state
-static uint32_t resultStartMillis = 0;                 // When result display started
 
 // Transition guard to prevent rapid state changes
 static volatile bool transitionInProgress = false;
@@ -67,16 +64,12 @@ static const uint32_t TRANSITION_LOCKOUT_MS = 200;     // Minimum time between t
 // FORWARD DECLARATIONS
 // ============================================================================
 
-void toggleTimerCallback();
-void timerModeToggleCallback();
-void countdownTickCallback();
-void timerTickCallback();
-void flashTickCallback();
-void resultTimeoutCallback();
+void unifiedTickCallback();
 void buttonPollCallback();
 void onTimeChange(uint8_t flags);
-void updateRow0();
-void updateRow1();
+bool updateRow0Content();
+bool updateRow1Content();
+void updateBothRows();
 void startCountdown();
 void startTimer();
 void startFlashingResult();
@@ -89,66 +82,86 @@ void onButtonPress();
 // TIMER CALLBACKS
 // ============================================================================
 
-// Timer callback for 4-second time/date toggle (normal mode)
-void toggleTimerCallback() {
-  if (currentMode == MODE_NORMAL) {
-    showingTime = !showingTime;
-    updateRow0();
+// Unified tick callback - handles all display timing from a single 500ms timer
+void unifiedTickCallback() {
+  // Increment tick counter first
+  tickCounter++;
+  bool needsUpdate = false;
+  
+  // Capture current mode to prevent race conditions during state transitions
+  DisplayMode mode = currentMode;
+  
+  switch (mode) {
+    case MODE_NORMAL:
+      // Toggle time/date every 8 ticks (4 seconds)
+      if (tickCounter % TICKS_PER_TOGGLE == 0) {
+        showingTime = !showingTime;
+        needsUpdate = true;
+      }
+      break;
+      
+    case MODE_COUNTDOWN:
+      // Toggle top row every 8 ticks (4 seconds)
+      if (tickCounter % TICKS_PER_TOGGLE == 0) {
+        timerTopRowState = (timerTopRowState + 1) % 3;
+        needsUpdate = true;
+      }
+      // Decrement countdown every 2 ticks (1 second), but not on first tick
+      if (tickCounter > 1 && tickCounter % TICKS_PER_SECOND == 0) {
+        countdownValue--;
+        if (countdownValue <= 0) {
+          startTimer();
+          return;  // Exit immediately - startTimer handles its own update
+        }
+        needsUpdate = true;  // Only update when countdown actually changes
+      }
+      break;
+      
+    case MODE_TIMER:
+      // Toggle top row every 8 ticks (4 seconds)
+      if (tickCounter % TICKS_PER_TOGGLE == 0) {
+        timerTopRowState = (timerTopRowState + 1) % 3;
+        needsUpdate = true;
+      }
+      // Increment elapsed time every 2 ticks (1 second), but not on first tick
+      if (tickCounter > 1 && tickCounter % TICKS_PER_SECOND == 0) {
+        elapsedSeconds++;
+        needsUpdate = true;  // Only update when elapsed time actually changes
+      }
+      break;
+      
+    case MODE_FLASHING_RESULT:
+      // Toggle flash visibility every tick (0.5 seconds)
+      flashVisible = !flashVisible;
+      needsUpdate = true;
+      // Check if flash duration exceeded (16 ticks = 8 seconds)
+      if (tickCounter >= FLASH_TICKS) {
+        startDisplayResult();
+        return;  // Exit immediately - startDisplayResult handles its own update
+      }
+      break;
+      
+    case MODE_DISPLAY_RESULT:
+      // Update time display every 2 ticks (1 second) to keep clock current
+      if (tickCounter % TICKS_PER_SECOND == 0) {
+        needsUpdate = true;
+      }
+      // Check if result display time exceeded (120 ticks = 60 seconds)
+      if (tickCounter >= RESULT_TICKS) {
+        returnToNormal();
+        return;  // Exit immediately - returnToNormal handles its own update
+      }
+      break;
   }
-}
-
-// Timer callback for 4-second rotation in timer modes (time/date/temp on top row)
-void timerModeToggleCallback() {
-  if (currentMode == MODE_COUNTDOWN || currentMode == MODE_TIMER) {
-    timerTopRowState = (timerTopRowState + 1) % 3;
-    updateRow0();
-  }
-}
-
-// Countdown tick: 3 -> 2 -> 1 -> start timer
-void countdownTickCallback() {
-  if (currentMode != MODE_COUNTDOWN) return;
   
-  countdownValue--;
-  
-  if (countdownValue <= 0) {
-    startTimer();
-  } else {
-    updateRow1();
-  }
-}
-
-// Timer tick: increment elapsed time every second
-void timerTickCallback() {
-  if (currentMode != MODE_TIMER) return;
-  
-  elapsedSeconds++;
-  updateRow1();
-}
-
-// Flash tick: toggle visibility every 0.5 seconds
-void flashTickCallback() {
-  if (currentMode != MODE_FLASHING_RESULT) return;
-  
-  flashVisible = !flashVisible;
-  updateRow1();
-  
-  // Check if flash duration exceeded
-  if (millis() - flashStartMillis >= FLASH_DURATION_MS) {
-    startDisplayResult();
+  if (needsUpdate) {
+    updateBothRows();
   }
 }
 
 // Button poll callback: check for button state changes
 void buttonPollCallback() {
   updateButton();
-}
-
-// Result timeout: auto-return to normal after 1 minute
-void resultTimeoutCallback() {
-  if (currentMode == MODE_DISPLAY_RESULT) {
-    returnToNormal();
-  }
 }
 
 // Callback for time changes - forces display update when minute or date changes
@@ -159,11 +172,17 @@ void onTimeChange(uint8_t flags) {
   if (currentMode == MODE_NORMAL) {
     if ((flags & TIME_CHANGE_MINUTE) && showingTime) {
       DEBUG_PRINTLN("Forcing time display update");
-      updateRow0();
+      updateBothRows();
     }
     if ((flags & TIME_CHANGE_DATE) && !showingTime) {
       DEBUG_PRINTLN("Forcing date display update");
-      updateRow0();
+      updateBothRows();
+    }
+  } else if (currentMode == MODE_FLASHING_RESULT || currentMode == MODE_DISPLAY_RESULT) {
+    // Result modes show current time on top row - update on minute change
+    if (flags & TIME_CHANGE_MINUTE) {
+      DEBUG_PRINTLN("Forcing time display update in result mode");
+      updateBothRows();
     }
   }
 }
@@ -172,115 +191,116 @@ void onTimeChange(uint8_t flags) {
 // ROW UPDATE HELPERS
 // ============================================================================
 
-// Update row 0 based on current mode
-void updateRow0() {
+// Set row 0 content based on current mode (does not trigger render)
+// Returns true if content actually changed
+bool updateRow0Content() {
   static char buffer[32];
   
   if (currentMode == MODE_NORMAL) {
     // Normal mode: alternate time/date
     if (!isTimeSynced()) {
-      setText(0, "~~.~~");
-      DEBUG_PRINTLN("Row 0: Waiting for NTP sync");
-      return;
+      return setTextNoRender(0, "~~.~~");
     }
     
     if (showingTime) {
       if (formatTime(buffer, sizeof(buffer))) {
-        setText(0, buffer);
-        DEBUG_PRINT("Row 0: Time = ");
-        DEBUG_PRINTLN(buffer);
+        return setTextNoRender(0, buffer);
       } else {
-        setText(0, "~~.~~");
+        return setTextNoRender(0, "~~.~~");
       }
     } else {
       if (formatDate(buffer, sizeof(buffer))) {
-        setText(0, buffer);
-        DEBUG_PRINT("Row 0: Date = ");
-        DEBUG_PRINTLN(buffer);
+        return setTextNoRender(0, buffer);
       }
     }
   } else if (currentMode == MODE_COUNTDOWN || currentMode == MODE_TIMER) {
     // Timer modes: cycle through time/date/temp on top row
     if (!isTimeSynced()) {
-      setText(0, "~~.~~");
-      return;
+      return setTextNoRender(0, "~~.~~");
     }
     
     switch (timerTopRowState) {
       case 0: // Time
         if (formatTime(buffer, sizeof(buffer))) {
-          setText(0, buffer);
+          return setTextNoRender(0, buffer);
         } else {
-          setText(0, "~~.~~");
+          return setTextNoRender(0, "~~.~~");
         }
         break;
       case 1: // Date
         if (formatDate(buffer, sizeof(buffer))) {
-          setText(0, buffer);
+          return setTextNoRender(0, buffer);
         }
         break;
       case 2: // Temperature
         if (formatTemperature(buffer, sizeof(buffer))) {
-          setText(0, buffer);
+          return setTextNoRender(0, buffer);
         } else {
-          setText(0, "~~*C");
+          return setTextNoRender(0, "~~*C");
         }
         break;
     }
   } else if (currentMode == MODE_FLASHING_RESULT || currentMode == MODE_DISPLAY_RESULT) {
     // Result modes: show current time on top row
     if (isTimeSynced() && formatTime(buffer, sizeof(buffer))) {
-      setText(0, buffer);
+      return setTextNoRender(0, buffer);
     } else {
-      setText(0, "~~.~~");
+      return setTextNoRender(0, "~~.~~");
     }
   }
+  return false;
 }
 
-// Update row 1 based on current mode
-void updateRow1() {
+// Set row 1 content based on current mode (does not trigger render)
+// Returns true if content actually changed
+bool updateRow1Content() {
   static char buffer[32];
   
   if (currentMode == MODE_NORMAL) {
     // Normal mode: show temperature
     if (formatTemperature(buffer, sizeof(buffer))) {
-      setText(1, buffer);
-      DEBUG_PRINT("Row 1: Temp = ");
-      DEBUG_PRINTLN(buffer);
+      return setTextNoRender(1, buffer);
     } else {
-      setText(1, "~~*C");
-      DEBUG_PRINTLN("Row 1: Temperature not available");
+      return setTextNoRender(1, "~~*C");
     }
   } else if (currentMode == MODE_COUNTDOWN) {
     // Countdown mode: show countdown number
     snprintf(buffer, sizeof(buffer), "   %d", countdownValue);
-    setText(1, buffer);
-    DEBUG_PRINT("Row 1: Countdown = ");
-    DEBUG_PRINTLN(countdownValue);
+    return setTextNoRender(1, buffer);
   } else if (currentMode == MODE_TIMER) {
     // Timer mode: show elapsed time as MM:SS
     uint32_t mins = elapsedSeconds / 60;
     uint32_t secs = elapsedSeconds % 60;
     snprintf(buffer, sizeof(buffer), "%02lu:%02lu", mins, secs);
-    setText(1, buffer);
-    DEBUG_PRINT("Row 1: Timer = ");
-    DEBUG_PRINTLN(buffer);
+    return setTextNoRender(1, buffer);
   } else if (currentMode == MODE_FLASHING_RESULT) {
     // Flashing result: show elapsed time or blank
     if (flashVisible) {
       uint32_t mins = elapsedSeconds / 60;
       uint32_t secs = elapsedSeconds % 60;
       snprintf(buffer, sizeof(buffer), "%02lu:%02lu", mins, secs);
-      setText(1, buffer);
+      return setTextNoRender(1, buffer);
     } else {
-      setText(1, "     ");
+      return setTextNoRender(1, "     ");
     }
   } else if (currentMode == MODE_DISPLAY_RESULT) {
     // Display result: show elapsed time solid
     uint32_t mins = elapsedSeconds / 60;
     uint32_t secs = elapsedSeconds % 60;
     snprintf(buffer, sizeof(buffer), "%02lu:%02lu", mins, secs);
-    setText(1, buffer);
+    return setTextNoRender(1, buffer);
+  }
+  return false;
+}
+
+// Update both rows atomically (set content, then trigger single render if changed)
+void updateBothRows() {
+  bool row0Changed = updateRow0Content();
+  bool row1Changed = updateRow1Content();
+  
+  // Only trigger render if something actually changed
+  if (row0Changed || row1Changed) {
+    triggerRender();
   }
 }
 
@@ -293,67 +313,47 @@ void startCountdown() {
   currentMode = MODE_COUNTDOWN;
   countdownValue = 3;
   timerTopRowState = 0;
-  
-  // Stop normal toggle, start timer mode toggle
-  stopTimer("DispToggle");
-  createTimer("TimerToggle", TOGGLE_INTERVAL_MS, timerModeToggleCallback);
-  
-  // Start countdown ticker
-  createTimer("Countdown", COUNTDOWN_INTERVAL_MS, countdownTickCallback);
+  tickCounter = 0;  // Reset tick counter for synchronization
   
   logEvent("button_press", "{\"action\":\"timer_start\"}");
   
-  updateRow0();
-  updateRow1();
+  updateBothRows();
 }
 
 void startTimer() {
   DEBUG_PRINTLN("Starting timer mode");
   currentMode = MODE_TIMER;
-  timerStartMillis = millis();
   elapsedSeconds = 0;
+  timerTopRowState = 0;  // Reset to show time first
+  tickCounter = 0;  // Reset tick counter for synchronization
   
-  // Stop countdown, start timer tick
-  stopTimer("Countdown");
-  createTimer("TimerTick", TIMER_INTERVAL_MS, timerTickCallback);
-  
-  updateRow1();
+  updateBothRows();
 }
 
 void startFlashingResult() {
   DEBUG_PRINTLN("Starting flashing result mode");
   currentMode = MODE_FLASHING_RESULT;
-  flashStartMillis = millis();
   flashVisible = true;
-  
-  // Stop timer tick and toggle, start flash tick
-  stopTimer("TimerTick");
-  stopTimer("TimerToggle");
-  createTimer("FlashTick", FLASH_INTERVAL_MS, flashTickCallback);
+  tickCounter = 0;  // Reset tick counter for flash duration tracking
   
   logEvent("button_press", "{\"action\":\"timer_stop\"}");
   
-  updateRow0();
-  updateRow1();
+  updateBothRows();
 }
 
 void startDisplayResult() {
   DEBUG_PRINTLN("Starting display result mode");
   currentMode = MODE_DISPLAY_RESULT;
-  resultStartMillis = millis();
+  tickCounter = 0;  // Reset tick counter for result timeout tracking
   
-  // Stop flash tick, start result timeout (one-shot, fires after RESULT_DISPLAY_MS)
-  stopTimer("FlashTick");
-  createOneShotTimer("ResultTimeout", RESULT_DISPLAY_MS, resultTimeoutCallback);
-  triggerTimer("ResultTimeout");
-  
-  updateRow1();
+  updateBothRows();
 }
 
 void returnToNormal() {
   DEBUG_PRINTLN("Returning to normal mode");
   currentMode = MODE_NORMAL;
   showingTime = true;
+  tickCounter = 0;  // Reset tick counter for synchronization
   
   // Reset timer state for next use
   timerTopRowState = 0;
@@ -361,20 +361,9 @@ void returnToNormal() {
   countdownValue = 3;
   flashVisible = true;
   
-  // Stop any timer mode timers
-  stopTimer("TimerToggle");
-  stopTimer("Countdown");
-  stopTimer("TimerTick");
-  stopTimer("FlashTick");
-  stopTimer("ResultTimeout");
-  
-  // Restart normal toggle
-  createTimer("DispToggle", TOGGLE_INTERVAL_MS, toggleTimerCallback);
-  
   logEvent("display_mode_change", "{\"from\":\"timer\",\"to\":\"normal\"}");
   
-  updateRow0();
-  updateRow1();
+  updateBothRows();
 }
 
 void cancelTimer() {
@@ -438,11 +427,13 @@ void initDisplayController() {
   // Set initial state
   showingTime = true;
   currentMode = MODE_NORMAL;
-  forceDisplayUpdate();
-  renderNow();
+  tickCounter = 0;
   
-  // Create 4-second toggle timer using timing_helpers library
-  createTimer("DispToggle", TOGGLE_INTERVAL_MS, toggleTimerCallback);
+  // Update both rows atomically (single render during boot)
+  updateBothRows();
+  
+  // Create unified 500ms tick timer (handles all display timing)
+  createTimer("DisplayTick", TICK_INTERVAL_MS, unifiedTickCallback);
   
   DEBUG_PRINTLN("Display controller initialized");
   
@@ -477,6 +468,7 @@ void initDisplayController() {
 void setDisplayMode(DisplayMode mode) {
   if (currentMode != mode) {
     currentMode = mode;
+    tickCounter = 0;  // Reset tick counter on mode change
     DEBUG_PRINT("Display mode set to: ");
     DEBUG_PRINTLN(mode);
   }
@@ -489,17 +481,16 @@ DisplayMode getDisplayMode() {
 
 // Force update of all display rows
 void forceDisplayUpdate() {
-  updateRow0();
-  updateRow1();
+  updateBothRows();
 }
 
 // Called by data_temperature library when temperature value changes
 void updateTemperatureDisplay() {
-  // Only update row 1 if we're showing temperature there (normal mode)
+  // Only update if we're showing temperature (normal mode row 1)
   if (currentMode == MODE_NORMAL) {
-    updateRow1();
+    updateBothRows();
   }
   // In timer modes, temperature shows on row 0 when timerTopRowState == 2
-  // It will update on the next toggle cycle
+  // It will update on the next tick cycle
 }
 
