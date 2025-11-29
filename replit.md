@@ -37,7 +37,13 @@ The project consists of two primary components:
     - One-shot timers via `createOneShotTimer()`/`triggerTimer()` - ESP32 Ticker.once_ms, ESP8266 TickTwo with iterations=1
     - Notification-based tasks via `createNotificationTask()`/`notifyTask()` (ESP32 only) - for event-driven wake patterns
     - All ESP8266 timers updated via single `updateTimers()` call in main loop
-    - Used by: display_core (1ms render/notification), display_controller (4s toggle), data_time (1s time check), data_temperature (30s poll + 750ms read delay)
+    - Used by: display_core (1ms render/notification), display_controller (500ms unified tick), data_time (1s time check), data_temperature (30s poll + 750ms read delay)
+*   **Unified 500ms Tick Timer Architecture**: Display controller uses a single 500ms tick timer (DisplayTick) to drive all display modes:
+    - Tick counter tracks time: 8 ticks = 4s (normal mode toggle), 2 ticks = 1s (countdown/timer update), 1 tick = 0.5s (flash toggle)
+    - `updateBothRows()` performs atomic row updates via `setTextNoRender()` calls followed by single `triggerRender()`
+    - `setTextNoRender()` returns bool indicating if text changed; renders only triggered when content actually changes
+    - Mode transitions reset timerTopRowState to ensure consistent starting state
+    - Eliminates race conditions and visual tearing from independent row updates
 *   **Clean Separation of Concerns**: Temperature polling and time/date toggling are owned by their respective libraries, which update the display controller via callbacks, ensuring independent timing logic.
 *   **Event Logging System**: A ring buffer stores device events with timestamps, publishing them to MQTT when connected. Comprehensive event types include:
     - System: boot, heartbeat, low_heap_warning
