@@ -90,20 +90,56 @@ void TimerTaskManager::taskWrapper(void* parameter) {
 // PERIODIC TIMER CREATION
 // ============================================================================
 
+// Helper to fully clean up a timer config (free resources and reset all fields)
+void TimerTaskManager::cleanupTimerConfig(TimerConfig* config) {
+  if (config == nullptr) return;
+  
+  #if defined(ESP32)
+    if (config->taskHandle != nullptr) {
+      vTaskDelete(config->taskHandle);
+      config->taskHandle = nullptr;
+    }
+    if (config->espTicker != nullptr) {
+      config->espTicker->detach();
+      delete config->espTicker;
+      config->espTicker = nullptr;
+    }
+  #elif defined(ESP8266)
+    if (config->ticker != nullptr) {
+      config->ticker->stop();
+      delete config->ticker;
+      config->ticker = nullptr;
+    }
+  #endif
+  
+  config->isActive = false;
+}
+
 // Create a periodic timer that fires at regular intervals
 bool TimerTaskManager::createTimer(const char* name, uint32_t intervalMs, TimerCallback callback, uint16_t stackSize) {
-  if (timerCount >= MAX_TIMERS) {
-    DEBUG_PRINTLN("ERROR: Maximum timer count reached");
-    return false;
-  }
-  
   if (callback == nullptr) {
     DEBUG_PRINTLN("ERROR: Timer callback is null");
     return false;
   }
   
-  // Configure timer slot
-  TimerConfig* config = &timers[timerCount];
+  // Check if timer with this name already exists - reuse the slot
+  TimerConfig* config = findTimer(name);
+  if (config != nullptr) {
+    // Fully clean up existing timer first
+    cleanupTimerConfig(config);
+    DEBUG_PRINT("Reusing timer slot: ");
+    DEBUG_PRINTLN(name);
+  } else {
+    // Need a new slot
+    if (timerCount >= MAX_TIMERS) {
+      DEBUG_PRINTLN("ERROR: Maximum timer count reached");
+      return false;
+    }
+    config = &timers[timerCount];
+    timerCount++;
+  }
+  
+  // Initialize all fields for periodic timer
   config->name = name;
   config->intervalMs = intervalMs;
   config->callback = callback;
@@ -114,6 +150,7 @@ bool TimerTaskManager::createTimer(const char* name, uint32_t intervalMs, TimerC
   // Platform-specific timer creation
   #if defined(ESP32)
     config->espTicker = nullptr;
+    config->taskHandle = nullptr;
     #if defined(CONFIG_IDF_TARGET_ESP32C3)
       // ESP32-C3: Single-core RISC-V, use xTaskCreate
       xTaskCreate(
@@ -150,7 +187,6 @@ bool TimerTaskManager::createTimer(const char* name, uint32_t intervalMs, TimerC
   DEBUG_PRINT(intervalMs);
   DEBUG_PRINTLN("ms");
   
-  timerCount++;
   return true;
 }
 
@@ -160,18 +196,29 @@ bool TimerTaskManager::createTimer(const char* name, uint32_t intervalMs, TimerC
 
 // Create a one-shot timer (dormant until triggered)
 bool TimerTaskManager::createOneShotTimer(const char* name, uint32_t intervalMs, TimerCallback callback) {
-  if (timerCount >= MAX_TIMERS) {
-    DEBUG_PRINTLN("ERROR: Maximum timer count reached");
-    return false;
-  }
-  
   if (callback == nullptr) {
     DEBUG_PRINTLN("ERROR: Timer callback is null");
     return false;
   }
   
-  // Configure timer slot
-  TimerConfig* config = &timers[timerCount];
+  // Check if timer with this name already exists - reuse the slot
+  TimerConfig* config = findTimer(name);
+  if (config != nullptr) {
+    // Fully clean up existing timer first
+    cleanupTimerConfig(config);
+    DEBUG_PRINT("Reusing one-shot timer slot: ");
+    DEBUG_PRINTLN(name);
+  } else {
+    // Need a new slot
+    if (timerCount >= MAX_TIMERS) {
+      DEBUG_PRINTLN("ERROR: Maximum timer count reached");
+      return false;
+    }
+    config = &timers[timerCount];
+    timerCount++;
+  }
+  
+  // Initialize all fields for one-shot timer
   config->name = name;
   config->intervalMs = intervalMs;
   config->callback = callback;
@@ -193,7 +240,6 @@ bool TimerTaskManager::createOneShotTimer(const char* name, uint32_t intervalMs,
   DEBUG_PRINT(intervalMs);
   DEBUG_PRINTLN("ms (dormant)");
   
-  timerCount++;
   return true;
 }
 

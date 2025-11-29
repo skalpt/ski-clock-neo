@@ -3,10 +3,13 @@
 
 #include <Arduino.h>
 
-// Display mode for row 0
+// Display mode state machine
 enum DisplayMode {
-  MODE_NORMAL,    // Alternates between time and date every 4 seconds
-  MODE_TIMER      // Reserved for future timer feature (time/date/temp rotation)
+  MODE_NORMAL,          // Alternates between time and date every 4 seconds
+  MODE_COUNTDOWN,       // Countdown 3, 2, 1 before timer starts
+  MODE_TIMER,           // Timer running (00:00, 00:01, ...)
+  MODE_FLASHING_RESULT, // Elapsed time flashing (0.5s interval for 8 seconds)
+  MODE_DISPLAY_RESULT   // Elapsed time solid for 1 minute, then auto-revert
 };
 
 // Initialize display controller

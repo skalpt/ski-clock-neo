@@ -66,6 +66,7 @@ private:
   uint8_t timerCount;
   
   TimerConfig* findTimer(const char* name);
+  void cleanupTimerConfig(TimerConfig* config);
   
   #if defined(ESP32)
     static void taskWrapper(void* parameter);
