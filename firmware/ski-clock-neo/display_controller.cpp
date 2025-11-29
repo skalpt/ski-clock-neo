@@ -73,6 +73,7 @@ void countdownTickCallback();
 void timerTickCallback();
 void flashTickCallback();
 void resultTimeoutCallback();
+void buttonPollCallback();
 void onTimeChange(uint8_t flags);
 void updateRow0();
 void updateRow1();
@@ -136,6 +137,11 @@ void flashTickCallback() {
   if (millis() - flashStartMillis >= FLASH_DURATION_MS) {
     startDisplayResult();
   }
+}
+
+// Button poll callback: check for button state changes
+void buttonPollCallback() {
+  updateButton();
 }
 
 // Result timeout: auto-return to normal after 1 minute
@@ -451,10 +457,16 @@ void initDisplayController() {
   // Temperature library: DS18B20 sensor with automatic 30-second polling
   initTemperatureData();
   
-  // Register button press callback (button is initialized in main sketch)
+  // Initialize button input (after time/temp so display is already showing)
+  initButton();
+  
+  // Create button polling timer (10ms interval for responsive debouncing)
+  createTimer("ButtonPoll", 10, buttonPollCallback);
+  
+  // Register button press callback
   setButtonPressCallback(onButtonPress);
   
-  DEBUG_PRINTLN("Button callback registered");
+  DEBUG_PRINTLN("Button initialized and callback registered");
 }
 
 // ============================================================================

@@ -4,7 +4,6 @@
 #include "led_indicator.h"
 #include "display_core.h"
 #include "timing_helpers.h"
-#include "data_button.h"
 #include "wifi_config.h"
 #include "mqtt_client.h"
 #include "event_log.h"
@@ -25,11 +24,8 @@ void setup() {
   // Initialize onboard LED indicator
   initLedIndicator();
 
-  // Initialize display
+  // Initialize display (includes time, temperature, and button initialization)
   initDisplay();
-  
-  // Initialize button
-  initButton();
 
   // Initialise WiFi
   initWiFi();
@@ -49,12 +45,9 @@ void loop() {
   // Handle MQTT updates (subscriptions and version requests)
   updateMQTT();
   
-  // Update button state (debouncing and callbacks)
-  updateButton();
-  
   // Update timers (ESP8266 only - loop-driven, non-ISR, WiFi-safe)
   // ESP32 uses FreeRTOS tasks, so no updates needed in loop
   #if defined(ESP8266)
-    updateTimers();  // All timer_task managed timers (display, toggle, time check, temperature)
+    updateTimers();  // All timer_task managed timers (display, toggle, time check, temperature, button)
   #endif
 }
