@@ -1,5 +1,5 @@
-#ifndef TIMING_HELPERS_H
-#define TIMING_HELPERS_H
+#ifndef TIMER_HELPERS_H
+#define TIMER_HELPERS_H
 
 #include <Arduino.h>
 #include "debug.h"

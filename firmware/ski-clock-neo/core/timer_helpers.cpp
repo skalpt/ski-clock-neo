@@ -1,5 +1,5 @@
 // ============================================================================
-// timing_helpers.cpp - Unified timer abstraction for ESP32 and ESP8266
+// timer_helpers.cpp - Unified timer abstraction for ESP32 and ESP8266
 // ============================================================================
 // This library provides a consistent timer API across platforms:
 // - ESP32: Uses FreeRTOS tasks with vTaskDelayUntil for periodic timers
@@ -16,7 +16,7 @@
 // INCLUDES
 // ============================================================================
 
-#include "timing_helpers.h"
+#include "timer_helpers.h"
 
 // ============================================================================
 // SINGLETON INSTANCE
