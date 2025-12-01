@@ -82,11 +82,12 @@ ski-clock-neo/
 
 ### Include Path Conventions
 
-| From | Include Path |
-|------|-------------|
-| .ino file | `#include "src/core/timer_helpers.h"` |
-| Files in src/ | `#include "core/timer_helpers.h"` |
-| Config from src/ | `#include "../../ski-clock-neo_config.h"`
+| From | To | Include Path |
+|------|----|-------------|
+| .ino file | Any src/ file | `#include "src/core/timer_helpers.h"` |
+| Same folder | Same folder | `#include "display_core.h"` |
+| Cross-folder | Other folder | `#include "../core/timer_helpers.h"` |
+| Any src/ file | Config file | `#include "../../ski-clock-neo_config.h"` |
 
 ## Configuration
 

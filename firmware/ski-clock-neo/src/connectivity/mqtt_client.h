@@ -13,8 +13,8 @@
 
 #include <PubSubClient.h>
 #include <Ticker.h>
-#include "core/debug.h"
-#include "core/device_info.h"
+#include "../core/debug.h"
+#include "../core/device_info.h"
 
 // MQTT broker configuration (injected at build time)
 #ifndef MQTT_HOST

@@ -13,7 +13,7 @@
 // ============================================================================
 
 #include "event_log.h"                   // This file's header
-#include "connectivity/mqtt_client.h"    // For MQTT publishing
+#include "../connectivity/mqtt_client.h" // For MQTT publishing
 #include "device_info.h"                 // For device ID and version info
 #include "debug.h"                       // For debug logging
 

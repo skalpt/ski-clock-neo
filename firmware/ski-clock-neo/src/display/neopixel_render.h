@@ -5,7 +5,7 @@
 #include <new>              // For placement-new operator
 #include <Adafruit_NeoPixel.h>
 #include "font_5x7.h"
-#include "core/debug.h"
+#include "../core/debug.h"
 #include "display_core.h"
 
 // ==================== GLOBAL STATE ====================

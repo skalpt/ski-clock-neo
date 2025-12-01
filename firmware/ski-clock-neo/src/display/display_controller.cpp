@@ -14,12 +14,12 @@
 
 #include "display_controller.h"       // This file's header
 #include "display_core.h"             // Display rendering core
-#include "data/data_time.h"           // Time data provider
-#include "data/data_temperature.h"    // Temperature data provider
-#include "data/data_button.h"         // Button input
-#include "core/event_log.h"           // For logging display events
-#include "core/timer_helpers.h"       // For unified tick timer
-#include "core/debug.h"               // For debug logging
+#include "../data/data_time.h"        // Time data provider
+#include "../data/data_temperature.h" // Temperature data provider
+#include "../data/data_button.h"      // Button input
+#include "../core/event_log.h"        // For logging display events
+#include "../core/timer_helpers.h"    // For unified tick timer
+#include "../core/debug.h"            // For debug logging
 
 // ============================================================================
 // CONSTANTS

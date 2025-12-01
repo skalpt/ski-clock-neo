@@ -96,7 +96,7 @@ The project consists of two primary components:
             ├── neopixel_render.h/.cpp (NeoPixel-specific rendering)
             └── font_5x7.h             (bitmap font data)
     ```
-    Include paths use `src/` prefix from .ino (e.g., `#include "src/core/timer_helpers.h"`) and flat paths within src (e.g., `#include "core/timer_helpers.h"`).
+    Include paths use `src/` prefix from .ino (e.g., `#include "src/core/timer_helpers.h"`), relative paths within src for cross-folder includes (e.g., `#include "../core/timer_helpers.h"`), and same-folder includes use flat paths (e.g., `#include "display_core.h"`).
     Config file access: Use `#include "../../ski-clock-neo_config.h"` from src/ files (relative path to sketch root).
 
 **2. Dashboard Server (Python Flask application):**
