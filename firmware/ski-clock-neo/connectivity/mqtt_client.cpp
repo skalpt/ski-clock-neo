@@ -393,7 +393,7 @@ String base64Encode(const uint8_t* data, uint16_t length) {
   return encoded;
 }
 
-// Publish display snapshot to MQTT
+// Publish display snapshot to MQTT with per-row structure
 void publishDisplaySnapshot() {
   if (!mqttClient.connected()) {
     return;
@@ -403,11 +403,9 @@ void publishDisplaySnapshot() {
   
   // Get display configuration
   DisplayConfig cfg = getDisplayConfig();
-  uint16_t totalWidth = cfg.panelsPerRow * cfg.panelWidth;
-  uint16_t totalHeight = cfg.rows * cfg.panelHeight;
   
   // Validate configuration
-  if (cfg.rows == 0 || cfg.panelsPerRow == 0 || totalWidth == 0 || totalHeight == 0) {
+  if (cfg.rows == 0 || cfg.totalPixels == 0) {
     DEBUG_PRINTLN("Invalid display configuration, skipping snapshot");
     return;
   }
@@ -419,52 +417,55 @@ void publishDisplaySnapshot() {
   const uint8_t* buffer = getDisplayBuffer();
   uint16_t bufferSize = getDisplayBufferSize();
   
-  if (bufferSize == 0 || bufferSize > 512) {
+  if (bufferSize == 0 || bufferSize > 1024) {
     DEBUG_PRINTLN("Invalid buffer size, skipping snapshot");
     return;
   }
   
-  // Encode buffer to base64
-  String base64Data = base64Encode(buffer, bufferSize);
-  
-  // Build row_text JSON array
-  String rowTextJson = "[";
-  for (uint8_t i = 0; i < cfg.rows; i++) {
-    const char* text = getText(i);
-    if (i > 0) rowTextJson += ",";
-    
-    // Escape quotes in text for JSON
-    rowTextJson += "\"";
-    for (int j = 0; text[j] != '\0' && j < MAX_TEXT_LENGTH; j++) {
-      if (text[j] == '"' || text[j] == '\\') {
-        rowTextJson += "\\";
-      }
-      rowTextJson += text[j];
-    }
-    rowTextJson += "\"";
-  }
-  rowTextJson += "]";
-  
-  // Build JSON payload (static buffers to avoid stack churn)
-  static char rowsStr[8], colsStr[8], widthStr[8], heightStr[8];
-  snprintf(rowsStr, sizeof(rowsStr), "%u", cfg.rows);
-  snprintf(colsStr, sizeof(colsStr), "%u", cfg.panelsPerRow);
-  snprintf(widthStr, sizeof(widthStr), "%u", totalWidth);
-  snprintf(heightStr, sizeof(heightStr), "%u", totalHeight);
-  
-  // Build monoColor array [R, G, B, brightness]
+  // Build monoColor array [R, G, B, brightness] - shared across all rows
   static char monoColorStr[32];
   snprintf(monoColorStr, sizeof(monoColorStr), "[%u,%u,%u,%u]", 
            DISPLAY_COLOR_R, DISPLAY_COLOR_G, DISPLAY_COLOR_B, BRIGHTNESS);
   
-  String payload = "{\"device_id\":\"" + getDeviceID() + 
-                   "\",\"rows\":" + String(rowsStr) +
-                   ",\"cols\":" + String(colsStr) +
-                   ",\"width\":" + String(widthStr) +
-                   ",\"height\":" + String(heightStr) +
-                   ",\"mono\":\"" + base64Data + "\"" +
-                   ",\"monoColor\":" + String(monoColorStr) +
-                   ",\"row_text\":" + rowTextJson + "}";
+  // Build JSON payload with per-row structure
+  // Format: {"rows":[{row0},{row1},...]}
+  String payload = "{\"rows\":[";
+  
+  for (uint8_t i = 0; i < cfg.rows; i++) {
+    if (i > 0) payload += ",";
+    
+    RowConfig& rowCfg = cfg.rowConfig[i];
+    const char* text = getText(i);
+    
+    // Calculate byte range for this row's pixels
+    uint16_t rowPixels = rowCfg.width * rowCfg.height;
+    uint16_t startBit = rowCfg.pixelOffset;
+    uint16_t startByte = startBit / 8;
+    uint16_t rowBytes = (rowPixels + 7) / 8;
+    
+    // Encode this row's pixel data to base64
+    String rowBase64 = base64Encode(buffer + startByte, rowBytes);
+    
+    // Build escaped text string
+    String escapedText = "";
+    for (int j = 0; text[j] != '\0' && j < MAX_TEXT_LENGTH; j++) {
+      if (text[j] == '"' || text[j] == '\\') {
+        escapedText += "\\";
+      }
+      escapedText += text[j];
+    }
+    
+    // Build row JSON object
+    payload += "{\"text\":\"" + escapedText + "\"";
+    payload += ",\"cols\":" + String(rowCfg.panels);
+    payload += ",\"width\":" + String(rowCfg.width);
+    payload += ",\"height\":" + String(rowCfg.height);
+    payload += ",\"mono\":\"" + rowBase64 + "\"";
+    payload += ",\"monoColor\":" + String(monoColorStr);
+    payload += "}";
+  }
+  
+  payload += "]}";
   
   // Check payload size
   if (payload.length() > 2000) {

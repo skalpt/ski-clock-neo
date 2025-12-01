@@ -20,7 +20,16 @@ The project consists of two primary components:
 *   **Centralized LED Connectivity State Management**: A priority-based system tracks WiFi and MQTT status, with a single API `setConnectivityState(wifi, mqtt)` to prevent race conditions. OTA updates use an override mode.
 *   **Production-Ready Event-Driven Rendering**: Uses critical sections for thread-safe access to shared state, ensuring zero race conditions or visual glitches during concurrent updates.
 *   **MQTT Integration**: Publishes device heartbeats to HiveMQ Cloud every 60 seconds. The dashboard automatically checks for new firmware versions and sends update notifications. Supports TLS encryption and increased buffer size for display snapshots. Topic structure uses consistent `skiclock/{type}/{deviceId}` pattern for device-specific messages.
-*   **Display Snapshot System**: Publishes hourly snapshots of the display state to MQTT, including base64-encoded bit-packed pixel data and row text. On-demand snapshots are supported via MQTT commands.
+*   **Display Snapshot System**: Publishes hourly snapshots with per-row structure to MQTT. Each row is self-describing with independent dimensions, supporting variable panel counts per row. Payload format:
+    ```json
+    {
+      "rows": [
+        {"text": "12:34", "cols": 3, "width": 48, "height": 16, "mono": "base64...", "monoColor": [R,G,B,brightness]},
+        {"text": "68°F", "cols": 4, "width": 64, "height": 16, "mono": "base64...", "monoColor": [R,G,B,brightness]}
+      ]
+    }
+    ```
+    On-demand snapshots are supported via MQTT commands.
 *   **MQTT Command Handling**: Subscribes to device-specific topics for remote management, supporting `rollback`, `restart`, and `snapshot` commands.
 *   **OTA Progress Reporting**: Publishes real-time OTA status to MQTT topics for granular tracking.
 *   **Display Content System**: Alternates time and date every 4 seconds. Temperature (DS18B20 sensor) is displayed with non-blocking reads. Event-driven updates via `setText()` callbacks are used for all data libraries.

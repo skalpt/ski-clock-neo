@@ -277,9 +277,26 @@
         const rowText = snapshot.row_text || [];
         const bitmap = snapshot.bitmap_data || {};
         
+        // Calculate dimensions from per-row structure
+        let totalWidth = 0;
+        let totalHeight = 0;
+        const rowsArray = bitmap.rows || [];
+        
+        if (rowsArray.length > 0) {
+            // New per-row format: find max width and sum heights
+            totalWidth = Math.max(...rowsArray.map(r => r.width || 0));
+            totalHeight = rowsArray.reduce((sum, r) => sum + (r.height || 0), 0);
+        } else {
+            // Legacy format fallback
+            totalWidth = bitmap.width || 0;
+            totalHeight = bitmap.height || 0;
+        }
+        
         let rowTextHtml = '<ul class="list-reset">';
         rowText.forEach((text, index) => {
-            rowTextHtml += `<li><strong>Row ${index}:</strong> "${escapeHtml(text)}"</li>`;
+            // Show row dimensions if available
+            const rowInfo = rowsArray[index] ? ` (${rowsArray[index].cols || '?'} panels, ${rowsArray[index].width || '?'}x${rowsArray[index].height || '?'})` : '';
+            rowTextHtml += `<li><strong>Row ${index}${rowInfo}:</strong> "${escapeHtml(text)}"</li>`;
         });
         rowTextHtml += '</ul>';
         
@@ -299,7 +316,7 @@
                     </div>
                     
                     <div class="snapshot-section">
-                        <h4>🎨 Bitmap Preview (${bitmap.width || 0}x${bitmap.height || 0})</h4>
+                        <h4>🎨 Bitmap Preview (${totalWidth}x${totalHeight})</h4>
                         <div class="bitmap-preview">
                             <div id="panel-grid-${snapshot.id}" class="panel-grid"></div>
                         </div>
@@ -311,103 +328,221 @@
 
     function renderBitmapToGrid(gridId, bitmapData) {
         const grid = document.getElementById(gridId);
-        const monoData = bitmapData.mono || bitmapData.pixels;
-        const colorData = bitmapData.color;
-        
-        if (!grid || (!monoData && !colorData)) return;
+        if (!grid) return;
         
         try {
-            const width = bitmapData.width || 48;
-            const height = bitmapData.height || 32;
-            const rows = bitmapData.rows || 2;
-            const cols = bitmapData.cols || 3;
-            
-            const isColorMode = !!colorData;
-            let pixelData = null;
-            let colorPixelData = null;
-            
-            if (isColorMode) {
-                colorPixelData = atob(colorData);
-            } else {
-                pixelData = atob(monoData);
-            }
-            
-            let monoR = 255, monoG = 255, monoB = 255;
-            if (bitmapData.monoColor && bitmapData.monoColor.length >= 3) {
-                monoR = bitmapData.monoColor[0];
-                monoG = bitmapData.monoColor[1];
-                monoB = bitmapData.monoColor[2];
-                if (bitmapData.monoColor.length >= 4) {
-                    const rawBrightness = bitmapData.monoColor[3] / 255;
-                    const brightness = Math.max(rawBrightness, 0.3);
-                    monoR = Math.round(monoR * brightness);
-                    monoG = Math.round(monoG * brightness);
-                    monoB = Math.round(monoB * brightness);
-                }
-            }
-            
-            const panelWidth = width / cols;
-            const panelHeight = height / rows;
             const scale = 6;
-            
             grid.innerHTML = '';
             
-            for (let row = 0; row < rows; row++) {
-                for (let col = 0; col < cols; col++) {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = panelWidth;
-                    canvas.height = panelHeight;
-                    canvas.style.width = `${panelWidth * scale}px`;
-                    canvas.style.height = `${panelHeight * scale}px`;
-                    canvas.style.imageRendering = 'pixelated';
-                    canvas.style.display = 'block';
-                    canvas.style.background = '#000';
+            // Check for new per-row format: {rows: [{cols, width, height, mono, monoColor, ...}, ...]}
+            const rowsArray = bitmapData.rows;
+            
+            if (rowsArray && Array.isArray(rowsArray) && rowsArray.length > 0) {
+                // NEW PER-ROW FORMAT: Each row has independent dimensions
+                let maxWidth = Math.max(...rowsArray.map(r => r.width || 0));
+                
+                for (let rowIndex = 0; rowIndex < rowsArray.length; rowIndex++) {
+                    const rowData = rowsArray[rowIndex];
+                    const rowWidth = rowData.width || 48;
+                    const rowHeight = rowData.height || 16;
+                    const rowCols = rowData.cols || 3;
+                    const panelWidth = 16;
+                    const panelHeight = 16;
                     
-                    const ctx = canvas.getContext('2d');
-                    const imageData = ctx.createImageData(panelWidth, panelHeight);
+                    // Get pixel data for this row
+                    const monoData = rowData.mono;
+                    const colorData = rowData.color;
                     
-                    for (let py = 0; py < panelHeight; py++) {
-                        for (let px = 0; px < panelWidth; px++) {
-                            const globalX = col * panelWidth + px;
-                            const globalY = row * panelHeight + py;
-                            const globalPixelIndex = globalY * width + globalX;
-                            
-                            const i = (py * panelWidth + px) * 4;
-                            
-                            if (isColorMode) {
-                                const colorByteIndex = globalPixelIndex * 4;
-                                const r = colorPixelData.charCodeAt(colorByteIndex) || 0;
-                                const g = colorPixelData.charCodeAt(colorByteIndex + 1) || 0;
-                                const b = colorPixelData.charCodeAt(colorByteIndex + 2) || 0;
-                                const brightness = (colorPixelData.charCodeAt(colorByteIndex + 3) || 255) / 255;
-                                
-                                imageData.data[i] = Math.round(r * brightness);
-                                imageData.data[i + 1] = Math.round(g * brightness);
-                                imageData.data[i + 2] = Math.round(b * brightness);
-                                imageData.data[i + 3] = 255;
-                            } else {
-                                const byteIndex = Math.floor(globalPixelIndex / 8);
-                                const bitIndex = globalPixelIndex % 8;
-                                const byte = pixelData.charCodeAt(byteIndex) || 0;
-                                const isOn = (byte & (1 << bitIndex)) !== 0;
-                                
-                                if (isOn) {
-                                    imageData.data[i] = monoR;
-                                    imageData.data[i + 1] = monoG;
-                                    imageData.data[i + 2] = monoB;
-                                    imageData.data[i + 3] = 255;
-                                } else {
-                                    imageData.data[i] = 0;
-                                    imageData.data[i + 1] = 0;
-                                    imageData.data[i + 2] = 0;
-                                    imageData.data[i + 3] = 255;
-                                }
-                            }
+                    if (!monoData && !colorData) continue;
+                    
+                    const isColorMode = !!colorData;
+                    let pixelData = null;
+                    let colorPixelData = null;
+                    
+                    if (isColorMode) {
+                        colorPixelData = atob(colorData);
+                    } else {
+                        pixelData = atob(monoData);
+                    }
+                    
+                    // Get mono color for this row
+                    let monoR = 255, monoG = 255, monoB = 255;
+                    if (rowData.monoColor && rowData.monoColor.length >= 3) {
+                        monoR = rowData.monoColor[0];
+                        monoG = rowData.monoColor[1];
+                        monoB = rowData.monoColor[2];
+                        if (rowData.monoColor.length >= 4) {
+                            const rawBrightness = rowData.monoColor[3] / 255;
+                            const brightness = Math.max(rawBrightness, 0.3);
+                            monoR = Math.round(monoR * brightness);
+                            monoG = Math.round(monoG * brightness);
+                            monoB = Math.round(monoB * brightness);
                         }
                     }
                     
-                    ctx.putImageData(imageData, 0, 0);
-                    grid.appendChild(canvas);
+                    // Create a container for this row
+                    const rowContainer = document.createElement('div');
+                    rowContainer.className = 'panel-row';
+                    rowContainer.style.display = 'flex';
+                    rowContainer.style.justifyContent = 'center';
+                    
+                    // Render each panel in the row
+                    for (let col = 0; col < rowCols; col++) {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = panelWidth;
+                        canvas.height = panelHeight;
+                        canvas.style.width = `${panelWidth * scale}px`;
+                        canvas.style.height = `${panelHeight * scale}px`;
+                        canvas.style.imageRendering = 'pixelated';
+                        canvas.style.display = 'block';
+                        canvas.style.background = '#000';
+                        
+                        const ctx = canvas.getContext('2d');
+                        const imageData = ctx.createImageData(panelWidth, panelHeight);
+                        
+                        for (let py = 0; py < panelHeight; py++) {
+                            for (let px = 0; px < panelWidth; px++) {
+                                // Calculate pixel index within this row's data
+                                const globalX = col * panelWidth + px;
+                                const globalY = py;
+                                const globalPixelIndex = globalY * rowWidth + globalX;
+                                
+                                const i = (py * panelWidth + px) * 4;
+                                
+                                if (isColorMode) {
+                                    const colorByteIndex = globalPixelIndex * 4;
+                                    const r = colorPixelData.charCodeAt(colorByteIndex) || 0;
+                                    const g = colorPixelData.charCodeAt(colorByteIndex + 1) || 0;
+                                    const b = colorPixelData.charCodeAt(colorByteIndex + 2) || 0;
+                                    const brightness = (colorPixelData.charCodeAt(colorByteIndex + 3) || 255) / 255;
+                                    
+                                    imageData.data[i] = Math.round(r * brightness);
+                                    imageData.data[i + 1] = Math.round(g * brightness);
+                                    imageData.data[i + 2] = Math.round(b * brightness);
+                                    imageData.data[i + 3] = 255;
+                                } else {
+                                    const byteIndex = Math.floor(globalPixelIndex / 8);
+                                    const bitIndex = globalPixelIndex % 8;
+                                    const byte = pixelData.charCodeAt(byteIndex) || 0;
+                                    const isOn = (byte & (1 << bitIndex)) !== 0;
+                                    
+                                    if (isOn) {
+                                        imageData.data[i] = monoR;
+                                        imageData.data[i + 1] = monoG;
+                                        imageData.data[i + 2] = monoB;
+                                        imageData.data[i + 3] = 255;
+                                    } else {
+                                        imageData.data[i] = 0;
+                                        imageData.data[i + 1] = 0;
+                                        imageData.data[i + 2] = 0;
+                                        imageData.data[i + 3] = 255;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        ctx.putImageData(imageData, 0, 0);
+                        rowContainer.appendChild(canvas);
+                    }
+                    
+                    grid.appendChild(rowContainer);
+                }
+            } else {
+                // LEGACY FORMAT: Single mono/color field with shared dimensions
+                const monoData = bitmapData.mono || bitmapData.pixels;
+                const colorData = bitmapData.color;
+                
+                if (!monoData && !colorData) return;
+                
+                const width = bitmapData.width || 48;
+                const height = bitmapData.height || 32;
+                const rows = bitmapData.rows || 2;
+                const cols = bitmapData.cols || 3;
+                
+                const isColorMode = !!colorData;
+                let pixelData = null;
+                let colorPixelData = null;
+                
+                if (isColorMode) {
+                    colorPixelData = atob(colorData);
+                } else {
+                    pixelData = atob(monoData);
+                }
+                
+                let monoR = 255, monoG = 255, monoB = 255;
+                if (bitmapData.monoColor && bitmapData.monoColor.length >= 3) {
+                    monoR = bitmapData.monoColor[0];
+                    monoG = bitmapData.monoColor[1];
+                    monoB = bitmapData.monoColor[2];
+                    if (bitmapData.monoColor.length >= 4) {
+                        const rawBrightness = bitmapData.monoColor[3] / 255;
+                        const brightness = Math.max(rawBrightness, 0.3);
+                        monoR = Math.round(monoR * brightness);
+                        monoG = Math.round(monoG * brightness);
+                        monoB = Math.round(monoB * brightness);
+                    }
+                }
+                
+                const panelWidth = width / cols;
+                const panelHeight = height / rows;
+                
+                for (let row = 0; row < rows; row++) {
+                    for (let col = 0; col < cols; col++) {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = panelWidth;
+                        canvas.height = panelHeight;
+                        canvas.style.width = `${panelWidth * scale}px`;
+                        canvas.style.height = `${panelHeight * scale}px`;
+                        canvas.style.imageRendering = 'pixelated';
+                        canvas.style.display = 'block';
+                        canvas.style.background = '#000';
+                        
+                        const ctx = canvas.getContext('2d');
+                        const imageData = ctx.createImageData(panelWidth, panelHeight);
+                        
+                        for (let py = 0; py < panelHeight; py++) {
+                            for (let px = 0; px < panelWidth; px++) {
+                                const globalX = col * panelWidth + px;
+                                const globalY = row * panelHeight + py;
+                                const globalPixelIndex = globalY * width + globalX;
+                                
+                                const i = (py * panelWidth + px) * 4;
+                                
+                                if (isColorMode) {
+                                    const colorByteIndex = globalPixelIndex * 4;
+                                    const r = colorPixelData.charCodeAt(colorByteIndex) || 0;
+                                    const g = colorPixelData.charCodeAt(colorByteIndex + 1) || 0;
+                                    const b = colorPixelData.charCodeAt(colorByteIndex + 2) || 0;
+                                    const brightness = (colorPixelData.charCodeAt(colorByteIndex + 3) || 255) / 255;
+                                    
+                                    imageData.data[i] = Math.round(r * brightness);
+                                    imageData.data[i + 1] = Math.round(g * brightness);
+                                    imageData.data[i + 2] = Math.round(b * brightness);
+                                    imageData.data[i + 3] = 255;
+                                } else {
+                                    const byteIndex = Math.floor(globalPixelIndex / 8);
+                                    const bitIndex = globalPixelIndex % 8;
+                                    const byte = pixelData.charCodeAt(byteIndex) || 0;
+                                    const isOn = (byte & (1 << bitIndex)) !== 0;
+                                    
+                                    if (isOn) {
+                                        imageData.data[i] = monoR;
+                                        imageData.data[i + 1] = monoG;
+                                        imageData.data[i + 2] = monoB;
+                                        imageData.data[i + 3] = 255;
+                                    } else {
+                                        imageData.data[i] = 0;
+                                        imageData.data[i + 1] = 0;
+                                        imageData.data[i + 2] = 0;
+                                        imageData.data[i + 3] = 255;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        ctx.putImageData(imageData, 0, 0);
+                        grid.appendChild(canvas);
+                    }
                 }
             }
             

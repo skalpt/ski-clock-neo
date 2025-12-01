@@ -23,8 +23,8 @@
 alignas(Adafruit_NeoPixel) uint8_t rowsStorage[DISPLAY_ROWS * sizeof(Adafruit_NeoPixel)];
 Adafruit_NeoPixel* rows = reinterpret_cast<Adafruit_NeoPixel*>(rowsStorage);
 
-// Internal rendering buffer (sized for current configuration)
-uint8_t neopixelRenderBuffer[DISPLAY_BUFFER_SIZE] = {0};
+// Internal rendering buffer (sized for max possible configuration)
+uint8_t neopixelRenderBuffer[MAX_DISPLAY_BUFFER_SIZE] = {0};
 
 // ============================================================================
 // INITIALIZATION
@@ -32,9 +32,15 @@ uint8_t neopixelRenderBuffer[DISPLAY_BUFFER_SIZE] = {0};
 
 void initNeoPixels() {
   // Use placement-new to construct NeoPixel objects without heap allocation
+  // Each row may have a different number of panels (and thus different pixel count)
+  DisplayConfig cfg = getDisplayConfig();
+  
   for (uint8_t i = 0; i < DISPLAY_ROWS; i++) {
-    // Construct Adafruit_NeoPixel at rows[i]
-    new (&rows[i]) Adafruit_NeoPixel(ROW_WIDTH * ROW_HEIGHT, DISPLAY_PINS[i], NEO_GRB + NEO_KHZ800);
+    // Calculate pixel count for this row from its configuration
+    uint16_t rowPixels = cfg.rowConfig[i].width * cfg.rowConfig[i].height;
+    
+    // Construct Adafruit_NeoPixel at rows[i] with row-specific pixel count
+    new (&rows[i]) Adafruit_NeoPixel(rowPixels, DISPLAY_PINS[i], NEO_GRB + NEO_KHZ800);
     
     // Initialize the hardware
     rows[i].begin();
@@ -44,7 +50,11 @@ void initNeoPixels() {
     
     DEBUG_PRINT("NeoPixel row ");
     DEBUG_PRINT(i + 1);
-    DEBUG_PRINT(" (GPIO ");
+    DEBUG_PRINT(" (");
+    DEBUG_PRINT(cfg.rowConfig[i].panels);
+    DEBUG_PRINT(" panels, ");
+    DEBUG_PRINT(rowPixels);
+    DEBUG_PRINT(" pixels, GPIO ");
     DEBUG_PRINT(DISPLAY_PINS[i]);
     DEBUG_PRINTLN(") initialised.");
   }
@@ -70,19 +80,23 @@ void updateNeoPixels() {
   char textSnapshot[DISPLAY_ROWS][MAX_TEXT_LENGTH];
   snapshotAllText(textSnapshot);
   
+  // Get display configuration for per-row dimensions
+  DisplayConfig cfg = getDisplayConfig();
+  
   // Clear internal render buffer
-  memset(neopixelRenderBuffer, 0, sizeof(neopixelRenderBuffer));
+  memset(neopixelRenderBuffer, 0, cfg.bufferSize);
   
   // Loop through each row and render from snapshot
   for (uint8_t rowIdx = 0; rowIdx < DISPLAY_ROWS; rowIdx++) {
     const char* displayText = textSnapshot[rowIdx];
+    RowConfig& rowCfg = cfg.rowConfig[rowIdx];
     
     // Clear this row's NeoPixels
     rows[rowIdx].clear();
     uint32_t color = rows[rowIdx].Color(DISPLAY_COLOR_R, DISPLAY_COLOR_G, DISPLAY_COLOR_B);
     
-    // Render text using drawTextCentered
-    drawTextCentered(rows[rowIdx], displayText, 1, color, 2);
+    // Render text using drawTextCentered (with row-specific width)
+    drawTextCenteredForRow(rows[rowIdx], rowIdx, displayText, 1, color, 2);
     
     // Copy rendered pixels to internal buffer for MQTT snapshots
     for (uint16_t stripIdx = 0; stripIdx < rows[rowIdx].numPixels(); stripIdx++) {
@@ -91,8 +105,8 @@ void updateNeoPixels() {
         uint8_t x, y;
         indexToXY(stripIdx, x, y);
         
-        // Calculate pixel index in unified buffer
-        uint16_t pixelIndex = (rowIdx * ROW_WIDTH * ROW_HEIGHT) + (y * ROW_WIDTH) + x;
+        // Calculate pixel index in unified buffer using per-row offset
+        uint16_t pixelIndex = rowCfg.pixelOffset + (y * rowCfg.width) + x;
         uint16_t byteIndex = pixelIndex / 8;
         uint8_t bitIndex = pixelIndex % 8;
         neopixelRenderBuffer[byteIndex] |= (1 << bitIndex);
@@ -114,19 +128,24 @@ void updateNeoPixels() {
 
 // Create snapshot buffer on-demand (called when publishing MQTT snapshot)
 void createNeopixelSnapshot() {
+  // Get display configuration for per-row dimensions
+  DisplayConfig cfg = getDisplayConfig();
+  
   // Clear buffer
-  memset(neopixelRenderBuffer, 0, sizeof(neopixelRenderBuffer));
+  memset(neopixelRenderBuffer, 0, cfg.bufferSize);
   
   // Loop through each row and copy current NeoPixel state
   for (uint8_t rowIdx = 0; rowIdx < DISPLAY_ROWS; rowIdx++) {
+    RowConfig& rowCfg = cfg.rowConfig[rowIdx];
+    
     for (uint16_t stripIdx = 0; stripIdx < rows[rowIdx].numPixels(); stripIdx++) {
       if (rows[rowIdx].getPixelColor(stripIdx) != 0) {
         // Reverse transformation: strip index → logical (x, y)
         uint8_t x, y;
         indexToXY(stripIdx, x, y);
         
-        // Calculate pixel index in unified buffer
-        uint16_t pixelIndex = (rowIdx * ROW_WIDTH * ROW_HEIGHT) + (y * ROW_WIDTH) + x;
+        // Calculate pixel index in unified buffer using per-row offset
+        uint16_t pixelIndex = rowCfg.pixelOffset + (y * rowCfg.width) + x;
         uint16_t byteIndex = pixelIndex / 8;
         uint8_t bitIndex = pixelIndex % 8;
         neopixelRenderBuffer[byteIndex] |= (1 << bitIndex);
@@ -135,7 +154,7 @@ void createNeopixelSnapshot() {
   }
   
   // Commit to display library for MQTT publishing
-  commitBuffer(neopixelRenderBuffer, sizeof(neopixelRenderBuffer));
+  commitBuffer(neopixelRenderBuffer, cfg.bufferSize);
 }
 
 // ============================================================================
@@ -300,17 +319,20 @@ void applySmoothScale2x(const uint8_t* glyphData,
 // DRAWING PRIMITIVES
 // ============================================================================
 
-// Set a single pixel on a NeoPixel row
-void setPixelRow(Adafruit_NeoPixel &strip, uint8_t x, uint8_t y, uint32_t color) {
-  if (x >= ROW_WIDTH || y >= ROW_HEIGHT) return;
+// Set a single pixel on a NeoPixel row (with row-specific width check)
+void setPixelRow(Adafruit_NeoPixel &strip, uint8_t rowIdx, uint8_t x, uint8_t y, uint32_t color) {
+  DisplayConfig cfg = getDisplayConfig();
+  if (rowIdx >= cfg.rows) return;
+  if (x >= cfg.rowConfig[rowIdx].width || y >= ROW_HEIGHT) return;
   uint16_t idx = xyToIndex(x, y);
   if (idx < strip.numPixels()) {
     strip.setPixelColor(idx, color);
   }
 }
 
-// Draw a single glyph at specified position
-void drawGlyph(Adafruit_NeoPixel &strip,
+// Draw a single glyph at specified position (row-aware)
+void drawGlyphForRow(Adafruit_NeoPixel &strip,
+               uint8_t rowIdx,
                int glyphIndex,
                int x0, int y0,
                uint32_t color,
@@ -336,7 +358,7 @@ void drawGlyph(Adafruit_NeoPixel &strip,
     for (uint8_t r = 0; r < H; r++)
       for (uint8_t c = 0; c < W; c++)
         if (glyphBuffer[r][c])
-          setPixelRow(strip, x0 + c, y0 + r, color);
+          setPixelRow(strip, rowIdx, x0 + c, y0 + r, color);
 
     return;
   }
@@ -350,7 +372,7 @@ void drawGlyph(Adafruit_NeoPixel &strip,
 
       for (uint8_t dy=0; dy<scale; dy++)
       for (uint8_t dx=0; dx<scale; dx++)
-        setPixelRow(strip, x0 + c*scale + dx,
+        setPixelRow(strip, rowIdx, x0 + c*scale + dx,
                           y0 + r*scale + dy,
                           color);
     }
@@ -380,20 +402,24 @@ uint16_t textWidth(const char *text, uint8_t scale) {
   return width;
 }
 
-// Draw text centered on the display
-void drawTextCentered(Adafruit_NeoPixel &strip,
+// Draw text centered on a specific row (uses row-specific width for centering)
+void drawTextCenteredForRow(Adafruit_NeoPixel &strip,
+                      uint8_t rowIdx,
                       const char *text,
                       uint8_t y0,
                       uint32_t color,
                       uint8_t scale)
 {
+  DisplayConfig cfg = getDisplayConfig();
+  uint16_t rowWidth = cfg.rowConfig[rowIdx].width;
+  
   uint16_t w = textWidth(text, scale);
-  int16_t x0 = (ROW_WIDTH - w) / 2;
+  int16_t x0 = (rowWidth - w) / 2;
 
   for (uint8_t i = 0; text[i] != '\0'; i++) {
     int gi = charToGlyph(text[i]);
     if (gi >= 0) {
-      drawGlyph(strip, gi, x0, y0, color, scale);
+      drawGlyphForRow(strip, rowIdx, gi, x0, y0, color, scale);
 
       uint8_t charW = FONT_WIDTH_TABLE[gi] * scale;
       uint8_t spacing = SPACING_SCALES ? (CHAR_SPACING * scale)

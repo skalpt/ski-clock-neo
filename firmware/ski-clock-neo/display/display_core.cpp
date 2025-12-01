@@ -35,7 +35,7 @@
 // ============================================================================
 
 // Display buffer storage (final rendered output for MQTT snapshots)
-uint8_t displayBuffer[DISPLAY_BUFFER_SIZE] = {0};
+uint8_t displayBuffer[MAX_DISPLAY_BUFFER_SIZE] = {0};
 DisplayConfig displayConfig = {0};
 
 // Text content storage (what should be displayed on each row)
@@ -111,11 +111,27 @@ void displayTask(void* parameter) {
 // ============================================================================
 
 void initDisplay() {
-  // Initialize display buffer with actual hardware configuration
+  // Initialize display configuration with per-row panel counts
   displayConfig.rows = DISPLAY_ROWS;
-  displayConfig.panelsPerRow = PANELS_PER_ROW;
   displayConfig.panelWidth = PANEL_WIDTH;
   displayConfig.panelHeight = PANEL_HEIGHT;
+  
+  // Calculate per-row configuration
+  uint16_t pixelOffset = 0;
+  uint16_t totalPixels = 0;
+  for (uint8_t row = 0; row < DISPLAY_ROWS; row++) {
+    displayConfig.rowConfig[row].panels = PANELS_PER_ROW[row];
+    displayConfig.rowConfig[row].width = PANELS_PER_ROW[row] * PANEL_WIDTH;
+    displayConfig.rowConfig[row].height = PANEL_HEIGHT;
+    displayConfig.rowConfig[row].pixelOffset = pixelOffset;
+    
+    uint16_t rowPixels = displayConfig.rowConfig[row].width * PANEL_HEIGHT;
+    pixelOffset += rowPixels;
+    totalPixels += rowPixels;
+  }
+  displayConfig.totalPixels = totalPixels;
+  displayConfig.bufferSize = (totalPixels + 7) / 8;
+  
   clearDisplayBuffer();
 
   // Initialize hardware renderer (NeoPixels)
@@ -225,18 +241,18 @@ DisplayConfig getDisplayConfig() {
 // Set a single pixel in the display buffer
 void setPixel(uint8_t row, uint16_t x, uint16_t y, bool state) {
   if (row >= displayConfig.rows) return;
-  if (x >= displayConfig.panelsPerRow * displayConfig.panelWidth) return;
-  if (y >= displayConfig.panelHeight) return;
   
-  // Calculate pixel index in buffer
-  // Each row occupies (panelsPerRow * panelWidth * panelHeight) pixels
-  uint16_t rowPixels = displayConfig.panelsPerRow * displayConfig.panelWidth * displayConfig.panelHeight;
-  uint16_t pixelIndex = row * rowPixels + y * (displayConfig.panelsPerRow * displayConfig.panelWidth) + x;
+  RowConfig& rowCfg = displayConfig.rowConfig[row];
+  if (x >= rowCfg.width) return;
+  if (y >= rowCfg.height) return;
+  
+  // Calculate pixel index in buffer using per-row offset
+  uint16_t pixelIndex = rowCfg.pixelOffset + y * rowCfg.width + x;
   
   uint16_t byteIndex = pixelIndex / 8;
   uint8_t bitIndex = pixelIndex % 8;
   
-  if (byteIndex >= sizeof(displayBuffer)) return;
+  if (byteIndex >= displayConfig.bufferSize) return;
   
   if (state) {
     displayBuffer[byteIndex] |= (1 << bitIndex);
@@ -269,8 +285,7 @@ const uint8_t* getDisplayBuffer() {
 
 // Get size of display buffer in bytes
 uint16_t getDisplayBufferSize() {
-  uint16_t totalPixels = displayConfig.rows * displayConfig.panelsPerRow * displayConfig.panelWidth * displayConfig.panelHeight;
-  return (totalPixels + 7) / 8;
+  return displayConfig.bufferSize;
 }
 
 // ============================================================================

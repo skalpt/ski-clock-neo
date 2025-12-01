@@ -11,17 +11,42 @@
 
 // Display configuration
 #define DISPLAY_ROWS    2       // Number of physical display rows
-#define PANELS_PER_ROW  3       // Number of panels per row
 #define PANEL_WIDTH     16      // Width of each panel in pixels
 #define PANEL_HEIGHT    16      // Height of each panel in pixels
 #define BRIGHTNESS      10      // 0-255 (keeping dim for development)
+
+// Per-row panel counts (allows different widths per row)
+// Example: Row 0 = 3 panels (48px wide), Row 1 = 4 panels (64px wide)
+static const uint8_t PANELS_PER_ROW[DISPLAY_ROWS] = {3, 3};
 
 // Display color configuration (RGB)
 #define DISPLAY_COLOR_R 255     // Red component (0-255)
 #define DISPLAY_COLOR_G 0       // Green component (0-255)
 #define DISPLAY_COLOR_B 0       // Blue component (0-255)
 
-// Display pin configuration
+// Display pin configuration (one GPIO per row)
 static const uint8_t DISPLAY_PINS[DISPLAY_ROWS] = {4, 3};
+
+// Helper macros for calculating row dimensions
+#define ROW_WIDTH(row) (PANELS_PER_ROW[row] * PANEL_WIDTH)
+#define ROW_PIXELS(row) (ROW_WIDTH(row) * PANEL_HEIGHT)
+
+// Calculate maximum row width (for buffer sizing)
+inline uint8_t getMaxPanelsPerRow() {
+  uint8_t maxPanels = 0;
+  for (uint8_t i = 0; i < DISPLAY_ROWS; i++) {
+    if (PANELS_PER_ROW[i] > maxPanels) maxPanels = PANELS_PER_ROW[i];
+  }
+  return maxPanels;
+}
+
+// Calculate total pixels across all rows
+inline uint16_t getTotalPixels() {
+  uint16_t total = 0;
+  for (uint8_t i = 0; i < DISPLAY_ROWS; i++) {
+    total += ROW_PIXELS(i);
+  }
+  return total;
+}
 
 #endif

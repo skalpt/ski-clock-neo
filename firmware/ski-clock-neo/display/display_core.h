@@ -4,23 +4,36 @@
 #include <Arduino.h>
 #include "../ski-clock-neo_config.h"
 
-// Calculate total dimensions
-#define ROW_WIDTH (PANELS_PER_ROW * PANEL_WIDTH)
+// Maximum panels per row (for buffer sizing) - use largest configured row
+#define MAX_PANELS_PER_ROW 4
+#define MAX_ROW_WIDTH (MAX_PANELS_PER_ROW * PANEL_WIDTH)
 #define ROW_HEIGHT PANEL_HEIGHT
-#define DISPLAY_BUFFER_SIZE ((DISPLAY_ROWS * ROW_WIDTH * ROW_HEIGHT) / 8) // Bit-packed: (rows * width * height) / 8 bits per byte
+
+// Maximum buffer size (worst case: all rows at max width)
+#define MAX_DISPLAY_BUFFER_SIZE ((DISPLAY_ROWS * MAX_ROW_WIDTH * ROW_HEIGHT) / 8)
 
 #define MAX_TEXT_LENGTH 32
 
+// Display row configuration structure (per-row dimensions)
+struct RowConfig {
+  uint8_t panels;         // Number of panels in this row
+  uint16_t width;         // Width in pixels (panels * PANEL_WIDTH)
+  uint16_t height;        // Height in pixels (PANEL_HEIGHT)
+  uint16_t pixelOffset;   // Bit offset into display buffer for this row
+};
+
 // Display configuration structure
 struct DisplayConfig {
-  uint8_t rows;           // Number of panel rows (1-2)
-  uint8_t panelsPerRow;   // Number of panels per row (1-4)
-  uint8_t panelWidth;     // Width of each panel in pixels
-  uint8_t panelHeight;    // Height of each panel in pixels
+  uint8_t rows;                     // Number of panel rows
+  uint8_t panelWidth;               // Width of each panel in pixels
+  uint8_t panelHeight;              // Height of each panel in pixels
+  RowConfig rowConfig[DISPLAY_ROWS]; // Per-row configuration
+  uint16_t totalPixels;             // Total pixels across all rows
+  uint16_t bufferSize;              // Total buffer size in bytes
 };
 
 // Display buffer - stores on/off state for each pixel (1 bit per pixel, packed into bytes)
-extern uint8_t displayBuffer[DISPLAY_BUFFER_SIZE];
+extern uint8_t displayBuffer[MAX_DISPLAY_BUFFER_SIZE];
 extern DisplayConfig displayConfig;
 
 // Text content for each row (what should be displayed)
