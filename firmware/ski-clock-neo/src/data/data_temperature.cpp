@@ -13,7 +13,7 @@
 // ============================================================================
 
 #include "data_temperature.h"              // This file's header
-#include "ski-clock-neo_config.h"          // For TEMPERATURE_PIN definition
+#include "../../ski-clock-neo_config.h"    // For TEMPERATURE_PIN definition
 #include "display/display_controller.h"    // For display callback
 #include "core/event_log.h"                // For logging temperature events
 #include "core/timer_helpers.h"            // For timer management

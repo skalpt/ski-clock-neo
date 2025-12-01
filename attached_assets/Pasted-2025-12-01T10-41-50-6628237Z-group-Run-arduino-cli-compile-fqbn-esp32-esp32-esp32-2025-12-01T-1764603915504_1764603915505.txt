@@ -1,0 +1,26 @@
+2025-12-01T10:41:50.6628237Z ##[group]Run arduino-cli compile --fqbn esp32:esp32:esp32 \
+2025-12-01T10:41:50.6629003Z [36;1marduino-cli compile --fqbn esp32:esp32:esp32 \[0m
+2025-12-01T10:41:50.6629560Z [36;1m  --export-binaries \[0m
+2025-12-01T10:41:50.6630095Z [36;1m  --build-property "build.partitions=min_spiffs" \[0m
+2025-12-01T10:41:50.6632534Z [36;1m  --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"***\" -DDOWNLOAD_API_KEY=\"***\" -DFIRMWARE_VERSION=\"2025.12.1.85\" -DMQTT_HOST=\"***\" -DMQTT_USERNAME=\"***\" -DMQTT_PASSWORD=\"***\" -DBOARD_ESP32" \[0m
+2025-12-01T10:41:50.6633885Z [36;1m  --output-dir build/esp32 \[0m
+2025-12-01T10:41:50.6634418Z [36;1m  firmware/***[0m
+2025-12-01T10:41:50.6635057Z [36;1mcp build/esp32/***.ino.bin build/***-esp32.bin[0m
+2025-12-01T10:41:50.6636199Z [36;1mcp build/esp32/***.ino.bootloader.bin build/***-esp32.bootloader.bin || echo "Warning: Bootloader not found for ESP32"[0m
+2025-12-01T10:41:50.6637935Z [36;1mcp build/esp32/***.ino.partitions.bin build/***-esp32.partitions.bin || echo "Warning: Partitions not found for ESP32"[0m
+2025-12-01T10:41:50.6682365Z shell: /usr/bin/bash -e {0}
+2025-12-01T10:41:50.6682782Z ##[endgroup]
+2025-12-01T10:41:51.7783184Z In file included from /home/runner/work/***/***/firmware/***/***.ino:7:
+2025-12-01T10:41:51.7784719Z /home/runner/work/***/***/firmware/***/src/display/display_core.h:5:10: fatal error: ***_config.h: No such file or directory
+2025-12-01T10:41:51.7785314Z  #include "***_config.h"
+2025-12-01T10:41:51.7785548Z           ^~~~~~~~~~~~~~~~~~~~~~~~
+2025-12-01T10:41:51.7785799Z compilation terminated.
+2025-12-01T10:41:51.7785944Z 
+2025-12-01T10:41:51.9144989Z Error during build: exit status 1
+2025-12-01T10:41:51.9145317Z 
+2025-12-01T10:41:51.9146098Z [92mUsed library[0m [92mVersion[0m [90mPath[0m                                                                         
+2025-12-01T10:41:51.9147508Z [93mTicker[0m       2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Ticker[0m
+2025-12-01T10:41:51.9148196Z 
+2025-12-01T10:41:51.9148731Z [92mUsed platform[0m [92mVersion[0m [90mPath[0m                                                        
+2025-12-01T10:41:51.9149818Z [93mesp32:esp32[0m   2.0.14  [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14[0m
+2025-12-01T10:41:51.9195518Z ##[error]Process completed with exit code 1.

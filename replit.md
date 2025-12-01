@@ -97,6 +97,7 @@ The project consists of two primary components:
             └── font_5x7.h             (bitmap font data)
     ```
     Include paths use `src/` prefix from .ino (e.g., `#include "src/core/timer_helpers.h"`) and flat paths within src (e.g., `#include "core/timer_helpers.h"`).
+    Config file access: Use `#include "../../ski-clock-neo_config.h"` from src/ files (relative path to sketch root).
 
 **2. Dashboard Server (Python Flask application):**
 *   **Features**: Provides an API for firmware distribution for multiple platforms, supporting uploads with API key authentication, platform aliasing, and SHA256 checksums. Integrates with PostgreSQL for persistent device tracking and offers an interactive web dashboard.

@@ -15,7 +15,7 @@
 // ============================================================================
 
 #include "mqtt_client.h"               // This file's header
-#include "ski-clock-neo_config.h"      // For importing main configuration (credentials, etc.)
+#include "../../ski-clock-neo_config.h" // For importing main configuration (credentials, etc.)
 #include "core/led_indicator.h"        // For LED status patterns when MQTT connection state changes
 #include "ota_update.h"                // For OTA update publishing
 #include "display/display_core.h"      // For display snapshot publishing

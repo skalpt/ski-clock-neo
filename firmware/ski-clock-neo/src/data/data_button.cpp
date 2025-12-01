@@ -13,7 +13,7 @@
 // ============================================================================
 
 #include "data_button.h"             // This file's header
-#include "ski-clock-neo_config.h"    // For BUTTON_PIN configuration
+#include "../../ski-clock-neo_config.h" // For BUTTON_PIN configuration
 #include "core/event_log.h"          // For logging button events
 #include "core/debug.h"              // For debug logging
 

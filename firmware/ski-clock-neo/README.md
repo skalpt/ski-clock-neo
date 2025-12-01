@@ -80,6 +80,14 @@ ski-clock-neo/
 
 > **Note**: The `src/` folder structure allows Arduino to compile all `.cpp` files recursively.
 
+### Include Path Conventions
+
+| From | Include Path |
+|------|-------------|
+| .ino file | `#include "src/core/timer_helpers.h"` |
+| Files in src/ | `#include "core/timer_helpers.h"` |
+| Config from src/ | `#include "../../ski-clock-neo_config.h"`
+
 ## Configuration
 
 Edit `ski-clock-neo_config.h` to customize your setup:
