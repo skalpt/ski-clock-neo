@@ -13,7 +13,7 @@
 // ============================================================================
 
 #include "event_log.h"
-#include "mqtt_client.h"
+#include "../connectivity/mqtt_client.h"
 #include "device_info.h"
 #include "debug.h"
 

@@ -13,9 +13,9 @@
 // ============================================================================
 
 #include "data_button.h"
-#include "ski-clock-neo_config.h"
-#include "event_log.h"
-#include "debug.h"
+#include "../ski-clock-neo_config.h"
+#include "../core/event_log.h"
+#include "../core/debug.h"
 
 // ============================================================================
 // STATE VARIABLES

@@ -13,11 +13,11 @@
 // ============================================================================
 
 #include "data_temperature.h"
-#include "ski-clock-neo_config.h"
-#include "display_controller.h"
-#include "event_log.h"
-#include "timing_helpers.h"
-#include "debug.h"
+#include "../ski-clock-neo_config.h"
+#include "../display/display_controller.h"
+#include "../core/event_log.h"
+#include "../core/timer_helpers.h"
+#include "../core/debug.h"
 #include <OneWire.h>
 #include <DallasTemperature.h>
 

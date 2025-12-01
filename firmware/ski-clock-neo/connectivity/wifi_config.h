@@ -13,11 +13,11 @@
 
 #include <AutoConnectCore.h>
 #include <AutoConnectCredential.h>
-#include "device_info.h"   // For getDeviceID()
-#include "led_indicator.h" // For LED status patterns when WiFi connection state changes
-#include "mqtt_client.h"   // For MQTT connection management when WiFi connection state changes
-#include "event_log.h"     // For logging WiFi events
-#include "debug.h"
+#include "../core/device_info.h"   // For getDeviceID()
+#include "../core/led_indicator.h" // For LED status patterns when WiFi connection state changes
+#include "mqtt_client.h"           // For MQTT connection management when WiFi connection state changes
+#include "../core/event_log.h"     // For logging WiFi events
+#include "../core/debug.h"
 
 // Configuration constants
 const char* AP_PASSWORD = "configure";

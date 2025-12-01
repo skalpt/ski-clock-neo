@@ -14,10 +14,10 @@
 // ============================================================================
 
 #include "data_time.h"
-#include "ski-clock-neo_config.h"
-#include "event_log.h"
-#include "debug.h"
-#include "timing_helpers.h"
+#include "../ski-clock-neo_config.h"
+#include "../core/event_log.h"
+#include "../core/debug.h"
+#include "../core/timer_helpers.h"
 #include <time.h>
 #include <sys/time.h>
 #include <Wire.h>

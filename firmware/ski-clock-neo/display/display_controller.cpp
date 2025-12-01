@@ -14,12 +14,12 @@
 
 #include "display_controller.h"
 #include "display_core.h"
-#include "data_time.h"
-#include "data_temperature.h"
-#include "data_button.h"
-#include "event_log.h"
-#include "timing_helpers.h"
-#include "debug.h"
+#include "../data/data_time.h"
+#include "../data/data_temperature.h"
+#include "../data/data_button.h"
+#include "../core/event_log.h"
+#include "../core/timer_helpers.h"
+#include "../core/debug.h"
 
 // ============================================================================
 // CONSTANTS

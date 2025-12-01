@@ -14,8 +14,8 @@
 #include "display_core.h"
 #include "display_controller.h"
 #include "neopixel_render.h"
-#include "timing_helpers.h"
-#include "debug.h"
+#include "../core/timer_helpers.h"
+#include "../core/debug.h"
 #include <string.h>
 
 // ============================================================================

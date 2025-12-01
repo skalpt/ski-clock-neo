@@ -32,7 +32,7 @@ The project consists of two primary components:
     - Transition lockout (200ms) prevents button bounce issues
 *   **RTC Integration**: DS3231 RTC module provides instant time on boot (before WiFi/NTP connects). NTP automatically syncs the RTC hourly to maintain accuracy. Falls back gracefully to NTP-only if no RTC is present. **Important**: ESP32-C3 requires explicit I2C pins via `Wire.begin(RTC_SDA_PIN, RTC_SCL_PIN)` to avoid conflict with default GPIO 8/9 (which conflicts with LED on GPIO 8).
 *   **Time Change Callbacks**: Precise minute/date change detection via callback system. The data_time library tracks last minute and day, calling registered callbacks with flags (TIME_CHANGE_MINUTE, TIME_CHANGE_DATE) when changes occur. A 1-second polling timer detects changes reliably.
-*   **Unified Timer Library**: The `timing_helpers` library provides complete platform abstraction for all timing needs:
+*   **Unified Timer Library**: The `timer_helpers` library provides complete platform abstraction for all timing needs:
     - Periodic timers via `createTimer()` - FreeRTOS tasks on ESP32, TickTwo tickers on ESP8266
     - One-shot timers via `createOneShotTimer()`/`triggerTimer()` - ESP32 Ticker.once_ms, ESP8266 TickTwo with iterations=1
     - Notification-based tasks via `createNotificationTask()`/`notifyTask()` (ESP32 only) - for event-driven wake patterns
@@ -61,6 +61,32 @@ The project consists of two primary components:
     - FORWARD DECLARATIONS section (for callbacks used before definition)
     - Grouped function sections (e.g., INITIALIZATION, TIMER CALLBACKS, PUBLIC API)
     - Comments explain each section's purpose for easy navigation
+*   **Firmware Folder Structure**: Files are organized by responsibility:
+    ```
+    firmware/ski-clock-neo/
+    ├── ski-clock-neo.ino          (main sketch, stays at root for Arduino compatibility)
+    ├── ski-clock-neo_config.h     (user-tunable configuration)
+    ├── core/                       (shared infrastructure)
+    │   ├── timer_helpers.h/.cpp   (platform-abstracted timing)
+    │   ├── event_log.h/.cpp       (MQTT event logging)
+    │   ├── led_indicator.h/.cpp   (connectivity status LED)
+    │   ├── device_info.h/.cpp     (device ID and platform detection)
+    │   └── debug.h                (conditional debug macros)
+    ├── data/                       (sensor and time data providers)
+    │   ├── data_time.h/.cpp       (RTC/NTP time management)
+    │   ├── data_temperature.h/.cpp (DS18B20 sensor)
+    │   └── data_button.h/.cpp     (button input with debouncing)
+    ├── connectivity/               (network and updates)
+    │   ├── mqtt_client.h/.cpp     (MQTT pub/sub and commands)
+    │   ├── ota_update.h/.cpp      (OTA firmware updates)
+    │   └── wifi_config.h          (AutoConnect WiFi management)
+    └── display/                    (display rendering)
+        ├── display_core.h/.cpp    (hardware-agnostic buffer management)
+        ├── display_controller.h/.cpp (content scheduling and modes)
+        ├── neopixel_render.h/.cpp (NeoPixel-specific rendering)
+        └── font_5x7.h             (bitmap font data)
+    ```
+    Include paths use relative references (e.g., `#include "../core/timer_helpers.h"`).
 
 **2. Dashboard Server (Python Flask application):**
 *   **Features**: Provides an API for firmware distribution for multiple platforms, supporting uploads with API key authentication, platform aliasing, and SHA256 checksums. Integrates with PostgreSQL for persistent device tracking and offers an interactive web dashboard.

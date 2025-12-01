@@ -15,11 +15,11 @@
 // ============================================================================
 
 #include "mqtt_client.h"
-#include "led_indicator.h"
+#include "../core/led_indicator.h"
 #include "ota_update.h"
-#include "display_core.h"
-#include "event_log.h"
-#include "ski-clock-neo_config.h"
+#include "../display/display_core.h"
+#include "../core/event_log.h"
+#include "../ski-clock-neo_config.h"
 
 // ============================================================================
 // CONSTANTS
