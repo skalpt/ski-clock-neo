@@ -1,0 +1,53 @@
+2025-12-01T20:14:50.3933425Z ##[group]Run # Upload main firmware binaries (exclude bootloader/partitions files)
+2025-12-01T20:14:50.3934042Z [36;1m# Upload main firmware binaries (exclude bootloader/partitions files)[0m
+2025-12-01T20:14:50.3934501Z [36;1mfor file in build/***-*.bin; do[0m
+2025-12-01T20:14:50.3934808Z [36;1m  # Skip bootloader and partitions files[0m
+2025-12-01T20:14:50.3935199Z [36;1m  if [[ "$file" == *".bootloader.bin" ]] || [[ "$file" == *".partitions.bin" ]]; then[0m
+2025-12-01T20:14:50.3935559Z [36;1m    continue[0m
+2025-12-01T20:14:50.3935755Z [36;1m  fi[0m
+2025-12-01T20:14:50.3935934Z [36;1m[0m
+2025-12-01T20:14:50.3936206Z [36;1m  PLATFORM=$(basename "$file" .bin | sed 's/***-//')[0m
+2025-12-01T20:14:50.3936625Z [36;1m  echo "Uploading $file (platform=$PLATFORM version=2025.12.1.87)..."[0m
+2025-12-01T20:14:50.3936964Z [36;1m[0m
+2025-12-01T20:14:50.3937248Z [36;1m  # Check if this is an ESP32 family platform (has bootloader/partitions)[0m
+2025-12-01T20:14:50.3937704Z [36;1m  BOOTLOADER="build/***-${PLATFORM}.bootloader.bin"[0m
+2025-12-01T20:14:50.3938144Z [36;1m  PARTITIONS="build/***-${PLATFORM}.partitions.bin"[0m
+2025-12-01T20:14:50.3938435Z [36;1m[0m
+2025-12-01T20:14:50.3938680Z [36;1m  if [ -f "$BOOTLOADER" ] && [ -f "$PARTITIONS" ]; then[0m
+2025-12-01T20:14:50.3939220Z [36;1m    # ESP32 family: upload firmware + bootloader + partitions[0m
+2025-12-01T20:14:50.3939903Z [36;1m    echo "  → Full flash mode: uploading firmware, bootloader, and partitions"[0m
+2025-12-01T20:14:50.3940296Z [36;1m    curl --fail --show-error \[0m
+2025-12-01T20:14:50.3940683Z [36;1m      -X POST "***/api/upload" \[0m
+2025-12-01T20:14:50.3941061Z [36;1m      -H "X-API-Key: ***" \[0m
+2025-12-01T20:14:50.3941312Z [36;1m      -F "file=@$file" \[0m
+2025-12-01T20:14:50.3941571Z [36;1m      -F "bootloader=@$BOOTLOADER" \[0m
+2025-12-01T20:14:50.3941853Z [36;1m      -F "partitions=@$PARTITIONS" \[0m
+2025-12-01T20:14:50.3942131Z [36;1m      -F "version=2025.12.1.87" \[0m
+2025-12-01T20:14:50.3942393Z [36;1m      -F "platform=$PLATFORM" \[0m
+2025-12-01T20:14:50.3942658Z [36;1m      -w "\n"[0m
+2025-12-01T20:14:50.3942939Z [36;1m  else[0m
+2025-12-01T20:14:50.3943180Z [36;1m    # ESP8266: upload firmware only[0m
+2025-12-01T20:14:50.3943523Z [36;1m    echo "  → Quick flash mode: uploading firmware only"[0m
+2025-12-01T20:14:50.3943851Z [36;1m    curl --fail --show-error \[0m
+2025-12-01T20:14:50.3944213Z [36;1m      -X POST "***/api/upload" \[0m
+2025-12-01T20:14:50.3944558Z [36;1m      -H "X-API-Key: ***" \[0m
+2025-12-01T20:14:50.3944805Z [36;1m      -F "file=@$file" \[0m
+2025-12-01T20:14:50.3945058Z [36;1m      -F "version=2025.12.1.87" \[0m
+2025-12-01T20:14:50.3945325Z [36;1m      -F "platform=$PLATFORM" \[0m
+2025-12-01T20:14:50.3945575Z [36;1m      -w "\n"[0m
+2025-12-01T20:14:50.3945774Z [36;1m  fi[0m
+2025-12-01T20:14:50.3945949Z [36;1m[0m
+2025-12-01T20:14:50.3946188Z [36;1m  echo "✓ Upload for platform '$PLATFORM' succeeded"[0m
+2025-12-01T20:14:50.3946484Z [36;1mdone[0m
+2025-12-01T20:14:50.3978680Z shell: /usr/bin/bash -e {0}
+2025-12-01T20:14:50.3978943Z ##[endgroup]
+2025-12-01T20:14:50.4057871Z Uploading build/***-d1mini.bin (platform=d1mini version=2025.12.1.87)...
+2025-12-01T20:14:50.4058847Z   → Quick flash mode: uploading firmware only
+2025-12-01T20:14:50.4119269Z   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+2025-12-01T20:14:50.4120521Z                                  Dload  Upload   Total   Spent    Left  Speed
+2025-12-01T20:14:50.4120768Z 
+2025-12-01T20:14:50.5679926Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+2025-12-01T20:14:50.5681010Z  99  559k    0     0  100  559k      0  3582k --:--:-- --:--:-- --:--:-- 3607k
+2025-12-01T20:14:50.5681662Z curl: (22) The requested URL returned error: 409
+2025-12-01T20:14:50.5696893Z 
+2025-12-01T20:14:50.5721012Z ##[error]Process completed with exit code 22.
