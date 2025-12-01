@@ -1,12 +1,12 @@
 // Includes
 #include "ski-clock-neo_config.h"
-#include "core/debug.h"
-#include "core/timer_helpers.h"
-#include "core/event_log.h"
-#include "core/led_indicator.h"
-#include "display/display_core.h"
-#include "connectivity/wifi_config.h"
-#include "connectivity/mqtt_client.h"
+#include "src/core/debug.h"
+#include "src/core/timer_helpers.h"
+#include "src/core/event_log.h"
+#include "src/core/led_indicator.h"
+#include "src/display/display_core.h"
+#include "src/connectivity/wifi_config.h"
+#include "src/connectivity/mqtt_client.h"
 
 void setup() {
   // Initialise serial (only if debug logging enabled)

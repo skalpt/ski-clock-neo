@@ -56,26 +56,29 @@ ESP32/ESP8266 firmware for NeoPixel LED matrix clock displays with secure OTA up
 ski-clock-neo/
 ├── ski-clock-neo.ino          # Main sketch (Arduino IDE entry point)
 ├── ski-clock-neo_config.h     # User-tunable configuration
-├── core/                       # Shared infrastructure
-│   ├── timer_helpers.h/.cpp   # Platform-abstracted timing (FreeRTOS/TickTwo)
-│   ├── event_log.h/.cpp       # MQTT event logging with ring buffer
-│   ├── led_indicator.h/.cpp   # Connectivity status LED
-│   ├── device_info.h/.cpp     # Device ID and platform detection
-│   └── debug.h                # Conditional debug macros
-├── data/                       # Sensor and time data providers
-│   ├── data_time.h/.cpp       # RTC/NTP time management
-│   ├── data_temperature.h/.cpp # DS18B20 sensor
-│   └── data_button.h/.cpp     # Button input with debouncing
-├── connectivity/               # Network and updates
-│   ├── mqtt_client.h/.cpp     # MQTT pub/sub and commands
-│   ├── ota_update.h/.cpp      # OTA firmware updates
-│   └── wifi_config.h          # AutoConnect WiFi management
-└── display/                    # Display rendering
-    ├── display_core.h/.cpp    # Hardware-agnostic buffer management
-    ├── display_controller.h/.cpp # Content scheduling and modes
-    ├── neopixel_render.h/.cpp # NeoPixel-specific rendering
-    └── font_5x7.h             # Bitmap font data
+└── src/                        # Source files (Arduino compiles recursively)
+    ├── core/                   # Shared infrastructure
+    │   ├── timer_helpers.h/.cpp   # Platform-abstracted timing (FreeRTOS/TickTwo)
+    │   ├── event_log.h/.cpp       # MQTT event logging with ring buffer
+    │   ├── led_indicator.h/.cpp   # Connectivity status LED
+    │   ├── device_info.h/.cpp     # Device ID and platform detection
+    │   └── debug.h                # Conditional debug macros
+    ├── data/                   # Sensor and time data providers
+    │   ├── data_time.h/.cpp       # RTC/NTP time management
+    │   ├── data_temperature.h/.cpp # DS18B20 sensor
+    │   └── data_button.h/.cpp     # Button input with debouncing
+    ├── connectivity/           # Network and updates
+    │   ├── mqtt_client.h/.cpp     # MQTT pub/sub and commands
+    │   ├── ota_update.h/.cpp      # OTA firmware updates
+    │   └── wifi_config.h          # AutoConnect WiFi management
+    └── display/                # Display rendering
+        ├── display_core.h/.cpp    # Hardware-agnostic buffer management
+        ├── display_controller.h/.cpp # Content scheduling and modes
+        ├── neopixel_render.h/.cpp # NeoPixel-specific rendering
+        └── font_5x7.h             # Bitmap font data
 ```
+
+> **Note**: The `src/` folder structure allows Arduino to compile all `.cpp` files recursively.
 
 ## Configuration
 

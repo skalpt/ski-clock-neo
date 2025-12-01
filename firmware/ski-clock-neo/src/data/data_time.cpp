@@ -14,10 +14,10 @@
 // ============================================================================
 
 #include "data_time.h"               // This file's header
-#include "../ski-clock-neo_config.h" // For RTC pin definitions
-#include "../core/event_log.h"       // For logging time events
-#include "../core/debug.h"           // For debug logging
-#include "../core/timer_helpers.h"   // For 1-second polling timer
+#include "ski-clock-neo_config.h"    // For RTC pin definitions
+#include "core/event_log.h"          // For logging time events
+#include "core/debug.h"              // For debug logging
+#include "core/timer_helpers.h"      // For 1-second polling timer
 #include <time.h>                    // For time functions
 #include <sys/time.h>                // For settimeofday
 #include <Wire.h>                    // For I2C communication with RTC

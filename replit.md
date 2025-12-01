@@ -70,32 +70,33 @@ The project consists of two primary components:
     - FORWARD DECLARATIONS section (for callbacks used before definition)
     - Grouped function sections (e.g., INITIALIZATION, TIMER CALLBACKS, PUBLIC API)
     - Comments explain each section's purpose for easy navigation
-*   **Firmware Folder Structure**: Files are organized by responsibility:
+*   **Firmware Folder Structure**: Files are organized in `src/` for Arduino recursive compilation:
     ```
     firmware/ski-clock-neo/
     ├── ski-clock-neo.ino          (main sketch, stays at root for Arduino compatibility)
     ├── ski-clock-neo_config.h     (user-tunable configuration)
-    ├── core/                       (shared infrastructure)
-    │   ├── timer_helpers.h/.cpp   (platform-abstracted timing)
-    │   ├── event_log.h/.cpp       (MQTT event logging)
-    │   ├── led_indicator.h/.cpp   (connectivity status LED)
-    │   ├── device_info.h/.cpp     (device ID and platform detection)
-    │   └── debug.h                (conditional debug macros)
-    ├── data/                       (sensor and time data providers)
-    │   ├── data_time.h/.cpp       (RTC/NTP time management)
-    │   ├── data_temperature.h/.cpp (DS18B20 sensor)
-    │   └── data_button.h/.cpp     (button input with debouncing)
-    ├── connectivity/               (network and updates)
-    │   ├── mqtt_client.h/.cpp     (MQTT pub/sub and commands)
-    │   ├── ota_update.h/.cpp      (OTA firmware updates)
-    │   └── wifi_config.h          (AutoConnect WiFi management)
-    └── display/                    (display rendering)
-        ├── display_core.h/.cpp    (hardware-agnostic buffer management)
-        ├── display_controller.h/.cpp (content scheduling and modes)
-        ├── neopixel_render.h/.cpp (NeoPixel-specific rendering)
-        └── font_5x7.h             (bitmap font data)
+    └── src/                        (source files, compiled recursively by Arduino)
+        ├── core/                   (shared infrastructure)
+        │   ├── timer_helpers.h/.cpp   (platform-abstracted timing)
+        │   ├── event_log.h/.cpp       (MQTT event logging)
+        │   ├── led_indicator.h/.cpp   (connectivity status LED)
+        │   ├── device_info.h/.cpp     (device ID and platform detection)
+        │   └── debug.h                (conditional debug macros)
+        ├── data/                   (sensor and time data providers)
+        │   ├── data_time.h/.cpp       (RTC/NTP time management)
+        │   ├── data_temperature.h/.cpp (DS18B20 sensor)
+        │   └── data_button.h/.cpp     (button input with debouncing)
+        ├── connectivity/           (network and updates)
+        │   ├── mqtt_client.h/.cpp     (MQTT pub/sub and commands)
+        │   ├── ota_update.h/.cpp      (OTA firmware updates)
+        │   └── wifi_config.h          (AutoConnect WiFi management)
+        └── display/                (display rendering)
+            ├── display_core.h/.cpp    (hardware-agnostic buffer management)
+            ├── display_controller.h/.cpp (content scheduling and modes)
+            ├── neopixel_render.h/.cpp (NeoPixel-specific rendering)
+            └── font_5x7.h             (bitmap font data)
     ```
-    Include paths use relative references (e.g., `#include "../core/timer_helpers.h"`).
+    Include paths use `src/` prefix from .ino (e.g., `#include "src/core/timer_helpers.h"`) and flat paths within src (e.g., `#include "core/timer_helpers.h"`).
 
 **2. Dashboard Server (Python Flask application):**
 *   **Features**: Provides an API for firmware distribution for multiple platforms, supporting uploads with API key authentication, platform aliasing, and SHA256 checksums. Integrates with PostgreSQL for persistent device tracking and offers an interactive web dashboard.

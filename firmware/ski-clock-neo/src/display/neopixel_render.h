@@ -1,11 +1,11 @@
 #ifndef NEOPIXEL_RENDER_H
 #define NEOPIXEL_RENDER_H
 
-#include "../ski-clock-neo_config.h" // Import display dimensions from shared config
+#include "ski-clock-neo_config.h" // Import display dimensions from shared config
 #include <new>              // For placement-new operator
 #include <Adafruit_NeoPixel.h>
 #include "font_5x7.h"
-#include "../core/debug.h"
+#include "core/debug.h"
 #include "display_core.h"
 
 // ==================== GLOBAL STATE ====================

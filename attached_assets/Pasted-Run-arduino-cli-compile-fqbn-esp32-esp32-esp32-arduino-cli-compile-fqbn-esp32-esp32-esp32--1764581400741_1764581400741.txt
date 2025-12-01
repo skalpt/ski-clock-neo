@@ -1,0 +1,67 @@
+Run arduino-cli compile --fqbn esp32:esp32:esp32 \
+  arduino-cli compile --fqbn esp32:esp32:esp32 \
+    --export-binaries \
+    --build-property "build.partitions=min_spiffs" \
+    --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"***\" -DDOWNLOAD_API_KEY=\"***\" -DFIRMWARE_VERSION=\"2025.12.1.84\" -DMQTT_HOST=\"***\" -DMQTT_USERNAME=\"***\" -DMQTT_PASSWORD=\"***\" -DBOARD_ESP32" \
+    --output-dir build/esp32 \
+    firmware/***
+  cp build/esp32/***.ino.bin build/***-esp32.bin
+  cp build/esp32/***.ino.bootloader.bin build/***-esp32.bootloader.bin || echo "Warning: Bootloader not found for ESP32"
+  cp build/esp32/***.ino.partitions.bin build/***-esp32.partitions.bin || echo "Warning: Partitions not found for ESP32"
+  shell: /usr/bin/bash -e {0}
+/home/runner/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32-elf/8.4.0/../../../../xtensa-esp32-elf/bin/ld: /tmp/arduino/sketches/A112E18D136C6DC1ED5764BF8E0E7FBE/sketch/***.ino.cpp.o:(.literal._Z15onWiFiConnected18arduino_event_id_t20arduino_event_info_t+0x1c): undefined reference to `logEvent(char const*, char const*)'
+/home/runner/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32-elf/8.4.0/../../../../xtensa-esp32-elf/bin/ld: /tmp/arduino/sketches/A112E18D136C6DC1ED5764BF8E0E7FBE/sketch/***.ino.cpp.o:(.literal._Z15onWiFiConnected18arduino_event_id_t20arduino_event_info_t+0x20): undefined reference to `setConnectivityState(bool, bool)'
+/home/runner/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32-elf/8.4.0/../../../../xtensa-esp32-elf/bin/ld: /tmp/arduino/sketches/A112E18D136C6DC1ED5764BF8E0E7FBE/sketch/***.ino.cpp.o:(.literal._Z15onWiFiConnected18arduino_event_id_t20arduino_event_info_t+0x24): undefined reference to `connectMQTT()'
+/home/runner/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32-elf/8.4.0/../../../../xtensa-esp32-elf/bin/ld: /tmp/arduino/sketches/A112E18D136C6DC1ED5764BF8E0E7FBE/sketch/***.ino.cpp.o:(.literal._Z18onWiFiDisconnected18arduino_event_id_t20arduino_event_info_t+0x8): undefined reference to `disconnectMQTT()'
+/home/runner/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32-elf/8.4.0/../../../../xtensa-esp32-elf/bin/ld: /tmp/arduino/sketches/A112E18D136C6DC1ED5764BF8E0E7FBE/sketch/***.ino.cpp.o:(.literal._Z8initWiFiv+0x90): undefined reference to `getDeviceID()'
+/home/runner/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32-elf/8.4.0/../../../../xtensa-esp32-elf/bin/ld: /tmp/arduino/sketches/A112E18D136C6DC1ED5764BF8E0E7FBE/sketch/***.ino.cpp.o:(.literal._Z5setupv+0x28): undefined reference to `initEventLog()'
+/home/runner/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32-elf/8.4.0/../../../../xtensa-esp32-elf/bin/ld: /tmp/arduino/sketches/A112E18D136C6DC1ED5764BF8E0E7FBE/sketch/***.ino.cpp.o:(.literal._Z5setupv+0x2c): undefined reference to `logBootEvent()'
+/home/runner/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32-elf/8.4.0/../../../../xtensa-esp32-elf/bin/ld: /tmp/arduino/sketches/A112E18D136C6DC1ED5764BF8E0E7FBE/sketch/***.ino.cpp.o:(.literal._Z5setupv+0x30): undefined reference to `initLedIndicator()'
+/home/runner/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32-elf/8.4.0/../../../../xtensa-esp32-elf/bin/ld: /tmp/arduino/sketches/A112E18D136C6DC1ED5764BF8E0E7FBE/sketch/***.ino.cpp.o:(.literal._Z5setupv+0x34): undefined reference to `initDisplay()'
+/home/runner/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32-elf/8.4.0/../../../../xtensa-esp32-elf/bin/ld: /tmp/arduino/sketches/A112E18D136C6DC1ED5764BF8E0E7FBE/sketch/***.ino.cpp.o:(.literal._Z5setupv+0x38): undefined reference to `initMQTT()'
+/home/runner/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32-elf/8.4.0/../../../../xtensa-esp32-elf/bin/ld: /tmp/arduino/sketches/A112E18D136C6DC1ED5764BF8E0E7FBE/sketch/***.ino.cpp.o:(.literal._Z4loopv+0x0): undefined reference to `updateMQTT()'
+/home/runner/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32-elf/8.4.0/../../../../xtensa-esp32-elf/bin/ld: /tmp/arduino/sketches/A112E18D136C6DC1ED5764BF8E0E7FBE/sketch/***.ino.cpp.o: in function `onWiFiConnected(arduino_event_id_t, arduino_event_info_t)':
+/home/runner/work/***/***/firmware/***/connectivity/wifi_config.h:166: undefined reference to `logEvent(char const*, char const*)'
+/home/runner/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32-elf/8.4.0/../../../../xtensa-esp32-elf/bin/ld: /home/runner/work/***/***/firmware/***/connectivity/wifi_config.h:168: undefined reference to `setConnectivityState(bool, bool)'
+/home/runner/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32-elf/8.4.0/../../../../xtensa-esp32-elf/bin/ld: /home/runner/work/***/***/firmware/***/connectivity/wifi_config.h:169: undefined reference to `connectMQTT()'
+/home/runner/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32-elf/8.4.0/../../../../xtensa-esp32-elf/bin/ld: /tmp/arduino/sketches/A112E18D136C6DC1ED5764BF8E0E7FBE/sketch/***.ino.cpp.o: in function `onWiFiDisconnected(arduino_event_id_t, arduino_event_info_t)':
+/home/runner/work/***/***/firmware/***/connectivity/wifi_config.h:174: undefined reference to `logEvent(char const*, char const*)'
+/home/runner/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32-elf/8.4.0/../../../../xtensa-esp32-elf/bin/ld: /home/runner/work/***/***/firmware/***/connectivity/wifi_config.h:174: undefined reference to `disconnectMQTT()'
+/home/runner/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32-elf/8.4.0/../../../../xtensa-esp32-elf/bin/ld: /home/runner/work/***/***/firmware/***/connectivity/wifi_config.h:176: undefined reference to `setConnectivityState(bool, bool)'
+/home/runner/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32-elf/8.4.0/../../../../xtensa-esp32-elf/bin/ld: /tmp/arduino/sketches/A112E18D136C6DC1ED5764BF8E0E7FBE/sketch/***.ino.cpp.o: in function `initWiFi()':
+/home/runner/work/***/***/firmware/***/connectivity/wifi_config.h:68: undefined reference to `getDeviceID()'
+/home/runner/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32-elf/8.4.0/../../../../xtensa-esp32-elf/bin/ld: /tmp/arduino/sketches/A112E18D136C6DC1ED5764BF8E0E7FBE/sketch/***.ino.cpp.o: in function `setup()':
+/home/runner/work/***/***/firmware/***/***.ino:17: undefined reference to `initEventLog()'
+/home/runner/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32-elf/8.4.0/../../../../xtensa-esp32-elf/bin/ld: /home/runner/work/***/***/firmware/***/***.ino:17: undefined reference to `logBootEvent()'
+/home/runner/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32-elf/8.4.0/../../../../xtensa-esp32-elf/bin/ld: /home/runner/work/***/***/firmware/***/***.ino:18: undefined reference to `initLedIndicator()'
+/home/runner/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32-elf/8.4.0/../../../../xtensa-esp32-elf/bin/ld: /home/runner/work/***/***/firmware/***/***.ino:18: undefined reference to `initDisplay()'
+/home/runner/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32-elf/8.4.0/../../../../xtensa-esp32-elf/bin/ld: /home/runner/work/***/***/firmware/***/***.ino:21: undefined reference to `initMQTT()'
+/home/runner/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32-elf/8.4.0/../../../../xtensa-esp32-elf/bin/ld: /tmp/arduino/sketches/A112E18D136C6DC1ED5764BF8E0E7FBE/sketch/***.ino.cpp.o: in function `loop()':
+/home/runner/work/***/***/firmware/***/***.ino:37: undefined reference to `updateMQTT()'
+collect2: error: ld returned 1 exit status
+
+Error during build: exit status 1
+
+Used library     Version Path                                                                                   
+Ticker           2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Ticker          
+WiFi             2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFi            
+WebServer        2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WebServer       
+AutoConnect      1.4.2   /home/runner/Arduino/libraries/AutoConnect                                             
+DNSServer        2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/DNSServer       
+EEPROM           2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/EEPROM          
+PageBuilder      1.5.6   /home/runner/Arduino/libraries/PageBuilder                                             
+FS               2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/FS              
+SPIFFS           2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPIFFS          
+SD               2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SD              
+SPI              2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPI             
+Preferences      2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Preferences     
+WiFiClientSecure 2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFiClientSecure
+PubSubClient     2.8     /home/runner/Arduino/libraries/PubSubClient                                            
+ArduinoJson      7.4.2   /home/runner/Arduino/libraries/ArduinoJson                                             
+HTTPClient       2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPClient      
+HTTPUpdate       2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPUpdate      
+Update           2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Update          
+
+Used platform Version Path                                                        
+esp32:esp32   2.0.14  /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14
+Error: Process completed with exit code 1.

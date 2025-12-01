@@ -16,8 +16,8 @@
 #endif
 
 #include <WiFiClientSecure.h>
-#include "../core/debug.h"
-#include "../core/device_info.h"
+#include "core/debug.h"
+#include "core/device_info.h"
 
 // Update server configuration (injected at build time)
 #ifndef UPDATE_SERVER_URL

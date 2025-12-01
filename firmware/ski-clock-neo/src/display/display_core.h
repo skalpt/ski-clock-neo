@@ -2,7 +2,7 @@
 #define DISPLAY_CORE_H
 
 #include <Arduino.h>
-#include "../ski-clock-neo_config.h"
+#include "ski-clock-neo_config.h"
 
 // Maximum panels per row (for buffer sizing) - use largest configured row
 #define MAX_PANELS_PER_ROW 4
