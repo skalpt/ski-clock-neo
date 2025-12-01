@@ -13,7 +13,7 @@
 // INCLUDES
 // ============================================================================
 
-#include "neopixel_render.h"
+#include "neopixel_render.h"  // This file's header
 
 // ============================================================================
 // GLOBAL VARIABLES

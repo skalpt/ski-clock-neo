@@ -15,7 +15,7 @@
 // INCLUDES
 // ============================================================================
 
-#include "led_indicator.h"
+#include "led_indicator.h"  // This file's header
 
 #if defined(ESP8266)
   extern "C" {

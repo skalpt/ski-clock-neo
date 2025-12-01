@@ -11,13 +11,13 @@
   #error "This code requires ESP32 or ESP8266"
 #endif
 
-#include <AutoConnectCore.h>
-#include <AutoConnectCredential.h>
+#include <AutoConnectCore.h>       // For AutoConnect portal functionality
+#include <AutoConnectCredential.h> // For credential management
 #include "../core/device_info.h"   // For getDeviceID()
 #include "../core/led_indicator.h" // For LED status patterns when WiFi connection state changes
 #include "mqtt_client.h"           // For MQTT connection management when WiFi connection state changes
 #include "../core/event_log.h"     // For logging WiFi events
-#include "../core/debug.h"
+#include "../core/debug.h"         // For debug logging
 
 // Configuration constants
 const char* AP_PASSWORD = "configure";

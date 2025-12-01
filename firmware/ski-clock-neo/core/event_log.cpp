@@ -12,10 +12,10 @@
 // INCLUDES
 // ============================================================================
 
-#include "event_log.h"
-#include "../connectivity/mqtt_client.h"
-#include "device_info.h"
-#include "debug.h"
+#include "event_log.h"                   // This file's header
+#include "../connectivity/mqtt_client.h" // For MQTT publishing
+#include "device_info.h"                 // For device ID and version info
+#include "debug.h"                       // For debug logging
 
 #if defined(ESP32)
   #include "esp_system.h"
