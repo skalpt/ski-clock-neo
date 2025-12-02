@@ -1372,14 +1372,18 @@ body.no-web-serial .flash-column {
 }
 
 .panel-grid {
-    display: grid;
-    grid-template-columns: repeat(3, auto);
-    grid-template-rows: repeat(2, auto);
+    display: flex;
+    flex-direction: column;
     gap: 1px;
     background: rgba(128, 128, 128, 0.5);
     padding: 1px;
     width: fit-content;
     margin: 0 auto;
+}
+
+.panel-row {
+    display: flex;
+    gap: 1px;
 }
 
 .small-muted-text {
