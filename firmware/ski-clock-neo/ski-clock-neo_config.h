@@ -25,7 +25,7 @@ static const uint8_t PANELS_PER_ROW[DISPLAY_ROWS] = {3, 3};
 #define DISPLAY_COLOR_R 255     // Red component (0-255)
 #define DISPLAY_COLOR_G 0       // Green component (0-255)
 #define DISPLAY_COLOR_B 0       // Blue component (0-255)
-#define BRIGHTNESS      10      // 0-255 (keeping dim for development)
+#define BRIGHTNESS      255     // 0-255 (keeping dim for development)
 
 // Helper macros for calculating row dimensions
 #define ROW_WIDTH(row) (PANELS_PER_ROW[row] * PANEL_WIDTH)
