@@ -444,8 +444,12 @@ void onButtonPress() {
       break;
       
     case MODE_FLASHING_RESULT:
+      // Ignore button presses during flashing
+      break;
+      
     case MODE_DISPLAY_RESULT:
-      // Ignore button presses during result display
+      // Start new countdown from result display
+      startCountdown();
       break;
   }
   
