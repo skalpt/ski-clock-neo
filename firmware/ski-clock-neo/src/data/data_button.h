@@ -15,9 +15,6 @@ void initButton();
 // Callback will be called from ISR context - keep it short!
 void setButtonPressCallback(ButtonCallback callback);
 
-// Set callback for button release events
-// Callback will be called from ISR context - keep it short!
-void setButtonReleaseCallback(ButtonCallback callback);
 
 // Check if button is currently pressed (debounced)
 // Safe to call from any context

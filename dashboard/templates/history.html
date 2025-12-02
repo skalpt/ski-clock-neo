@@ -73,7 +73,6 @@
                     </optgroup>
                     <optgroup label="User Input">
                         <option value="button_press">Button Press</option>
-                        <option value="button_release">Button Release</option>
                     </optgroup>
                     <optgroup label="Display">
                         <option value="display_mode_change">Mode Change</option>
@@ -731,7 +730,6 @@
             'temp_read_invalid': '⚠️',
             'temp_read_crc_error': '⚠️',
             'button_press': '👆',
-            'button_release': '✋',
             'display_mode_change': '🖥️',
             'low_heap_warning': '⚠️',
             'wifi_rssi_low': '📉',
@@ -762,7 +760,6 @@
             'temp_read_invalid': 'Temp Read Invalid',
             'temp_read_crc_error': 'Temp CRC Error',
             'button_press': 'Button Press',
-            'button_release': 'Button Release',
             'display_mode_change': 'Display Mode',
             'low_heap_warning': 'Low Heap',
             'wifi_rssi_low': 'Weak WiFi',
@@ -816,8 +813,6 @@
                     return 'Sensor disconnected';
                 case 'button_press':
                     return 'Pressed';
-                case 'button_release':
-                    return data.hold_ms !== undefined ? `Held ${data.hold_ms}ms` : 'Released';
                 case 'display_mode_change':
                     if (data.from && data.to) return `${escapeHtml(data.from)} → ${escapeHtml(data.to)}`;
                     return data.to ? `Mode: ${escapeHtml(data.to)}` : '-';

@@ -256,7 +256,7 @@ The event logging system tracks:
 | MQTT | mqtt_connect, mqtt_disconnect |
 | Temperature | temperature_read, temperature_error |
 | RTC/Time | rtc_initialized, ntp_sync_success, rtc_synced_from_ntp |
-| User Input | button_press, button_release |
+| User Input | button_press |
 | Display | display_mode_change |
 
 ## Architecture Notes

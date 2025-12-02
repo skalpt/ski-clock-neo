@@ -25,7 +25,6 @@ static bool initialized = false;            // True after init
 
 // Callbacks
 static ButtonCallback pressCallback = nullptr;
-static ButtonCallback releaseCallback = nullptr;
 
 // ISR flag (set by interrupt, cleared by updateButton)
 static volatile bool buttonPressed = false;
@@ -70,10 +69,6 @@ void setButtonPressCallback(ButtonCallback callback) {
   pressCallback = callback;
 }
 
-// Set callback for button release events (not used with FALLING edge only)
-void setButtonReleaseCallback(ButtonCallback callback) {
-  releaseCallback = callback;
-}
 
 // Check if button is currently pressed
 bool isButtonPressed() {
