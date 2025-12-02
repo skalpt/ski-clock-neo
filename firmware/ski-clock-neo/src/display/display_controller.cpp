@@ -126,6 +126,11 @@ void unifiedTickCallback() {
       // Increment elapsed time every 2 ticks (1 second), but not on first tick
       if (tickCounter > 1 && tickCounter % TICKS_PER_SECOND == 0) {
         elapsedSeconds++;
+        // Max timer is 99:59 (5999 seconds) - return to normal at 100 minutes
+        if (elapsedSeconds >= 6000) {
+          returnToNormal();
+          return;
+        }
         needsUpdate = true;  // Only update when elapsed time actually changes
       }
       break;
