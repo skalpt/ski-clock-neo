@@ -131,6 +131,11 @@ void unifiedTickCallback() {
       break;
       
     case MODE_FLASHING_RESULT:
+      // Toggle top row every 8 ticks (4 seconds)
+      if (tickCounter % TICKS_PER_TOGGLE == 0) {
+        timerTopRowState = (timerTopRowState + 1) % 3;
+        needsUpdate = true;
+      }
       // Toggle flash visibility every tick (0.5 seconds)
       flashVisible = !flashVisible;
       needsUpdate = true;
@@ -142,7 +147,12 @@ void unifiedTickCallback() {
       break;
       
     case MODE_DISPLAY_RESULT:
-      // Update time display every 2 ticks (1 second) to keep clock current
+      // Toggle top row every 8 ticks (4 seconds)
+      if (tickCounter % TICKS_PER_TOGGLE == 0) {
+        timerTopRowState = (timerTopRowState + 1) % 3;
+        needsUpdate = true;
+      }
+      // Update display every 2 ticks (1 second) to keep clock current
       if (tickCounter % TICKS_PER_SECOND == 0) {
         needsUpdate = true;
       }
@@ -241,11 +251,31 @@ bool updateRow0Content() {
         break;
     }
   } else if (currentMode == MODE_FLASHING_RESULT || currentMode == MODE_DISPLAY_RESULT) {
-    // Result modes: show current time on top row
-    if (isTimeSynced() && formatTime(buffer, sizeof(buffer))) {
-      return setTextNoRender(0, buffer);
-    } else {
+    // Result modes: cycle through time/date/temp on top row (same as timer modes)
+    if (!isTimeSynced()) {
       return setTextNoRender(0, "~~.~~");
+    }
+    
+    switch (timerTopRowState) {
+      case 0: // Time
+        if (formatTime(buffer, sizeof(buffer))) {
+          return setTextNoRender(0, buffer);
+        } else {
+          return setTextNoRender(0, "~~.~~");
+        }
+        break;
+      case 1: // Date
+        if (formatDate(buffer, sizeof(buffer))) {
+          return setTextNoRender(0, buffer);
+        }
+        break;
+      case 2: // Temperature
+        if (formatTemperature(buffer, sizeof(buffer))) {
+          return setTextNoRender(0, buffer);
+        } else {
+          return setTextNoRender(0, "~~*C");
+        }
+        break;
     }
   }
   return false;

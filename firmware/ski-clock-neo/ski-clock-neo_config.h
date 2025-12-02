@@ -14,6 +14,9 @@
 #define PANEL_HEIGHT    16      // Height of each panel in pixels
 #define DISPLAY_ROWS    2       // Number of physical display rows
 
+// Display pin configuration (one GPIO per row)
+static const uint8_t DISPLAY_PINS[DISPLAY_ROWS] = {4, 3};
+
 // Per-row panel counts (allows different widths per row)
 // Example: Row 0 = 3 panels (48px wide), Row 1 = 4 panels (64px wide)
 static const uint8_t PANELS_PER_ROW[DISPLAY_ROWS] = {3, 3};
@@ -23,9 +26,6 @@ static const uint8_t PANELS_PER_ROW[DISPLAY_ROWS] = {3, 3};
 #define DISPLAY_COLOR_G 0       // Green component (0-255)
 #define DISPLAY_COLOR_B 0       // Blue component (0-255)
 #define BRIGHTNESS      10      // 0-255 (keeping dim for development)
-
-// Display pin configuration (one GPIO per row)
-static const uint8_t DISPLAY_PINS[DISPLAY_ROWS] = {4, 3};
 
 // Helper macros for calculating row dimensions
 #define ROW_WIDTH(row) (PANELS_PER_ROW[row] * PANEL_WIDTH)

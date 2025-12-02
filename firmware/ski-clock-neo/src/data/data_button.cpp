@@ -1,11 +1,10 @@
 // ============================================================================
-// data_button.cpp - Button input handling with debouncing
+// data_button.cpp - Button input handling with FALLING edge detection
 // ============================================================================
 // This library manages button input with:
-// - Hardware interrupt for immediate response
-// - Software debouncing (50ms default)
-// - Press and release callbacks
-// - Hold time tracking
+// - Hardware interrupt on FALLING edge (button press)
+// - Simple flag-based detection (no debouncing)
+// - Press callback only
 // ============================================================================
 
 // ============================================================================
@@ -22,11 +21,6 @@
 // ============================================================================
 
 static uint8_t buttonPin = BUTTON_PIN;      // GPIO pin for button
-static uint16_t debounceTime = 50;          // Debounce time in milliseconds
-static bool buttonState = false;            // Current debounced state
-static bool lastRawState = false;           // Last raw GPIO reading
-static uint32_t lastChangeTime = 0;         // Last time state changed
-static uint32_t pressTime = 0;              // When button was pressed
 static bool initialized = false;            // True after init
 
 // Callbacks
@@ -34,7 +28,7 @@ static ButtonCallback pressCallback = nullptr;
 static ButtonCallback releaseCallback = nullptr;
 
 // ISR flag (set by interrupt, cleared by updateButton)
-static volatile bool interruptPending = false;
+static volatile bool buttonPressed = false;
 
 // ============================================================================
 // INTERRUPT SERVICE ROUTINE
@@ -42,7 +36,7 @@ static volatile bool interruptPending = false;
 
 // IRAM_ATTR: Place ISR in IRAM for faster execution (ESP32/ESP8266)
 void IRAM_ATTR buttonISR() {
-  interruptPending = true;
+  buttonPressed = true;
 }
 
 // ============================================================================
@@ -51,28 +45,20 @@ void IRAM_ATTR buttonISR() {
 
 void initButton() {
   DEBUG_PRINT("Initializing button on GPIO ");
-  DEBUG_PRINT(buttonPin);
-  DEBUG_PRINT(" (debounce: ");
-  DEBUG_PRINT(debounceTime);
-  DEBUG_PRINTLN("ms)");
+  DEBUG_PRINTLN(buttonPin);
   
   // Configure pin as input with pull-up (active LOW button)
   pinMode(buttonPin, INPUT_PULLUP);
   
-  // Attach interrupt on both edges (press and release)
+  // Attach interrupt on FALLING edge only (button press)
   #if defined(ESP32)
-    attachInterrupt(digitalPinToInterrupt(buttonPin), buttonISR, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(buttonPin), buttonISR, FALLING);
   #elif defined(ESP8266)
-    attachInterrupt(digitalPinToInterrupt(buttonPin), buttonISR, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(buttonPin), buttonISR, FALLING);
   #endif
   
-  // Read initial state
-  lastRawState = digitalRead(buttonPin);
-  buttonState = lastRawState;
-  lastChangeTime = millis();
-  
   initialized = true;
-  DEBUG_PRINTLN("Button initialized");
+  DEBUG_PRINTLN("Button initialized (FALLING edge)");
 }
 
 // ============================================================================
@@ -84,84 +70,40 @@ void setButtonPressCallback(ButtonCallback callback) {
   pressCallback = callback;
 }
 
-// Set callback for button release events
+// Set callback for button release events (not used with FALLING edge only)
 void setButtonReleaseCallback(ButtonCallback callback) {
   releaseCallback = callback;
 }
 
 // Check if button is currently pressed
 bool isButtonPressed() {
-  return buttonState == LOW;  // Active LOW
+  return digitalRead(buttonPin) == LOW;  // Active LOW
 }
 
-// Get how long button has been held (milliseconds)
+// Get how long button has been held (not implemented in simplified version)
 uint32_t getButtonHoldTime() {
-  if (!isButtonPressed()) {
-    return 0;
-  }
-  return millis() - pressTime;
+  return 0;
 }
 
 // ============================================================================
-// UPDATE (call from main loop)
+// UPDATE (call from timer or main loop)
 // ============================================================================
 
-// Process button state changes with debouncing
+// Process button press events
 void updateButton() {
   if (!initialized) {
     return;
   }
   
-  // Only process if interrupt flag is set (optimization)
-  if (!interruptPending) {
-    return;
-  }
-  
-  interruptPending = false;
-  
-  // Read current pin state
-  bool rawState = digitalRead(buttonPin);
-  
-  // Check if state has changed
-  if (rawState != lastRawState) {
-    lastRawState = rawState;
-    lastChangeTime = millis();
-    return;  // Wait for debounce period
-  }
-  
-  // Check if enough time has passed for debouncing
-  uint32_t now = millis();
-  if ((now - lastChangeTime) < debounceTime) {
-    return;  // Still debouncing
-  }
-  
-  // State is stable, check if it's different from buttonState
-  if (rawState != buttonState) {
-    buttonState = rawState;
+  // Check if button was pressed (flag set by ISR)
+  if (buttonPressed) {
+    buttonPressed = false;
     
-    if (buttonState == LOW) {
-      // Button pressed (active LOW)
-      pressTime = now;
-      DEBUG_PRINTLN("Button pressed");
-      logEvent("button_press", nullptr);
-      if (pressCallback != nullptr) {
-        pressCallback();
-      }
-    } else {
-      // Button released
-      uint32_t holdTime = now - pressTime;
-      DEBUG_PRINT("Button released (held for ");
-      DEBUG_PRINT(holdTime);
-      DEBUG_PRINTLN("ms)");
-      
-      // Log release with hold duration
-      static char eventData[32];
-      snprintf(eventData, sizeof(eventData), "{\"hold_ms\":%lu}", holdTime);
-      logEvent("button_release", eventData);
-      
-      if (releaseCallback != nullptr) {
-        releaseCallback();
-      }
+    DEBUG_PRINTLN("Button pressed");
+    logEvent("button_press", nullptr);
+    
+    if (pressCallback != nullptr) {
+      pressCallback();
     }
   }
 }

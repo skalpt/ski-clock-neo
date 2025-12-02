@@ -38,7 +38,9 @@ The project consists of two primary components:
     - Press during COUNTDOWN: Cancels and returns to normal mode
     - Press during TIMER: Stops timer, flashes elapsed time (0.5s intervals for 8s), then holds solid for 1 minute before auto-reverting to normal
     - State machine: NORMAL → COUNTDOWN → TIMER → FLASHING_RESULT → DISPLAY_RESULT → NORMAL
-    - Transition lockout (200ms) prevents button bounce issues
+    - Top row continues cycling time/date/temp during ALL timer modes (including result display)
+    - Button uses FALLING edge interrupt for immediate response (no debouncing)
+    - Transition lockout (200ms) prevents rapid state changes
 *   **RTC Integration**: DS3231 RTC module provides instant time on boot (before WiFi/NTP connects). NTP automatically syncs the RTC hourly to maintain accuracy. Falls back gracefully to NTP-only if no RTC is present. **Important**: ESP32-C3 requires explicit I2C pins via `Wire.begin(RTC_SDA_PIN, RTC_SCL_PIN)` to avoid conflict with default GPIO 8/9 (which conflicts with LED on GPIO 8).
 *   **Time Change Callbacks**: Precise minute/date change detection via callback system. The data_time library tracks last minute and day, calling registered callbacks with flags (TIME_CHANGE_MINUTE, TIME_CHANGE_DATE) when changes occur. A 1-second polling timer detects changes reliably.
 *   **Unified Timer Library**: The `timer_helpers` library provides complete platform abstraction for all timing needs:
@@ -59,7 +61,7 @@ The project consists of two primary components:
     - Connectivity: wifi_connect, wifi_disconnect, wifi_rssi_low, mqtt_connect, mqtt_disconnect
     - Temperature: temperature_read, temperature_error, temp_sensor_not_found, temp_read_invalid, temp_read_crc_error
     - RTC/Time: rtc_initialized, rtc_not_found, rtc_lost_power, rtc_time_invalid, rtc_synced_from_ntp, rtc_sync_failed, rtc_drift_corrected, ntp_sync_success, ntp_sync_failed
-    - User Input: button_press, button_release
+    - User Input: button_press
     - Display: display_mode_change
     Health warning events (low_heap, wifi_rssi_low) use threshold crossing detection to avoid spam.
 *   **Code Organization Convention**: All .cpp files follow a consistent structure with section headers:
@@ -85,7 +87,7 @@ The project consists of two primary components:
         ├── data/                   (sensor and time data providers)
         │   ├── data_time.h/.cpp       (RTC/NTP time management)
         │   ├── data_temperature.h/.cpp (DS18B20 sensor)
-        │   └── data_button.h/.cpp     (button input with debouncing)
+        │   └── data_button.h/.cpp     (button input with FALLING edge detection)
         ├── connectivity/           (network and updates)
         │   ├── mqtt_client.h/.cpp     (MQTT pub/sub and commands)
         │   ├── ota_update.h/.cpp      (OTA firmware updates)
