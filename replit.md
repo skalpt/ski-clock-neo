@@ -19,14 +19,37 @@ The dashboard features a modern UI with CSS variables for light/dark mode, a con
 **Technical Implementations & Feature Specifications:**
 
 **Firmware (Embedded C++ for ESP32/ESP8266):**
-*   **Display Management:** Drives 16x16 NeoPixel matrices with a custom 5x7 pixel font, supports multi-panel setups, and includes a freeze-proof LED status indicator. NeoPixel updates utilize FreeRTOS tasks on ESP32 for smooth rendering. A modular display architecture separates hardware configuration (`display_config.h`), hardware-agnostic buffer management (`display_core`), and NeoPixel-specific rendering (`neopixel_render`). A 2x Glyph Override System provides hand-crafted 2x versions of problem glyphs for artistic control.
+
+*   **Library Architecture:** The firmware is organized as a reusable PlatformIO library at `firmware/lib/norrtek-iot/` with three layers:
+    - **Core Layer** (`core/`): Platform-agnostic utilities - `debug.h`, `device_info`, `event_log`, `led_indicator`, `timer_helpers`. Core modules cannot depend on connectivity or display.
+    - **Connectivity Layer** (`connectivity/`): Network modules - `mqtt_client`, `ota_update`, `wifi_config`. These depend on core but not display.
+    - **Display Layer** (`display/`): Hardware-agnostic buffer management - `display_core`, `text_renderer`, `font_5x7`. Separated from hardware-specific NeoPixel rendering.
+    - **Layering Rule**: Core modules use callbacks for cross-layer communication (e.g., `event_log` uses `setEventPublishCallback()` instead of importing MQTT directly).
+
+*   **Unified API:** Products include single header `norrtek_iot.h` and call:
+    - `initNorrtekIoT(ProductConfig)` - Initializes all subsystems with product-specific configuration
+    - `processNorrtekIoT()` - Main loop handler for WiFi, MQTT, and timers
+    - `ProductConfig` struct contains: product name, display dimensions, panel layout, GPIO pins, colors, brightness
+
+*   **Product-Aware MQTT Topics:** Topic structure `norrtek-iot/<product>/<subtopic>/<device_id>` with helper functions:
+    - `buildDeviceTopic(subtopic)` - Returns `norrtek-iot/ski-clock-neo/heartbeat/abc123`
+    - `buildProductTopic(subtopic)` - Returns `norrtek-iot/ski-clock-neo/command`
+
+*   **Display Management:** Drives 16x16 NeoPixel matrices with a custom 5x7 pixel font, supports multi-panel setups, and includes a freeze-proof LED status indicator. NeoPixel updates utilize FreeRTOS tasks on ESP32 for smooth rendering. Display initialization accepts `DisplayInitConfig` with rows, panel dimensions, and panels-per-row array. A 2x Glyph Override System provides hand-crafted 2x versions of problem glyphs for artistic control.
+
 *   **Connectivity & Updates:** Manages WiFi via `AutoConnect`. Secure non-blocking OTA updates are handled via a custom server with API key authentication and HTTPS. OTA progress is reported via MQTT.
+
 *   **MQTT Integration:** Publishes device heartbeats and display snapshots to HiveMQ Cloud. Supports TLS encryption. Subscribes to device-specific topics for remote `rollback`, `restart`, and `snapshot` commands.
+
 *   **Display Content & Control:** Alternates time and date, displays temperature (DS18B20), and uses event-driven updates. A button-controlled timer mode provides stopwatch functionality with a state machine for transitions.
+
 *   **Timekeeping:** Integrates DS3231 RTC for instant time on boot, with NTP syncing the RTC hourly.
+
 *   **System Stability:** Uses FreeRTOS tasks/TickTwo library for deterministic display control and rendering. Critical sections ensure thread-safe access for event-driven rendering. A centralized LED Connectivity State Management system tracks WiFi and MQTT status.
-*   **Event Logging:** A ring buffer stores and publishes device events (system, connectivity, temperature, RTC/Time, user input, display) to MQTT.
-*   **Code Organization:** Consistent structure in `.cpp` files with section headers. Files are organized in `src/` for Arduino recursive compilation with specific include path conventions.
+
+*   **Event Logging:** A ring buffer stores and publishes device events (system, connectivity, temperature, RTC/Time, user input, display) to MQTT via registered callbacks.
+
+*   **Code Organization:** Consistent structure in `.cpp` files with section headers. Library modules in `firmware/lib/norrtek-iot/`, product-specific code in `firmware/products/<product>/src/`.
 
 **Dashboard Server (Python Flask Application):**
 *   **Firmware Management:** Provides a multi-product API for firmware distribution, supporting uploads with API key authentication, platform aliasing, and SHA256 checksums.
