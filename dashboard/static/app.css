@@ -614,7 +614,7 @@ button {
 .ota-stat-card.in-progress .value { color: var(--status-degraded); }
 
 /* ========================================
-   Tables
+   Tables - Unified Clean Style
    ======================================== */
 
 .table-responsive {
@@ -642,41 +642,65 @@ button {
     background: var(--text-tertiary);
 }
 
+/* Base table styles - applied to all dashboard tables */
 .firmware-table,
-.ota-history-table {
+.ota-history-table,
+.events-table,
+.events-feed-table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 600px;
+    font-size: 0.875rem;
 }
 
 .firmware-table th,
 .firmware-table td,
 .ota-history-table th,
-.ota-history-table td {
+.ota-history-table td,
+.events-table th,
+.events-table td,
+.events-feed-table th,
+.events-feed-table td {
     text-align: left;
-    padding: 0.75rem;
+    padding: 0.625rem 0.75rem;
     border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
 }
 
 .firmware-table th,
-.ota-history-table th {
+.ota-history-table th,
+.events-table th,
+.events-feed-table th {
     font-weight: 600;
-    color: var(--brand-primary);
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
     background: var(--bg-tertiary);
     position: sticky;
     top: 0;
     z-index: 10;
 }
 
-.firmware-table tr:hover,
-.ota-history-table tr:hover {
+.firmware-table tbody tr:hover,
+.ota-history-table tbody tr:hover,
+.events-table tbody tr:hover,
+.events-feed-table tbody tr:hover {
     background: var(--bg-tertiary);
 }
 
+/* Last column styling for action buttons */
 .firmware-table th:last-child,
-.firmware-table td:last-child {
+.firmware-table td:last-child,
+.ota-history-table th:last-child,
+.ota-history-table td:last-child {
     width: 1%;
     white-space: nowrap;
+}
+
+/* Product column with subheading */
+.firmware-table td .device-subheading {
+    color: var(--text-tertiary);
+    margin-top: 2px;
 }
 
 /* ========================================
@@ -1485,34 +1509,8 @@ body.no-web-serial .flash-column {
 }
 
 /* ========================================
-   Events Table
+   Event Badges
    ======================================== */
-
-.events-table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 600px;
-}
-
-.events-table th,
-.events-table td {
-    text-align: left;
-    padding: 0.75rem;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.events-table th {
-    font-weight: 600;
-    color: var(--brand-primary);
-    background: var(--bg-tertiary);
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-
-.events-table tr:hover {
-    background: var(--bg-tertiary);
-}
 
 .event-badge {
     display: inline-flex;
@@ -1693,31 +1691,7 @@ body.no-web-serial .flash-column {
     margin-bottom: 0;
 }
 
-.events-feed-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.875rem;
-}
-
-.events-feed-table th,
-.events-feed-table td {
-    text-align: left;
-    padding: 0.5rem 0.75rem;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.events-feed-table th {
-    font-weight: 600;
-    color: var(--text-secondary);
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.events-feed-table tr:hover {
-    background: var(--bg-tertiary);
-}
-
+/* Compact event badges in feed table */
 .events-feed-table .event-badge {
     font-size: 0.7rem;
     padding: 0.25rem 0.5rem;
