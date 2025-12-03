@@ -5,7 +5,6 @@ import json
 import io
 import threading
 import time
-import requests
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Optional, Any
@@ -375,21 +374,23 @@ def save_version_to_db(platform: str, version_info: dict, product: str):
     # Refresh cache for this product/platform and all aliases
     refresh_firmware_cache(platform, product)
 
-def generate_user_download_token(user_id, platform, max_age=3600, version=None):
+def generate_user_download_token(user_id, platform, product, max_age=3600, version=None):
     """Generate a user-scoped signed token for firmware downloads (default 1-hour expiration)
     
     Args:
         user_id: Database ID of the user requesting the download
         platform: Platform name (e.g., 'esp32', 'esp32c3')
+        product: Product name (e.g., 'ski-clock-neo')
         max_age: Token expiration in seconds (default 3600 = 1 hour)
         version: Optional specific firmware version (defaults to latest if None)
     
     Returns:
-        Signed token string containing user_id, platform, and optionally version
+        Signed token string containing user_id, platform, product, and optionally version
     """
     payload = {
         'user_id': user_id,
         'platform': platform,
+        'product': product,
         'issued_at': datetime.now(timezone.utc).isoformat()
     }
     if version:
@@ -397,153 +398,21 @@ def generate_user_download_token(user_id, platform, max_age=3600, version=None):
     return token_serializer.dumps(payload, salt='user-firmware-download')
 
 def verify_user_download_token(token, max_age=3600):
-    """Verify a user-scoped download token and return user_id, platform, and optional version
+    """Verify a user-scoped download token and return user_id, platform, product, and optional version
     
     Args:
         token: Signed token string
         max_age: Maximum token age in seconds (default 3600 = 1 hour)
     
     Returns:
-        Tuple of (user_id, platform, version) if valid, (None, None, None) if invalid or expired
+        Tuple of (user_id, platform, product, version) if valid, (None, None, None, None) if invalid or expired
         version may be None if token was for latest version
     """
     try:
         payload = token_serializer.loads(token, salt='user-firmware-download', max_age=max_age)
-        return payload.get('user_id'), payload.get('platform'), payload.get('version')
+        return payload.get('user_id'), payload.get('platform'), payload.get('product'), payload.get('version')
     except (BadSignature, SignatureExpired):
-        return None, None, None
-
-def _sync_single_firmware(product: str, platform: str, fw_data: dict) -> int:
-    """Helper function to sync a single firmware entry from production.
-    
-    Returns 1 if synced, 0 if already up to date.
-    """
-    # Check if we need to update (compare versions)
-    local_fw = FirmwareVersion.query.filter_by(product=product, platform=platform).first()
-    if local_fw and local_fw.version == fw_data.get('version'):
-        return 0  # Already up to date
-    
-    # Save/update firmware metadata in dev database (including bootloader/partitions)
-    version_info = {
-        'version': fw_data.get('version', 'Unknown'),
-        'filename': fw_data.get('filename', ''),
-        'size': fw_data.get('size', 0),
-        'sha256': fw_data.get('sha256', ''),
-        'download_url': fw_data.get('download_url', ''),
-        'storage': fw_data.get('storage', 'object_storage'),
-        'object_path': fw_data.get('object_path'),
-        'object_name': fw_data.get('object_name'),
-        'local_path': fw_data.get('local_path'),
-        
-        # Bootloader metadata
-        'bootloader_filename': fw_data.get('bootloader', {}).get('filename') if fw_data.get('bootloader') else None,
-        'bootloader_size': fw_data.get('bootloader', {}).get('size') if fw_data.get('bootloader') else None,
-        'bootloader_sha256': fw_data.get('bootloader', {}).get('sha256') if fw_data.get('bootloader') else None,
-        
-        # Partitions metadata
-        'partitions_filename': fw_data.get('partitions', {}).get('filename') if fw_data.get('partitions') else None,
-        'partitions_size': fw_data.get('partitions', {}).get('size') if fw_data.get('partitions') else None,
-        'partitions_sha256': fw_data.get('partitions', {}).get('sha256') if fw_data.get('partitions') else None
-    }
-    save_version_to_db(platform, version_info, product)
-    return 1
-
-def sync_firmware_from_production():
-    """Sync firmware metadata from production to dev database (dev environment only)"""
-    # Only sync in dev environment
-    env = os.getenv('REPL_DEPLOYMENT_TYPE', 'dev')
-    if env != 'dev':
-        return
-    
-    # Get production URL from environment
-    production_url = os.getenv('PRODUCTION_API_URL')
-    if not production_url:
-        print("⚠ PRODUCTION_API_URL not set, skipping firmware sync from production")
-        return
-    
-    try:
-        # Query production API for firmware metadata (with authentication)
-        headers = {}
-        if DOWNLOAD_API_KEY:
-            headers['X-API-Key'] = DOWNLOAD_API_KEY
-        
-        response = requests.get(f"{production_url}/api/firmware-metadata", headers=headers, timeout=10)
-        response.raise_for_status()
-        data = response.json()
-        
-        if 'firmwares' not in data:
-            print("⚠ No firmware data in production response")
-            return
-        
-        # Detect format: new nested {product: {platform: fw_data}} vs old flat {platform: fw_data}
-        # Check first value to determine format
-        first_key = next(iter(data['firmwares']), None)
-        first_value = data['firmwares'].get(first_key) if first_key else None
-        is_new_format = isinstance(first_value, dict) and first_value is not None and 'version' not in first_value
-        
-        # Update local database with production firmware metadata
-        synced_count = 0
-        with app.app_context():
-            if is_new_format:
-                # New format: {product: {platform: version_info}}
-                for product, platforms in data['firmwares'].items():
-                    if platforms is None or not isinstance(platforms, dict):
-                        continue
-                    
-                    for platform, fw_data in platforms.items():
-                        if fw_data is None or not isinstance(fw_data, dict):
-                            continue
-                        
-                        synced_count += _sync_single_firmware(product, platform, fw_data)
-            else:
-                # Legacy flat format: {platform: version_info}
-                # Map to 'ski-clock-neo' product for backward compatibility during migration
-                legacy_product = 'ski-clock-neo'
-                print(f"⚠ Production using legacy format, mapping to product '{legacy_product}'")
-                
-                for platform, fw_data in data['firmwares'].items():
-                    if fw_data is None or not isinstance(fw_data, dict):
-                        continue
-                    
-                    synced_count += _sync_single_firmware(legacy_product, platform, fw_data)
-            
-            # Reload in-memory cache
-            if synced_count > 0:
-                load_versions_from_db()
-                print(f"✓ Synced {synced_count} firmware version(s) from production")
-    
-    except requests.exceptions.HTTPError as e:
-        if e.response.status_code == 401:
-            print(f"⚠ Production sync authentication failed (401). Check DOWNLOAD_API_KEY in config.")
-        else:
-            print(f"⚠ Production sync HTTP error: {e.response.status_code} - {e}")
-    except requests.exceptions.RequestException as e:
-        print(f"⚠ Failed to sync from production: {e}")
-    except Exception as e:
-        print(f"⚠ Error syncing firmware from production: {e}")
-
-def start_production_sync_thread():
-    """Start background thread that periodically syncs firmware from production (dev only)"""
-    env = os.getenv('REPL_DEPLOYMENT_TYPE', 'dev')
-    if env != 'dev':
-        return
-    
-    production_url = os.getenv('PRODUCTION_API_URL')
-    if not production_url:
-        return
-    
-    def sync_loop():
-        while True:
-            try:
-                time.sleep(300)  # 5 minutes
-                sync_firmware_from_production()
-            except Exception as e:
-                print(f"⚠ Error in production sync thread: {e}")
-                time.sleep(60)  # Wait 1 minute before retrying on error
-    
-    thread = threading.Thread(target=sync_loop, daemon=True)
-    thread.start()
-    print(f"✓ Production sync thread started (syncing every 5 minutes from {production_url})")
+        return None, None, None, None
 
 # Initialize database and load firmware versions
 with app.app_context():
@@ -583,9 +452,6 @@ with app.app_context():
     
     # Load firmware versions from database (must be inside app context)
     load_versions_from_db()
-    
-    # Sync firmware from production on startup (dev environment only)
-    sync_firmware_from_production()
 
 from mqtt_subscriber import start_mqtt_subscriber, stop_mqtt_subscriber, set_app_context
 import atexit
@@ -595,9 +461,6 @@ set_app_context(app)
 
 # Start MQTT subscriber in background thread (must be after db init)
 mqtt_client = start_mqtt_subscriber()
-
-# Start production sync thread (dev environment only)
-start_production_sync_thread()
 
 # Register cleanup handler to stop MQTT subscriber on app shutdown
 atexit.register(stop_mqtt_subscriber)
@@ -674,19 +537,25 @@ def firmware_manifest(platform):
     """Generate ESP Web Tools manifest for browser-based flashing (requires login and platform permission)
     
     Query parameters:
+    - product: product name (required)
     - mode: 'quick' (firmware only, default) or 'full' (bootloader + partitions + firmware)
     - version: specific version to flash (optional, defaults to latest)
     """
     platform = platform.lower()
     original_platform = platform
+    product = request.args.get('product')
     flash_mode = request.args.get('mode', 'quick').lower()  # Default to quick flash
     requested_version = request.args.get('version')  # Specific version to flash (optional)
+    
+    # Validate required product parameter
+    if not product:
+        return jsonify({'error': 'Missing required parameter: product'}), 400
     
     # Validate flash mode
     if flash_mode not in ['quick', 'full']:
         return jsonify({'error': 'Invalid flash mode. Use "quick" or "full"'}), 400
     
-    # Apply platform firmware mapping for backward compatibility
+    # Apply platform firmware mapping
     if platform in PLATFORM_FIRMWARE_MAPPING:
         platform = PLATFORM_FIRMWARE_MAPPING[platform]
     
@@ -708,13 +577,13 @@ def firmware_manifest(platform):
     # Get firmware version info - either specific version or latest
     if requested_version:
         # Look up specific version from database
-        fw = FirmwareVersion.query.filter_by(platform=platform, version=requested_version).first()
+        fw = FirmwareVersion.query.filter_by(product=product, platform=platform, version=requested_version).first()
         if not fw:
-            return jsonify({'error': f'Version {requested_version} not found for platform {platform}'}), 404
+            return jsonify({'error': f'Version {requested_version} not found for {product}/{platform}'}), 404
         version_info = fw.to_dict()
     else:
         # Get latest version
-        version_info = get_firmware_version(platform)
+        version_info = get_firmware_version(platform, product)
     
     if not version_info:
         return jsonify({'error': 'No firmware available'}), 404
@@ -737,7 +606,7 @@ def firmware_manifest(platform):
     
     # Generate user-scoped download tokens for the manifest
     # Include version in token if specific version was requested
-    firmware_token = generate_user_download_token(user_id, platform, max_age=3600, version=requested_version)
+    firmware_token = generate_user_download_token(user_id, platform, product, max_age=3600, version=requested_version)
     firmware_url = url_for('user_download_firmware_file', token=firmware_token, _external=True)
     
     # Determine correct flash offsets based on chip family
@@ -750,8 +619,8 @@ def firmware_manifest(platform):
     
     if flash_mode == 'full' and is_esp32_family:
         # Full flash: bootloader, partitions, then firmware
-        bootloader_token = generate_user_download_token(user_id, f"{platform}-bootloader", max_age=3600, version=requested_version)
-        partitions_token = generate_user_download_token(user_id, f"{platform}-partitions", max_age=3600, version=requested_version)
+        bootloader_token = generate_user_download_token(user_id, f"{platform}-bootloader", product, max_age=3600, version=requested_version)
+        partitions_token = generate_user_download_token(user_id, f"{platform}-partitions", product, max_age=3600, version=requested_version)
         
         bootloader_url = url_for('user_download_bootloader', token=bootloader_token, _external=True)
         partitions_url = url_for('user_download_partitions', token=partitions_token, _external=True)
@@ -790,10 +659,10 @@ def firmware_manifest(platform):
 @app.route('/firmware/user-download-firmware/<token>')
 def user_download_firmware_file(token):
     """User-scoped firmware download endpoint using user-specific signed tokens"""
-    # Verify user token and extract user_id, platform, and optional version
-    user_id, platform, requested_version = verify_user_download_token(token)
+    # Verify user token and extract user_id, platform, product, and optional version
+    user_id, platform, product, requested_version = verify_user_download_token(token)
     
-    if not user_id or not platform:
+    if not user_id or not platform or not product:
         return jsonify({'error': 'Invalid or expired download token'}), 401
     
     # Load user from database
@@ -811,12 +680,12 @@ def user_download_firmware_file(token):
     
     # Get firmware version info - either specific version or latest
     if requested_version:
-        fw = FirmwareVersion.query.filter_by(platform=platform, version=requested_version).first()
+        fw = FirmwareVersion.query.filter_by(product=product, platform=platform, version=requested_version).first()
         if not fw:
-            return jsonify({'error': f'Version {requested_version} not found for platform {platform}'}), 404
+            return jsonify({'error': f'Version {requested_version} not found for {product}/{platform}'}), 404
         version_info = fw.to_dict()
     else:
-        version_info = get_firmware_version(platform)
+        version_info = get_firmware_version(platform, product)
     
     if not version_info:
         return jsonify({'error': 'No firmware available'}), 404
@@ -901,10 +770,10 @@ def user_download_firmware_file(token):
 @app.route('/firmware/user-download-bootloader/<token>')
 def user_download_bootloader(token):
     """User-scoped bootloader download endpoint using user-specific signed tokens"""
-    # Verify user token and extract user_id, platform (with -bootloader suffix), and optional version
-    user_id, platform_with_suffix, requested_version = verify_user_download_token(token)
+    # Verify user token and extract user_id, platform (with -bootloader suffix), product, and optional version
+    user_id, platform_with_suffix, product, requested_version = verify_user_download_token(token)
     
-    if not user_id or not platform_with_suffix:
+    if not user_id or not platform_with_suffix or not product:
         return jsonify({'error': 'Invalid or expired download token'}), 401
     
     # Remove -bootloader suffix to get actual platform
@@ -925,12 +794,12 @@ def user_download_bootloader(token):
     
     # Get firmware version info - either specific version or latest
     if requested_version:
-        fw = FirmwareVersion.query.filter_by(platform=platform, version=requested_version).first()
+        fw = FirmwareVersion.query.filter_by(product=product, platform=platform, version=requested_version).first()
         if not fw:
-            return jsonify({'error': f'Version {requested_version} not found for platform {platform}'}), 404
+            return jsonify({'error': f'Version {requested_version} not found for {product}/{platform}'}), 404
         version_info = fw.to_dict()
     else:
-        version_info = get_firmware_version(platform)
+        version_info = get_firmware_version(platform, product)
     
     if not version_info or not version_info.get('bootloader_filename'):
         return jsonify({'error': 'Bootloader file not available'}), 404
@@ -990,10 +859,10 @@ def user_download_bootloader(token):
 @app.route('/firmware/user-download-partitions/<token>')
 def user_download_partitions(token):
     """User-scoped partitions download endpoint using user-specific signed tokens"""
-    # Verify user token and extract user_id, platform (with -partitions suffix), and optional version
-    user_id, platform_with_suffix, requested_version = verify_user_download_token(token)
+    # Verify user token and extract user_id, platform (with -partitions suffix), product, and optional version
+    user_id, platform_with_suffix, product, requested_version = verify_user_download_token(token)
     
-    if not user_id or not platform_with_suffix:
+    if not user_id or not platform_with_suffix or not product:
         return jsonify({'error': 'Invalid or expired download token'}), 401
     
     # Remove -partitions suffix to get actual platform
@@ -1014,12 +883,12 @@ def user_download_partitions(token):
     
     # Get firmware version info - either specific version or latest
     if requested_version:
-        fw = FirmwareVersion.query.filter_by(platform=platform, version=requested_version).first()
+        fw = FirmwareVersion.query.filter_by(product=product, platform=platform, version=requested_version).first()
         if not fw:
-            return jsonify({'error': f'Version {requested_version} not found for platform {platform}'}), 404
+            return jsonify({'error': f'Version {requested_version} not found for {product}/{platform}'}), 404
         version_info = fw.to_dict()
     else:
-        version_info = get_firmware_version(platform)
+        version_info = get_firmware_version(platform, product)
     
     if not version_info or not version_info.get('partitions_filename'):
         return jsonify({'error': 'Partitions file not available'}), 404
@@ -1494,7 +1363,7 @@ def status():
             if user.can_download_platform(platform):
                 fw_copy = fw_data.copy()
                 # Generate fresh user-scoped token valid for 1 hour
-                token = generate_user_download_token(user_id, platform, max_age=3600)
+                token = generate_user_download_token(user_id, platform, product, max_age=3600)
                 fw_copy['public_download_url'] = f'/firmware/user-download-firmware/{token}'
                 fw_copy['can_download'] = True
                 firmwares_with_tokens[product][platform] = fw_copy
