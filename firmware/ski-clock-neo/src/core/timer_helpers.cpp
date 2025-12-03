@@ -378,6 +378,64 @@ void TimerTaskManager::stopTimer(const char* name) {
   DEBUG_PRINTLN(name);
 }
 
+// Restart a repeating timer (resets its phase to start fresh)
+bool TimerTaskManager::restartTimer(const char* name) {
+  TimerConfig* config = findTimer(name);
+  if (config == nullptr) {
+    DEBUG_PRINT("ERROR: Timer not found for restart: ");
+    DEBUG_PRINTLN(name);
+    return false;
+  }
+  
+  if (config->isOneShot) {
+    DEBUG_PRINT("ERROR: Cannot restart one-shot timer: ");
+    DEBUG_PRINTLN(name);
+    return false;
+  }
+  
+  #if defined(ESP32)
+    // ESP32: Delete and recreate the FreeRTOS task to reset timing
+    if (config->taskHandle != nullptr) {
+      vTaskDelete(config->taskHandle);
+      config->taskHandle = nullptr;
+    }
+    
+    #if defined(CONFIG_IDF_TARGET_ESP32C3)
+      xTaskCreate(
+        taskWrapper,
+        name,
+        config->stackSize,
+        config,
+        2,
+        &config->taskHandle
+      );
+    #else
+      xTaskCreatePinnedToCore(
+        taskWrapper,
+        name,
+        config->stackSize,
+        config,
+        2,
+        &config->taskHandle,
+        1
+      );
+    #endif
+  #elif defined(ESP8266)
+    // ESP8266: Delete and recreate the TickTwo timer to guarantee fresh phase
+    if (config->ticker != nullptr) {
+      config->ticker->stop();
+      delete config->ticker;
+      config->ticker = new TickTwo(config->callback, config->intervalMs, 0, MILLIS);
+      config->ticker->start();
+    }
+  #endif
+  
+  config->isActive = true;
+  DEBUG_PRINT("Timer restarted: ");
+  DEBUG_PRINTLN(name);
+  return true;
+}
+
 // Stop all timers
 void TimerTaskManager::stopAll() {
   for (uint8_t i = 0; i < timerCount; i++) {

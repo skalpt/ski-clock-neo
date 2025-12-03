@@ -367,6 +367,10 @@ void startCountdown() {
   logEvent("button_press", "{\"action\":\"timer_start\"}");
   
   updateBothRows();
+  
+  // Restart tick timer to sync phase - ensures immediate "3" display
+  // and subsequent ticks are aligned from this moment
+  restartTimer("DisplayTick");
 }
 
 void startTimer() {
@@ -377,6 +381,9 @@ void startTimer() {
   tickCounter = 0;  // Reset tick counter for synchronization
   
   updateBothRows();
+  
+  // Restart tick timer to sync phase for accurate elapsed time tracking
+  restartTimer("DisplayTick");
 }
 
 void startFlashingResult() {
@@ -388,6 +395,9 @@ void startFlashingResult() {
   logEvent("button_press", "{\"action\":\"timer_stop\"}");
   
   updateBothRows();
+  
+  // Restart tick timer to sync flash timing
+  restartTimer("DisplayTick");
 }
 
 void startDisplayResult() {
@@ -396,6 +406,9 @@ void startDisplayResult() {
   tickCounter = 0;  // Reset tick counter for result timeout tracking
   
   updateBothRows();
+  
+  // Restart tick timer to sync result display timing
+  restartTimer("DisplayTick");
 }
 
 void returnToNormal() {
@@ -413,6 +426,9 @@ void returnToNormal() {
   logEvent("display_mode_change", "{\"from\":\"timer\",\"to\":\"normal\"}");
   
   updateBothRows();
+  
+  // Restart tick timer to sync phase
+  restartTimer("DisplayTick");
 }
 
 void cancelTimer() {
@@ -432,6 +448,7 @@ void onButtonPress() {
   // Transition lockout to prevent rapid state changes from button bounce
   if (transitionInProgress || (now - lastTransitionTime) < TRANSITION_LOCKOUT_MS) {
     DEBUG_PRINTLN("Button press ignored (transition lockout)");
+    clearButtonPressed();  // Discard any pending bounces
     return;
   }
   

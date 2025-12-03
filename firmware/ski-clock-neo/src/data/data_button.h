@@ -15,6 +15,9 @@ void initButton();
 // Callback will be called from ISR context - keep it short!
 void setButtonPressCallback(ButtonCallback callback);
 
+// Clear any pending button press flag (call during lockout to discard bounces)
+void clearButtonPressed();
+
 
 // Check if button is currently pressed (debounced)
 // Safe to call from any context

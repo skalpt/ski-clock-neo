@@ -58,6 +58,8 @@ public:
   
   void stopTimer(const char* name);
   
+  bool restartTimer(const char* name);
+  
   void stopAll();
 
 private:
@@ -101,6 +103,10 @@ inline void updateTimers() {
 
 inline void stopTimer(const char* name) {
   TimerTaskManager::getInstance().stopTimer(name);
+}
+
+inline bool restartTimer(const char* name) {
+  return TimerTaskManager::getInstance().restartTimer(name);
 }
 
 inline void stopAllTimers() {

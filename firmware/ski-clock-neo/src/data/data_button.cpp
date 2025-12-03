@@ -69,6 +69,11 @@ void setButtonPressCallback(ButtonCallback callback) {
   pressCallback = callback;
 }
 
+// Clear any pending button press flag (call during lockout to discard bounces)
+void clearButtonPressed() {
+  buttonPressed = false;
+}
+
 
 // Check if button is currently pressed
 bool isButtonPressed() {
