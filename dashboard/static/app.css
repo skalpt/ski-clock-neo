@@ -2116,6 +2116,25 @@ body.no-web-serial .flash-column {
     margin-bottom: var(--spacing-md);
 }
 
+.command-current-value {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-bottom: var(--spacing-sm);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    display: inline-block;
+}
+
+.command-current-value .label {
+    font-weight: 500;
+}
+
+.command-current-value .value {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
 .command-input-row {
     display: flex;
     align-items: center;

@@ -30,6 +30,7 @@ const uint16_t MQTT_PORT = 8883;  // TLS port for HiveMQ Cloud
 
 // MQTT topics (device-specific topics use buildDeviceTopic() which auto-adds trailing slash)
 const char MQTT_TOPIC_HEARTBEAT[] = "norrtek-iot/heartbeat";
+const char MQTT_TOPIC_INFO[] = "norrtek-iot/info";
 const char MQTT_TOPIC_VERSION_RESPONSE[] = "norrtek-iot/version/response";
 const char MQTT_TOPIC_COMMAND[] = "norrtek-iot/command";
 const char MQTT_TOPIC_CONFIG[] = "norrtek-iot/config";
@@ -113,16 +114,19 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   if (strcmp(topic, commandTopic.c_str()) == 0) {
     DEBUG_PRINTLN("Command received!");
     
-    // Parse command type from JSON
-    if (message.indexOf("\"command\": \"rollback\"") > 0 || message.indexOf("\"command\":\"rollback\"") > 0) {
+    // Parse command - support both JSON format and simple string commands
+    if (message.indexOf("rollback") >= 0) {
       DEBUG_PRINTLN("Executing rollback command");
       handleRollbackCommand(message);
-    } else if (message.indexOf("\"command\": \"restart\"") > 0 || message.indexOf("\"command\":\"restart\"") > 0) {
+    } else if (message.indexOf("restart") >= 0) {
       DEBUG_PRINTLN("Executing restart command");
       handleRestartCommand();
-    } else if (message.indexOf("\"command\": \"snapshot\"") > 0 || message.indexOf("\"command\":\"snapshot\"") > 0) {
+    } else if (message.indexOf("snapshot") >= 0) {
       DEBUG_PRINTLN("Executing snapshot command");
       publishDisplaySnapshot();
+    } else if (message.indexOf("info") >= 0) {
+      DEBUG_PRINTLN("Executing info command");
+      publishDeviceInfo();
     } else {
       DEBUG_PRINTLN("Unknown command type");
     }
@@ -214,7 +218,10 @@ bool connectMQTT() {
       DEBUG_PRINTLN(configTopic);
     }
     
-    // Start heartbeat ticker
+    // Publish device info immediately on connect (static info + config)
+    publishDeviceInfo();
+    
+    // Start heartbeat ticker (dynamic telemetry only)
     heartbeatTicker.detach();
     heartbeatTicker.attach_ms(HEARTBEAT_INTERVAL, publishHeartbeat);
     publishHeartbeat();
@@ -356,13 +363,11 @@ void publishHeartbeat() {
   }
   lastHeapWasLow = heapIsLow;
   
-  // Build JSON payload
-  static char payload[384];
+  // Build slimmed-down JSON payload with only dynamic telemetry
+  // Static device info (product, board, version, config) is now sent via /info topic
+  static char payload[192];
   snprintf(payload, sizeof(payload),
-    "{\"product\":\"%s\",\"board\":\"%s\",\"version\":\"%s\",\"uptime\":%lu,\"rssi\":%ld,\"free_heap\":%lu,\"ssid\":\"%s\",\"ip\":\"%s\"}",
-    PRODUCT_NAME,
-    getBoardType().c_str(),
-    FIRMWARE_VERSION,
+    "{\"uptime\":%lu,\"rssi\":%ld,\"free_heap\":%lu,\"ssid\":\"%s\",\"ip\":\"%s\"}",
     millis() / 1000,
     rssi,
     freeHeap,
@@ -371,6 +376,30 @@ void publishHeartbeat() {
   );
   
   publishMqttPayload(buildDeviceTopic(MQTT_TOPIC_HEARTBEAT), payload);
+}
+
+// ============================================================================
+// DEVICE INFO PUBLISHING
+// ============================================================================
+
+void publishDeviceInfo() {
+  if (!mqttClient.connected()) return;
+  
+  DEBUG_PRINTLN("Publishing device info...");
+  
+  // Build JSON payload with static device info, config, and supported commands
+  static char payload[512];
+  snprintf(payload, sizeof(payload),
+    "{\"product\":\"%s\",\"board\":\"%s\",\"version\":\"%s\",\"config\":{\"temp_offset\":%.1f},\"supported_commands\":[\"temp_offset\",\"rollback\",\"restart\",\"snapshot\",\"info\"]}",
+    PRODUCT_NAME,
+    getBoardType().c_str(),
+    FIRMWARE_VERSION,
+    getTemperatureOffset()
+  );
+  
+  if (publishMqttPayload(buildDeviceTopic(MQTT_TOPIC_INFO), payload)) {
+    DEBUG_PRINTLN("Device info published successfully");
+  }
 }
 
 // ============================================================================

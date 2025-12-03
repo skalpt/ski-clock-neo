@@ -34,6 +34,7 @@ extern const uint16_t MQTT_PORT;
 
 // MQTT topics (constexpr for compile-time optimization)
 extern const char MQTT_TOPIC_HEARTBEAT[];
+extern const char MQTT_TOPIC_INFO[];
 extern const char MQTT_TOPIC_VERSION_RESPONSE[];
 extern const char MQTT_TOPIC_COMMAND[];
 extern const char MQTT_TOPIC_OTA_START[];
@@ -61,6 +62,7 @@ bool connectMQTT();
 void disconnectMQTT();
 void updateMQTT();
 void publishHeartbeat();
+void publishDeviceInfo();
 void publishDisplaySnapshot();
 void mqttCallback(char* topic, byte* payload, unsigned int length);
 void handleRollbackCommand(String message);

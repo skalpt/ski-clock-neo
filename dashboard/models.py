@@ -223,6 +223,9 @@ class Device(db.Model):
     ip_address = db.Column(db.String(45))
     display_snapshot = db.Column(db.JSON)  # Stores display dimensions and base64-encoded pixel data
     pinned_firmware_version = db.Column(db.String(32))  # Optional: pin device to specific firmware version
+    supported_commands = db.Column(db.JSON)  # Array of supported commands: ["temp_offset", "rollback", "restart", "snapshot", "info"]
+    last_config = db.Column(db.JSON)  # Last known device configuration: {"temp_offset": -2.0}
+    last_info_at = db.Column(db.DateTime(timezone=True))  # When device info was last received
     
     # Relationships
     ota_update_logs = db.relationship('OTAUpdateLog', back_populates='device', cascade='all, delete-orphan')
@@ -294,7 +297,10 @@ class Device(db.Model):
             'degraded': is_degraded,
             'minutes_since_last_seen': round(minutes_since_last_seen, 1),
             'display_snapshot': self.display_snapshot,
-            'pinned_firmware_version': self.pinned_firmware_version
+            'pinned_firmware_version': self.pinned_firmware_version,
+            'supported_commands': self.supported_commands,
+            'last_config': self.last_config,
+            'last_info_at': self.last_info_at.isoformat() if self.last_info_at else None
         }
 
 

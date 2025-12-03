@@ -18,6 +18,7 @@ MQTT_PORT = 8883
 MQTT_USERNAME = os.getenv('MQTT_USERNAME', '')
 MQTT_PASSWORD = os.getenv('MQTT_PASSWORD', '')
 MQTT_TOPIC_HEARTBEAT = "norrtek-iot/heartbeat"
+MQTT_TOPIC_INFO = "norrtek-iot/info"
 MQTT_TOPIC_VERSION_RESPONSE = "norrtek-iot/version/response"
 MQTT_TOPIC_OTA_START = "norrtek-iot/ota/start"
 MQTT_TOPIC_OTA_PROGRESS = "norrtek-iot/ota/progress"
@@ -80,6 +81,8 @@ def on_connect(client, userdata, flags, rc, properties=None):
         print(f"✓ Connected to MQTT broker: {MQTT_HOST}")
         client.subscribe(f"{MQTT_TOPIC_HEARTBEAT}/+")
         print(f"✓ Subscribed to topic: {MQTT_TOPIC_HEARTBEAT}/+")
+        client.subscribe(f"{MQTT_TOPIC_INFO}/+")
+        print(f"✓ Subscribed to topic: {MQTT_TOPIC_INFO}/+")
         client.subscribe(f"{MQTT_TOPIC_OTA_START}/+")
         print(f"✓ Subscribed to topic: {MQTT_TOPIC_OTA_START}/+")
         client.subscribe(f"{MQTT_TOPIC_OTA_PROGRESS}/+")
@@ -94,10 +97,15 @@ def on_connect(client, userdata, flags, rc, properties=None):
         print(f"✗ Failed to connect to MQTT broker, return code {rc}")
 
 def handle_heartbeat(client, payload, topic):
-    """Handle device heartbeat messages and check for firmware updates
+    """Handle device heartbeat messages - updates telemetry data only
     
     Device ID is extracted from topic: norrtek-iot/heartbeat/{device_id}
-    Product is required in payload for multi-product support
+    
+    New slimmed-down format contains only dynamic telemetry:
+    - rssi, uptime, free_heap, ssid, ip
+    
+    Legacy format (backwards compatible) may also include:
+    - product, board, version (now handled by device_info topic)
     """
     # Extract device_id from topic
     topic_parts = topic.split('/')
@@ -106,51 +114,62 @@ def handle_heartbeat(client, payload, topic):
         return
     
     device_id = topic_parts[2]
-    board_type = payload.get('board', 'Unknown')
-    current_version = payload.get('version', 'Unknown')
+    
+    # Legacy format: product, board, version in heartbeat payload
+    # New format: these fields come from info topic instead
+    board_type = payload.get('board')
+    current_version = payload.get('version')
     product = payload.get('product')
     
-    if not product:
-        print(f"⚠ Heartbeat missing required 'product' field from {device_id}")
-        return
-    
     if device_id and _app_context:
-        # Save to database
         from models import Device, HeartbeatHistory, EventLog, db
         
         with _app_context.app_context():
             device = Device.query.filter_by(device_id=device_id).first()
             
             if device:
-                # Update existing device
-                device.board_type = board_type
-                device.firmware_version = current_version
-                device.product = product  # Update product if device reports it
+                # Update existing device telemetry
                 device.last_seen = datetime.now(timezone.utc)
                 device.last_uptime = payload.get('uptime', 0)
                 device.last_rssi = payload.get('rssi', 0)
                 device.last_free_heap = payload.get('free_heap', 0)
                 device.ssid = payload.get('ssid')
-                # Validate IP address to prevent XSS attacks
                 device.ip_address = validate_ip_address(payload.get('ip'))
+                
+                # Legacy format: update static fields if present in payload
+                if board_type:
+                    device.board_type = board_type
+                if current_version:
+                    device.firmware_version = current_version
+                if product:
+                    device.product = product
             else:
-                # Create new device with product
-                device = Device(
-                    device_id=device_id,
-                    product=product,
-                    board_type=board_type,
-                    firmware_version=current_version,
-                    last_uptime=payload.get('uptime', 0),
-                    last_rssi=payload.get('rssi', 0),
-                    last_free_heap=payload.get('free_heap', 0),
-                    ssid=payload.get('ssid'),
-                    # Validate IP address to prevent XSS attacks
-                    ip_address=validate_ip_address(payload.get('ip'))
-                )
-                db.session.add(device)
-                # Flush to ensure device exists before adding EventLog (FK constraint)
-                db.session.flush()
-                print(f"✨ New device registered: {device_id} ({product}/{board_type})")
+                # Device not found - check if we have enough info to create it
+                if product and board_type:
+                    # Legacy format: create device with full info from heartbeat
+                    device = Device(
+                        device_id=device_id,
+                        product=product,
+                        board_type=board_type,
+                        firmware_version=current_version or 'Unknown',
+                        last_uptime=payload.get('uptime', 0),
+                        last_rssi=payload.get('rssi', 0),
+                        last_free_heap=payload.get('free_heap', 0),
+                        ssid=payload.get('ssid'),
+                        ip_address=validate_ip_address(payload.get('ip'))
+                    )
+                    db.session.add(device)
+                    db.session.flush()
+                    print(f"✨ New device registered: {device_id} ({product}/{board_type})")
+                else:
+                    # New format: device must first send info message before heartbeat is processed
+                    print(f"⚠ Heartbeat from unknown device {device_id} - waiting for device info")
+                    return
+            
+            # Use device's stored values for static fields if not in payload (new format)
+            effective_product = product or device.product
+            effective_board = board_type or device.board_type
+            effective_version = current_version or device.firmware_version
             
             # Log heartbeat to history (for degraded status detection)
             heartbeat_log = HeartbeatHistory(
@@ -167,7 +186,7 @@ def handle_heartbeat(client, payload, topic):
                 device_id=device_id,
                 event_type='heartbeat',
                 event_data={
-                    'version': current_version,
+                    'version': effective_version,
                     'rssi': payload.get('rssi'),
                     'uptime': payload.get('uptime'),
                     'free_heap': payload.get('free_heap'),
@@ -195,9 +214,9 @@ def handle_heartbeat(client, payload, topic):
                 OTAUpdateLog.status.in_(['started', 'downloading'])
             ).order_by(OTAUpdateLog.started_at.desc()).all()
             
-            if stuck_otas:
+            if stuck_otas and effective_version:
                 # Normalize current version once
-                normalized_current = current_version.lstrip('vV')
+                normalized_current = effective_version.lstrip('vV')
                 now = datetime.now(timezone.utc)
                 # Timeout threshold: 5 minutes of inactivity
                 timeout_threshold = now - timedelta(minutes=5)
@@ -229,8 +248,8 @@ def handle_heartbeat(client, payload, topic):
                             # Failed: device has different version AND OTA has timed out
                             stuck_ota.status = 'failed'
                             stuck_ota.completed_at = now
-                            stuck_ota.error_message = f"Heartbeat shows version {current_version} instead of expected {stuck_ota.new_version} after 5+ minutes of inactivity (resolved via heartbeat)"
-                            print(f"❌ OTA resolved via heartbeat (failed): {device_id} - version mismatch after timeout (expected {stuck_ota.new_version}, got {current_version})")
+                            stuck_ota.error_message = f"Heartbeat shows version {effective_version} instead of expected {stuck_ota.new_version} after 5+ minutes of inactivity (resolved via heartbeat)"
+                            print(f"❌ OTA resolved via heartbeat (failed): {device_id} - version mismatch after timeout (expected {stuck_ota.new_version}, got {effective_version})")
                             resolved_count += 1
                         # else: Active download still in progress, don't resolve yet
                 
@@ -242,12 +261,12 @@ def handle_heartbeat(client, payload, topic):
             # Map board type to platform using authoritative mapping
             from app import get_firmware_version
             from models import FirmwareVersion
-            platform = BOARD_TYPE_TO_PLATFORM.get(board_type)
+            platform = BOARD_TYPE_TO_PLATFORM.get(effective_board)
             
             if not platform:
                 # Log when no matching platform mapping is found
-                if board_type != 'Unknown':
-                    print(f"⚠ No platform mapping for board type '{board_type}'")
+                if effective_board and effective_board != 'Unknown':
+                    print(f"⚠ No platform mapping for board type '{effective_board}'")
             else:
                 # Check if device has a pinned firmware version
                 pinned_version = device.pinned_firmware_version
@@ -256,7 +275,7 @@ def handle_heartbeat(client, payload, topic):
                 if pinned_version:
                     # Device is pinned - verify the pinned version exists for this product
                     pinned_fw = FirmwareVersion.query.filter_by(
-                        product=product,
+                        product=effective_product,
                         platform=platform, 
                         version=pinned_version
                     ).first()
@@ -266,19 +285,19 @@ def handle_heartbeat(client, payload, topic):
                         print(f"📌 Device {device_id} is pinned to version {pinned_version}")
                     else:
                         # Pinned version doesn't exist - fall back to latest
-                        print(f"⚠ Pinned version {pinned_version} not found for {product}/{platform}, falling back to latest")
-                        version_info = get_firmware_version(platform, product)
+                        print(f"⚠ Pinned version {pinned_version} not found for {effective_product}/{platform}, falling back to latest")
+                        version_info = get_firmware_version(platform, effective_product)
                         if version_info:
                             target_version = version_info.get('version')
                 else:
                     # Not pinned - use latest version for this product
-                    version_info = get_firmware_version(platform, product)
+                    version_info = get_firmware_version(platform, effective_product)
                     if version_info:
                         target_version = version_info.get('version')
                 
-                if target_version:
+                if target_version and effective_version:
                     # Normalize versions by removing 'v' prefix for comparison
-                    normalized_current = current_version.lstrip('vV')
+                    normalized_current = effective_version.lstrip('vV')
                     normalized_target = target_version.lstrip('vV')
                     update_available = normalized_target != normalized_current
                     
@@ -288,9 +307,9 @@ def handle_heartbeat(client, payload, topic):
                         response_topic = f"{MQTT_TOPIC_VERSION_RESPONSE}/{device_id}"
                         response_payload = {
                             'latest_version': target_version,
-                            'current_version': current_version,
+                            'current_version': effective_version,
                             'update_available': True,
-                            'product': product,
+                            'product': effective_product,
                             'platform': platform,
                             'session_id': session_id,
                             'subscriber_id': _subscriber_id,  # Track which thread sent this
@@ -301,9 +320,100 @@ def handle_heartbeat(client, payload, topic):
                         print(f"📤 Version response sent to {device_id}: {target_version} (update: True, {pin_status}) [subscriber: {_subscriber_id}]")
                 else:
                     # Log when platform exists in mapping but no firmware in cache
-                    print(f"⚠ No firmware found for {product}/{platform} (board type: '{board_type}')")
+                    print(f"⚠ No firmware found for {effective_product}/{platform} (board type: '{effective_board}')")
         
-        print(f"📡 Heartbeat from {device_id} ({product}/{board_type}): v{current_version}, uptime={payload.get('uptime')}s, RSSI={payload.get('rssi')}dBm")
+        print(f"📡 Heartbeat from {device_id} ({effective_product}/{effective_board}): v{effective_version}, uptime={payload.get('uptime')}s, RSSI={payload.get('rssi')}dBm")
+
+def handle_device_info(client, payload, topic):
+    """Handle device info messages - updates static device data and capabilities
+    
+    Device ID is extracted from topic: norrtek-iot/info/{device_id}
+    
+    Payload format:
+    {
+        "product": "ski-clock",
+        "board": "ESP32-C3",
+        "version": "1.2.3",
+        "config": {"temp_offset": -2.0},
+        "supported_commands": ["temp_offset", "rollback", "restart", "snapshot", "info"]
+    }
+    
+    Published on:
+    - MQTT connect
+    - After config changes
+    - On 'info' command
+    """
+    # Extract device_id from topic
+    topic_parts = topic.split('/')
+    if len(topic_parts) < 3:
+        print(f"⚠ Invalid device info topic format: {topic}")
+        return
+    
+    device_id = topic_parts[2]
+    product = payload.get('product')
+    board_type = payload.get('board')
+    version = payload.get('version')
+    config = payload.get('config')
+    supported_commands = payload.get('supported_commands')
+    
+    if not product or not board_type:
+        print(f"⚠ Device info missing required fields from {device_id}")
+        return
+    
+    if device_id and _app_context:
+        from models import Device, EventLog, db
+        
+        with _app_context.app_context():
+            device = Device.query.filter_by(device_id=device_id).first()
+            now = datetime.now(timezone.utc)
+            
+            if device:
+                # Update existing device
+                device.product = product
+                device.board_type = board_type
+                if version:
+                    device.firmware_version = version
+                device.last_info_at = now
+                device.last_seen = now  # Also update last_seen
+                
+                # Update capabilities and config
+                if supported_commands is not None:
+                    device.supported_commands = supported_commands
+                if config is not None:
+                    device.last_config = config
+                
+                print(f"📋 Updated device info: {device_id} ({product}/{board_type} v{version})")
+            else:
+                # Create new device
+                device = Device(
+                    device_id=device_id,
+                    product=product,
+                    board_type=board_type,
+                    firmware_version=version or 'Unknown',
+                    last_info_at=now,
+                    supported_commands=supported_commands,
+                    last_config=config
+                )
+                db.session.add(device)
+                db.session.flush()
+                print(f"✨ New device registered via info: {device_id} ({product}/{board_type})")
+            
+            # Log device info as event
+            info_event = EventLog(
+                device_id=device_id,
+                event_type='device_info',
+                event_data={
+                    'product': product,
+                    'board': board_type,
+                    'version': version,
+                    'config': config,
+                    'supported_commands': supported_commands
+                },
+                timestamp=now
+            )
+            db.session.add(info_event)
+            
+            db.session.commit()
 
 def extract_device_id_from_topic(topic: str, base_topic: str) -> Optional[str]:
     """Extract device_id from topic path: base_topic/{device_id}[/...]
@@ -693,6 +803,8 @@ def on_message(client, userdata, msg):
         # Device-specific topics use pattern: base_topic/{device_id}
         if msg.topic.startswith(MQTT_TOPIC_HEARTBEAT):
             handle_heartbeat(client, payload, msg.topic)
+        elif msg.topic.startswith(MQTT_TOPIC_INFO):
+            handle_device_info(client, payload, msg.topic)
         elif msg.topic.startswith(MQTT_TOPIC_OTA_START):
             handle_ota_start(client, payload, msg.topic)
         elif msg.topic.startswith(MQTT_TOPIC_OTA_PROGRESS):

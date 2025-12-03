@@ -14,6 +14,7 @@
 #include "../../ski-clock-neo_config.h"
 #include "debug.h"
 #include "event_log.h"
+#include "../connectivity/mqtt_client.h"
 
 #if defined(ESP32)
   #include <Preferences.h>
@@ -112,6 +113,9 @@ void setTemperatureOffset(float offset) {
   static char eventData[48];
   snprintf(eventData, sizeof(eventData), "{\"temp_offset\":%.1f}", offset);
   logEvent("config_updated", eventData);
+  
+  // Publish updated device info to confirm config change
+  publishDeviceInfo();
 }
 
 // ============================================================================
