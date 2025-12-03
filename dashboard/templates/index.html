@@ -305,6 +305,7 @@
             const devicesHtml = data.devices.map(device => {
                 // Escape all user-supplied data to prevent XSS
                 const safeDeviceId = escapeHtml(device.device_id);
+                const safeProduct = escapeHtml(device.product || 'Unknown Product');
                 const safeBoard = escapeHtml(device.board);
                 const safeVersion = escapeHtml(device.version);
                 const safeSsid = escapeHtml(device.ssid);
@@ -336,7 +337,8 @@
                                 <div class="device-header">
                                     <div>
                                         <span class="status ${statusClass}"></span>
-                                        ${safeDeviceId}
+                                        ${safeProduct}
+                                        <div class="device-subheading">${safeDeviceId}</div>
                                     </div>
                                     <div class="flex-align-center">
                                         <span class="badge">${safeBoard}</span>
@@ -377,9 +379,10 @@
                         </div>
                         <div class="device-card-back ${statusClass}" id="display-back-${safeDeviceId}">
                             <div class="device-header">
-                                <div class="flex-align-center">
+                                <div>
                                     <span class="status ${statusClass}"></span>
-                                    ${safeDeviceId}
+                                    ${safeProduct}
+                                    <div class="device-subheading">${safeDeviceId}</div>
                                 </div>
                                 <div class="flex-align-center">
                                     <span class="badge">${safeBoard}</span>
@@ -1379,7 +1382,7 @@
                 return `
                     <div class="device-select-item ${statusClass}" onclick="pinDeviceVersion('${d.device_id}', '${selectedPushVersion}')">
                         <div class="device-select-info">
-                            <strong>${statusIcon} ${escapeHtml(d.device_id)}</strong>
+                            <strong>${statusIcon} ${escapeHtml(d.product || 'Unknown Product')} (${escapeHtml(d.device_id)})</strong>
                             <span class="muted-text">v${escapeHtml(currentVersion)}</span>
                             ${pinnedBadge}
                         </div>

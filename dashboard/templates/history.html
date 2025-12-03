@@ -165,7 +165,7 @@
                 allDevices.forEach(device => {
                     const option = document.createElement('option');
                     option.value = device.device_id;
-                    option.textContent = `${device.device_id} (${device.board})`;
+                    option.textContent = `${device.product || 'Unknown Product'} (${device.device_id})`;
                     select.appendChild(option);
                 });
                 

@@ -253,7 +253,14 @@ h3 {
     margin-bottom: var(--spacing-md);
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
+}
+
+.device-subheading {
+    font-size: 0.75rem;
+    font-weight: 400;
+    opacity: 0.8;
+    margin-top: 2px;
 }
 
 .device-info {
