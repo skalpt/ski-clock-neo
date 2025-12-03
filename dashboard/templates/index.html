@@ -335,10 +335,12 @@
                         <div class="device-card-front">
                             <div class="device-card ${statusClass}">
                                 <div class="device-header">
-                                    <div>
+                                    <div class="device-header-left">
                                         <span class="status ${statusClass}"></span>
-                                        ${safeProduct}
-                                        <div class="device-subheading">${safeDeviceId}</div>
+                                        <div class="device-header-text">
+                                            <span class="device-product-name">${safeProduct}</span>
+                                            <div class="device-subheading">${safeDeviceId}</div>
+                                        </div>
                                     </div>
                                     <div class="flex-align-center">
                                         <span class="badge">${safeBoard}</span>
@@ -379,10 +381,12 @@
                         </div>
                         <div class="device-card-back ${statusClass}" id="display-back-${safeDeviceId}">
                             <div class="device-header">
-                                <div>
+                                <div class="device-header-left">
                                     <span class="status ${statusClass}"></span>
-                                    ${safeProduct}
-                                    <div class="device-subheading">${safeDeviceId}</div>
+                                    <div class="device-header-text">
+                                        <span class="device-product-name">${safeProduct}</span>
+                                        <div class="device-subheading">${safeDeviceId}</div>
+                                    </div>
                                 </div>
                                 <div class="flex-align-center">
                                     <span class="badge">${safeBoard}</span>
@@ -1143,7 +1147,7 @@
                                 return `
                                     <tr>
                                         <td>${new Date(event.timestamp).toLocaleTimeString()}</td>
-                                        <td>${escapeHtml(event.device_id)}</td>
+                                        <td>${escapeHtml(event.product || 'Unknown')} (${escapeHtml(event.device_id)})</td>
                                         <td><span class="event-badge ${event.event_type}">${eventIcon} ${formatEventType(event.event_type)}</span></td>
                                         <td>${eventDetails}</td>
                                     </tr>

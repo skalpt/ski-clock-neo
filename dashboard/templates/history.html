@@ -685,7 +685,7 @@
                                 return `
                                     <tr class="event-row event-${event.event_type}" data-row-id="${rowId}" onclick="toggleEventRow('${rowId}')">
                                         <td title="${escapeHtml(fullTimestamp)}">${new Date(event.timestamp).toLocaleString()}</td>
-                                        <td>${escapeHtml(event.device_id)}</td>
+                                        <td>${escapeHtml(event.product || 'Unknown')} (${escapeHtml(event.device_id)})</td>
                                         <td><span class="event-badge ${event.event_type}">${eventIcon} ${formatEventType(event.event_type)}</span></td>
                                         <td>${eventDetails}</td>
                                     </tr>
