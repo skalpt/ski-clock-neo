@@ -1220,18 +1220,20 @@ body.no-web-serial .flash-column {
 
 .bitmap-preview {
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
     min-height: 100px;
-    background: #000;
-    border-radius: var(--radius-sm);
     padding: var(--spacing-sm);
+    gap: var(--spacing-xs);
 }
 
 .bitmap-canvas {
     max-width: 100%;
     height: auto;
     image-rendering: pixelated;
+    background: #000;
+    border-radius: var(--radius-sm);
 }
 
 .muted-text {
