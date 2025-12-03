@@ -248,15 +248,48 @@
         if (!e.target || e.target.tagName !== 'ESP-WEB-INSTALL-BUTTON') return;
         
         const state = e.detail?.state;
-        console.log('ESP Web Tools state:', state);
+        const detail = e.detail;
+        
+        // Detailed logging for debugging flash issues
+        console.log('%c[ESP Flash]', 'color: #4CAF50; font-weight: bold', 'State:', state);
+        if (detail) {
+            console.log('%c[ESP Flash]', 'color: #4CAF50', 'Full detail:', JSON.stringify(detail, null, 2));
+            if (detail.message) console.log('%c[ESP Flash]', 'color: #2196F3', 'Message:', detail.message);
+            if (detail.manifest) console.log('%c[ESP Flash]', 'color: #FF9800', 'Manifest:', detail.manifest);
+            if (detail.build) console.log('%c[ESP Flash]', 'color: #9C27B0', 'Build:', detail.build);
+            if (detail.chipFamily) console.log('%c[ESP Flash]', 'color: #E91E63', 'Chip:', detail.chipFamily);
+            if (detail.details) console.log('%c[ESP Flash]', 'color: #F44336', 'Details:', detail.details);
+        }
         
         if (state === 'initializing' || state === 'preparing' || state === 'erasing' || state === 'writing') {
             pauseAllRefresh();
         } else if (state === 'finished' || state === 'error') {
+            if (state === 'error') {
+                console.error('%c[ESP Flash ERROR]', 'color: #F44336; font-weight: bold', detail);
+            }
             // Small delay before resuming to let the browser settle
             setTimeout(resumeAllRefresh, 1000);
         }
     });
+    
+    // Add logger to all ESP Web Tools buttons for verbose output
+    const setupEspWebToolsLogging = () => {
+        document.querySelectorAll('esp-web-install-button').forEach(btn => {
+            if (!btn._loggerAttached) {
+                btn.logger = {
+                    log: (...args) => console.log('%c[esptool]', 'color: #607D8B', ...args),
+                    debug: (...args) => console.debug('%c[esptool:debug]', 'color: #9E9E9E', ...args),
+                    error: (...args) => console.error('%c[esptool:error]', 'color: #F44336', ...args),
+                };
+                btn._loggerAttached = true;
+            }
+        });
+    };
+    
+    // Setup logging on page load and after DOM updates
+    setupEspWebToolsLogging();
+    const observer = new MutationObserver(() => setupEspWebToolsLogging());
+    observer.observe(document.body, { childList: true, subtree: true });
     
     async function loadDevices() {
         try {
