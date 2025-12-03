@@ -1232,7 +1232,6 @@ body.no-web-serial .flash-column {
     max-width: 100%;
     height: auto;
     image-rendering: pixelated;
-    background: #000;
 }
 
 .muted-text {
