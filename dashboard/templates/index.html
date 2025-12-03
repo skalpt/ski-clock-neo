@@ -211,7 +211,7 @@
     let flashLogBuffer = [];
     let flashInactivityTimer = null;
     let flashSubmitted = false; // Prevent double submits
-    const FLASH_INACTIVITY_TIMEOUT = 5000; // 5 seconds of no log activity = flash ended
+    const FLASH_INACTIVITY_TIMEOUT = 30000; // 30 seconds of no log activity = flash ended
     
     // Success/error patterns in esptool output
     const FLASH_SUCCESS_PATTERNS = [
@@ -435,6 +435,7 @@
     };
     
     // Setup buttons on page load and watch for new buttons
+    console.log('%c[USB Flash v2]', 'color: #4CAF50; font-weight: bold', 'Logger-based flash tracking initialized');
     setupEspWebToolsButtons();
     const espButtonObserver = new MutationObserver(() => setupEspWebToolsButtons());
     espButtonObserver.observe(document.body, { childList: true, subtree: true });
