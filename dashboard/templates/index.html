@@ -393,6 +393,9 @@
                                 </div>
                                 ${otaHtml}
                                 <div class="device-actions">
+                                    <a href="/history?tab=commands&device=${encodeURIComponent(safeDeviceId)}" class="device-btn command-btn">
+                                        ⚙️ Commands
+                                    </a>
                                     <button class="device-btn rollback-btn" data-device-id="${safeDeviceId}" data-action="rollback" ${device.status === 'offline' ? 'disabled title="Device must be online"' : ''}>
                                         ⏮️ Rollback
                                     </button>
@@ -407,11 +410,6 @@
                                     <button class="device-btn delete-btn" data-device-id="${safeDeviceId}" data-action="delete">
                                         🗑️ Remove
                                     </button>
-                                </div>
-                                <div class="device-commands-link">
-                                    <a href="/history?tab=commands&device=${encodeURIComponent(safeDeviceId)}" class="command-link">
-                                        ⚙️ Send Command
-                                    </a>
                                 </div>
                             </div>
                         </div>

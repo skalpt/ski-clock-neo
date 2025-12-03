@@ -146,57 +146,43 @@
         </div>
         
         <div id="tab-content-commands" class="tab-content" style="display: none;">
-            <div class="commands-section">
-                <div class="command-forms">
-                    <h3>Send Command</h3>
+            <div class="command-panel">
+                <div class="command-panel-header">
                     <p class="muted-text" id="command-device-info">Select a device to send commands</p>
-                    
-                    <div class="command-form-group" id="command-forms-container" style="display: none;">
-                        <div class="command-card" data-command="temp_offset">
-                            <h4>🌡️ Temperature Offset</h4>
-                            <p class="command-description">Adjust the temperature sensor calibration offset (-20°C to +20°C)</p>
-                            <p class="command-current-value" id="current-temp-offset" style="display: none;">
-                                <span class="label">Current:</span> <span class="value">--</span>°C
-                            </p>
-                            <div class="command-input-row">
-                                <input type="number" id="cmd-temp-offset" placeholder="0.0" step="0.1" min="-20" max="20" class="command-input">
-                                <span class="command-unit">°C</span>
-                                <button class="command-send-btn" onclick="sendCommand('temp_offset')">Send</button>
-                            </div>
-                        </div>
-                        
-                        <div class="command-card" data-command="rollback">
-                            <h4>⏮️ Rollback Firmware</h4>
-                            <p class="command-description">Roll back to the previously installed firmware version</p>
-                            <button class="command-send-btn command-action-btn" onclick="sendCommand('rollback')">Send Rollback Command</button>
-                        </div>
-                        
-                        <div class="command-card" data-command="restart">
-                            <h4>🔄 Restart Device</h4>
-                            <p class="command-description">Restart the device remotely</p>
-                            <button class="command-send-btn command-action-btn" onclick="sendCommand('restart')">Send Restart Command</button>
-                        </div>
-                        
-                        <div class="command-card" data-command="snapshot">
-                            <h4>📸 Request Snapshot</h4>
-                            <p class="command-description">Request a display snapshot from the device</p>
-                            <button class="command-send-btn command-action-btn" onclick="sendCommand('snapshot')">Request Snapshot</button>
-                        </div>
-                        
-                        <div class="command-card" data-command="info">
-                            <h4>ℹ️ Request Device Info</h4>
-                            <p class="command-description">Request the device to re-send its info (product, version, config, capabilities)</p>
-                            <button class="command-send-btn command-action-btn" onclick="sendCommand('info')">Request Info</button>
-                        </div>
-                    </div>
                 </div>
                 
-                <div class="command-history">
-                    <h3>Command History</h3>
-                    <div id="command-history-container">
-                        <div class="empty-state">
-                            <p>No commands sent yet</p>
-                        </div>
+                <div class="command-buttons" id="command-forms-container" style="display: none;">
+                    <div class="command-inline" data-command="temp_offset">
+                        <span class="command-label">🌡️ Temp Offset</span>
+                        <span class="command-current" id="current-temp-offset" style="display: none;">(<span class="value">--</span>°C)</span>
+                        <input type="number" id="cmd-temp-offset" placeholder="0.0" step="0.1" min="-20" max="20" class="command-input-sm">
+                        <span class="command-unit">°C</span>
+                        <button class="command-btn-sm" onclick="sendCommand('temp_offset')">Set</button>
+                    </div>
+                    
+                    <div class="command-inline command-inline-action" data-command="rollback">
+                        <button class="command-btn-action" onclick="sendCommand('rollback')">⏮️ Rollback</button>
+                    </div>
+                    
+                    <div class="command-inline command-inline-action" data-command="restart">
+                        <button class="command-btn-action" onclick="sendCommand('restart')">🔄 Restart</button>
+                    </div>
+                    
+                    <div class="command-inline command-inline-action" data-command="snapshot">
+                        <button class="command-btn-action" onclick="sendCommand('snapshot')">📸 Snapshot</button>
+                    </div>
+                    
+                    <div class="command-inline command-inline-action" data-command="info">
+                        <button class="command-btn-action" onclick="sendCommand('info')">ℹ️ Refresh Info</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="command-history-section">
+                <h3>Command History</h3>
+                <div id="command-history-container">
+                    <div class="empty-state">
+                        <p>No commands sent yet</p>
                     </div>
                 </div>
             </div>
@@ -267,7 +253,7 @@
     function updateCommandPanel(deviceId) {
         const deviceInfo = document.getElementById('command-device-info');
         const commandForms = document.getElementById('command-forms-container');
-        const commandCards = document.querySelectorAll('.command-card[data-command]');
+        const commandItems = document.querySelectorAll('.command-inline[data-command]');
         const currentTempOffsetEl = document.getElementById('current-temp-offset');
         const tempOffsetInput = document.getElementById('cmd-temp-offset');
         
@@ -285,17 +271,17 @@
         }
         
         deviceInfo.innerHTML = `<strong>${device.product || 'Unknown'}</strong> (${device.device_id}) - ${device.board || device.board_type || 'Unknown board'} v${device.version || 'Unknown'}`;
-        commandForms.style.display = 'block';
+        commandForms.style.display = 'flex';
         
         const supportedCommands = device.supported_commands || [];
         const hasCapabilityInfo = supportedCommands.length > 0;
         
-        commandCards.forEach(card => {
-            const commandType = card.dataset.command;
+        commandItems.forEach(item => {
+            const commandType = item.dataset.command;
             if (!hasCapabilityInfo) {
-                card.style.display = 'block';
+                item.style.display = 'flex';
             } else {
-                card.style.display = supportedCommands.includes(commandType) ? 'block' : 'none';
+                item.style.display = supportedCommands.includes(commandType) ? 'flex' : 'none';
             }
         });
         
@@ -353,7 +339,7 @@
             const device = allDevices.find(d => d.device_id === deviceId);
             const deviceName = device ? `${device.product} (${deviceId})` : deviceId;
             deviceInfo.innerHTML = `Sending commands to: <strong>${deviceName}</strong>`;
-            formsContainer.style.display = 'grid';
+            formsContainer.style.display = 'flex';
         } else {
             deviceInfo.textContent = 'Select a device from the filter above to send commands';
             formsContainer.style.display = 'none';

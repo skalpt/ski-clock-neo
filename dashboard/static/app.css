@@ -439,32 +439,15 @@ button {
     transform: none;
 }
 
-.device-commands-link {
-    margin-top: var(--spacing-md);
-    padding-top: var(--spacing-md);
-    border-top: 1px solid var(--border-color);
-    text-align: center;
-}
-
-.command-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--brand-primary);
+.command-btn {
     text-decoration: none;
-    border: 1px solid var(--brand-primary);
-    border-radius: var(--radius-md);
-    transition: all var(--transition-base);
-}
-
-.command-link:hover {
     background: var(--brand-primary);
     color: white;
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-sm);
+}
+
+.command-btn:hover {
+    background: var(--brand-secondary);
+    color: white;
 }
 
 .refresh-btn {
@@ -2066,22 +2049,111 @@ body.no-web-serial .flash-column {
    Commands Tab Styles
    ======================================== */
 
-.commands-section {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--spacing-xl);
+.command-panel {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
 }
 
-@media (max-width: 1024px) {
-    .commands-section {
-        grid-template-columns: 1fr;
-    }
+.command-panel-header {
+    margin-bottom: var(--spacing-sm);
 }
 
-.command-forms h3,
-.command-history h3 {
+.command-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    align-items: center;
+}
+
+.command-inline {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+}
+
+.command-inline-action {
+    padding: 0;
+    background: transparent;
+    border: none;
+}
+
+.command-label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.command-current {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.command-current .value {
+    font-weight: 600;
+    color: var(--brand-primary);
+}
+
+.command-input-sm {
+    width: 60px;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.command-unit {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+}
+
+.command-btn-sm {
+    padding: 0.25rem 0.5rem;
+    background: var(--brand-gradient);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition-base);
+}
+
+.command-btn-sm:hover {
+    opacity: 0.9;
+}
+
+.command-btn-action {
+    padding: 0.4rem 0.75rem;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition-base);
+}
+
+.command-btn-action:hover {
+    background: var(--brand-gradient);
+    color: white;
+    border-color: transparent;
+}
+
+.command-history-section h3 {
     margin-bottom: var(--spacing-md);
-    font-size: 1.125rem;
+    font-size: 1rem;
     font-weight: 600;
     color: var(--text-primary);
 }
@@ -2089,93 +2161,6 @@ body.no-web-serial .flash-column {
 .muted-text {
     color: var(--text-tertiary);
     font-size: 0.875rem;
-}
-
-.command-form-group {
-    display: grid;
-    gap: var(--spacing-md);
-}
-
-.command-card {
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    padding: var(--spacing-lg);
-}
-
-.command-card h4 {
-    margin: 0 0 var(--spacing-xs) 0;
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.command-description {
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-    margin-bottom: var(--spacing-md);
-}
-
-.command-current-value {
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-    margin-bottom: var(--spacing-sm);
-    padding: var(--spacing-xs) var(--spacing-sm);
-    background: var(--bg-secondary);
-    border-radius: var(--border-radius);
-    display: inline-block;
-}
-
-.command-current-value .label {
-    font-weight: 500;
-}
-
-.command-current-value .value {
-    font-weight: 600;
-    color: var(--primary-color);
-}
-
-.command-input-row {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-}
-
-.command-input {
-    flex: 1;
-    max-width: 120px;
-    padding: var(--spacing-sm) var(--spacing-md);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    font-size: 0.875rem;
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-}
-
-.command-unit {
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-}
-
-.command-send-btn {
-    padding: var(--spacing-sm) var(--spacing-md);
-    background: var(--brand-gradient);
-    color: white;
-    border: none;
-    border-radius: var(--radius-md);
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: var(--transition-base);
-}
-
-.command-send-btn:hover {
-    opacity: 0.9;
-    transform: var(--button-hover-transform);
-}
-
-.command-action-btn {
-    width: 100%;
 }
 
 .commands-table {
