@@ -2107,6 +2107,118 @@ def ota_stats():
     })
 
 
+@app.route('/api/usb-flash-log', methods=['POST'])
+@login_required
+def usb_flash_log():
+    """Log USB flash events from ESP Web Tools
+    
+    Supports three actions:
+    - start: Create a new flash log entry
+    - progress: Update flash progress
+    - complete: Mark flash as complete (success or failure)
+    """
+    from models import OTAUpdateLog
+    import uuid
+    
+    data = request.json
+    if not data:
+        return jsonify({'error': 'JSON body required'}), 400
+    
+    action = data.get('action')
+    if action not in ['start', 'progress', 'complete']:
+        return jsonify({'error': 'Invalid action. Use start, progress, or complete'}), 400
+    
+    if action == 'start':
+        platform = data.get('platform')
+        product = data.get('product')
+        version = data.get('version')
+        flash_mode = data.get('flash_mode', 'quick')
+        
+        if not platform or not product or not version:
+            return jsonify({'error': 'platform, product, and version are required'}), 400
+        
+        session_id = str(uuid.uuid4())
+        
+        log = OTAUpdateLog(
+            session_id=session_id,
+            device_id=None,
+            product=product,
+            platform=platform,
+            old_version=None,
+            new_version=version,
+            status='started',
+            update_type='usb_flash',
+            download_progress=0,
+            log_content=f"Flash mode: {flash_mode}\n"
+        )
+        db.session.add(log)
+        db.session.commit()
+        
+        print(f"🔌 USB flash started: {product}/{platform} v{version} (session: {session_id[:8]})")
+        
+        return jsonify({
+            'success': True,
+            'session_id': session_id,
+            'message': 'USB flash log created'
+        })
+    
+    elif action == 'progress':
+        session_id = data.get('session_id')
+        progress = data.get('progress', 0)
+        state = data.get('state', '')
+        
+        if not session_id:
+            return jsonify({'error': 'session_id is required'}), 400
+        
+        log = OTAUpdateLog.query.filter_by(session_id=session_id).first()
+        if not log:
+            return jsonify({'error': 'Flash session not found'}), 404
+        
+        log.download_progress = min(progress, 100)
+        log.status = 'downloading'
+        log.last_progress_at = datetime.now(timezone.utc)
+        
+        if state:
+            log.log_content = (log.log_content or '') + f"[{state}] Progress: {progress}%\n"
+        
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Progress updated'})
+    
+    elif action == 'complete':
+        session_id = data.get('session_id')
+        success = data.get('success', False)
+        error_message = data.get('error_message')
+        
+        if not session_id:
+            return jsonify({'error': 'session_id is required'}), 400
+        
+        log = OTAUpdateLog.query.filter_by(session_id=session_id).first()
+        if not log:
+            return jsonify({'error': 'Flash session not found'}), 404
+        
+        log.status = 'success' if success else 'failed'
+        log.completed_at = datetime.now(timezone.utc)
+        log.download_progress = 100 if success else log.download_progress
+        
+        if error_message:
+            log.error_message = error_message
+            log.log_content = (log.log_content or '') + f"[ERROR] {error_message}\n"
+        else:
+            log.log_content = (log.log_content or '') + f"[COMPLETE] Flash {'succeeded' if success else 'failed'}\n"
+        
+        db.session.commit()
+        
+        status_emoji = "✅" if success else "❌"
+        error_info = f" - {error_message}" if error_message else ""
+        print(f"{status_emoji} USB flash {log.status}: {log.product}/{log.platform} v{log.new_version}{error_info}")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Flash marked as {log.status}'
+        })
+
+
 @app.route('/api/commands', methods=['GET'])
 @login_required
 def get_commands():

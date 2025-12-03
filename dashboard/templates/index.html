@@ -206,6 +206,10 @@
     let eventsInterval = null;
     let flashingInProgress = false;
     
+    // USB flash logging state
+    let currentFlashSession = null;
+    let currentFlashInfo = null;
+    
     function pauseAllRefresh() {
         if (flashingInProgress) return;
         flashingInProgress = true;
@@ -241,9 +245,93 @@
         loadEventsFeed();
     }
     
+    // USB Flash logging API functions
+    async function startFlashLog() {
+        if (!currentFlashInfo) return;
+        
+        try {
+            const response = await fetch('/api/usb-flash-log', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'start',
+                    platform: currentFlashInfo.platform,
+                    product: currentFlashInfo.product,
+                    version: currentFlashInfo.version,
+                    flash_mode: currentFlashInfo.flashMode
+                })
+            });
+            const data = await response.json();
+            if (data.success) {
+                currentFlashSession = data.session_id;
+                console.log('%c[USB Flash Log]', 'color: #4CAF50', 'Session started:', currentFlashSession);
+            }
+        } catch (error) {
+            console.error('%c[USB Flash Log]', 'color: #F44336', 'Failed to start log:', error);
+        }
+    }
+    
+    async function updateFlashProgress(progress, state) {
+        if (!currentFlashSession) return;
+        
+        try {
+            await fetch('/api/usb-flash-log', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'progress',
+                    session_id: currentFlashSession,
+                    progress: progress,
+                    state: state
+                })
+            });
+        } catch (error) {
+            console.error('%c[USB Flash Log]', 'color: #F44336', 'Failed to update progress:', error);
+        }
+    }
+    
+    async function completeFlashLog(success, errorMessage) {
+        if (!currentFlashSession) return;
+        
+        try {
+            await fetch('/api/usb-flash-log', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'complete',
+                    session_id: currentFlashSession,
+                    success: success,
+                    error_message: errorMessage
+                })
+            });
+            console.log('%c[USB Flash Log]', 'color: #4CAF50', 'Session completed:', success ? 'success' : 'failed');
+        } catch (error) {
+            console.error('%c[USB Flash Log]', 'color: #F44336', 'Failed to complete log:', error);
+        } finally {
+            currentFlashSession = null;
+        }
+    }
+    
+    // Extract flash info from an inline esp-web-install-button element
+    function extractFlashInfoFromButton(button) {
+        const manifest = button.getAttribute('manifest') || '';
+        const params = new URLSearchParams(manifest.split('?')[1] || '');
+        
+        // Extract platform from manifest path: /firmware/manifest/{platform}.json
+        const pathMatch = manifest.match(/\/manifest\/([^.]+)\.json/);
+        const platform = pathMatch ? pathMatch[1] : 'unknown';
+        
+        // Get product and mode from query params
+        const product = params.get('product') || 'unknown';
+        const flashMode = params.get('mode') || 'quick';
+        const version = params.get('version') || 'latest';
+        
+        return { platform, product, version, flashMode };
+    }
+    
     // Listen for ESP Web Tools state changes on all install buttons
     // This handles inline flash buttons that don't go through the modal
-    document.addEventListener('state-changed', function(e) {
+    document.addEventListener('state-changed', async function(e) {
         // Only handle events from esp-web-install-button elements
         if (!e.target || e.target.tagName !== 'ESP-WEB-INSTALL-BUTTON') return;
         
@@ -261,12 +349,37 @@
             if (detail.details) console.log('%c[ESP Flash]', 'color: #F44336', 'Details:', detail.details);
         }
         
-        if (state === 'initializing' || state === 'preparing' || state === 'erasing' || state === 'writing') {
+        // Handle state transitions for logging and refresh management
+        if (state === 'initializing') {
             pauseAllRefresh();
-        } else if (state === 'finished' || state === 'error') {
-            if (state === 'error') {
-                console.error('%c[ESP Flash ERROR]', 'color: #F44336; font-weight: bold', detail);
+            
+            // If no currentFlashInfo set (inline button), extract from button
+            if (!currentFlashInfo) {
+                currentFlashInfo = extractFlashInfoFromButton(e.target);
+                console.log('%c[USB Flash Log]', 'color: #FF9800', 'Extracted flash info from inline button:', currentFlashInfo);
             }
+            
+            // Start flash log when initializing
+            await startFlashLog();
+        } else if (state === 'preparing') {
+            await updateFlashProgress(10, 'preparing');
+        } else if (state === 'erasing') {
+            await updateFlashProgress(20, 'erasing');
+        } else if (state === 'writing') {
+            await updateFlashProgress(50, 'writing');
+        } else if (state === 'finished') {
+            await updateFlashProgress(100, 'finished');
+            await completeFlashLog(true, null);
+            // Clear flash info after completion
+            currentFlashInfo = null;
+            // Small delay before resuming to let the browser settle
+            setTimeout(resumeAllRefresh, 1000);
+        } else if (state === 'error') {
+            const errorMsg = detail?.message || detail?.details || 'Unknown error';
+            console.error('%c[ESP Flash ERROR]', 'color: #F44336; font-weight: bold', detail);
+            await completeFlashLog(false, errorMsg);
+            // Clear flash info after error
+            currentFlashInfo = null;
             // Small delay before resuming to let the browser settle
             setTimeout(resumeAllRefresh, 1000);
         }
@@ -1646,6 +1759,14 @@
         const quickInstaller = document.getElementById('flash-modal-installer-quick');
         const fullInstaller = document.getElementById('flash-modal-installer-full');
         
+        // Store flash info for logging
+        currentFlashInfo = {
+            platform: platform,
+            product: product || 'unknown',
+            version: version,
+            flashMode: 'quick'  // Default, updated when user clicks
+        };
+        
         // Pause all refresh intervals to reduce memory pressure during flashing
         pauseAllRefresh();
         
@@ -1656,9 +1777,13 @@
         const productParam = product ? `&product=${encodeURIComponent(product)}` : '';
         quickInstaller.setAttribute('manifest', `/firmware/manifest/${platform}.json?mode=quick&version=${encodeURIComponent(version)}${productParam}`);
         
+        // Track which flash mode is selected
+        quickInstaller.onclick = () => { if (currentFlashInfo) currentFlashInfo.flashMode = 'quick'; };
+        
         if (supportsFullFlash) {
             fullOption.style.display = 'block';
             fullInstaller.setAttribute('manifest', `/firmware/manifest/${platform}.json?mode=full&version=${encodeURIComponent(version)}${productParam}`);
+            fullInstaller.onclick = () => { if (currentFlashInfo) currentFlashInfo.flashMode = 'full'; };
         } else {
             fullOption.style.display = 'none';
         }
@@ -1668,6 +1793,9 @@
     
     function closeFlashModal() {
         document.getElementById('flash-modal').classList.add('hidden');
+        // Clear flash info
+        currentFlashInfo = null;
+        currentFlashSession = null;
         // Resume all refresh intervals after flashing completes
         resumeAllRefresh();
     }
