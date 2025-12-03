@@ -1089,7 +1089,11 @@
         const dropdownItems = dropdown.querySelectorAll('.flash-dropdown-item');
         dropdownItems.forEach(item => {
             const itemMode = item.getAttribute('data-mode');
-            item.style.display = itemMode === newMode ? 'none' : 'block';
+            if (itemMode === newMode) {
+                item.classList.add('is-hidden');
+            } else {
+                item.classList.remove('is-hidden');
+            }
         });
         
         // Close the dropdown
