@@ -344,9 +344,17 @@ bool updateRow1Content() {
   
   if (currentMode == MODE_NORMAL) {
     // Normal mode: show temperature
-    if (formatTemperature(buffer, sizeof(buffer))) {
+    bool fmtOk = formatTemperature(buffer, sizeof(buffer));
+    DEBUG_PRINT("[ROW1] formatTemperature returned=");
+    DEBUG_PRINT(fmtOk ? "true" : "false");
+    DEBUG_PRINT(", buffer='");
+    DEBUG_PRINT(buffer);
+    DEBUG_PRINTLN("'");
+    
+    if (fmtOk && hasValidContent(buffer)) {
       return setTextNoRender(1, buffer);
     } else {
+      DEBUG_PRINTLN("[ROW1] Using fallback ~~*C");
       return setTextNoRender(1, "~~*C");
     }
   } else if (currentMode == MODE_COUNTDOWN) {
@@ -381,12 +389,21 @@ bool updateRow1Content() {
 
 // Update both rows atomically (set content, then trigger single render if changed)
 void updateBothRows() {
+  DEBUG_PRINTLN("[updateBothRows] Starting...");
   bool row0Changed = updateRow0Content();
   bool row1Changed = updateRow1Content();
   
+  DEBUG_PRINT("[updateBothRows] row0Changed=");
+  DEBUG_PRINT(row0Changed ? "true" : "false");
+  DEBUG_PRINT(", row1Changed=");
+  DEBUG_PRINTLN(row1Changed ? "true" : "false");
+  
   // Only trigger render if something actually changed
   if (row0Changed || row1Changed) {
+    DEBUG_PRINTLN("[updateBothRows] Calling triggerRender()");
     triggerRender();
+  } else {
+    DEBUG_PRINTLN("[updateBothRows] No changes, skipping render");
   }
 }
 
