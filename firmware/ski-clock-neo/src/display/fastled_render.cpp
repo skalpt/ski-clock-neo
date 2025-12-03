@@ -15,8 +15,8 @@
 // INCLUDES
 // ============================================================================
 
-#include "fastled_render.h"
-#include "font_5x7_2x_overrides.h"
+#include "fastled_render.h"        // This file's header
+#include "font_5x7_2x_overrides.h" // Hand-crafted 2x glyphs for problem characters
 
 // ============================================================================
 // COMPILE-TIME VALIDATION

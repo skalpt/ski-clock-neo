@@ -13,7 +13,8 @@
 
 #include "display_core.h"          // This file's header
 #include "display_controller.h"    // For display controller callbacks
-#include "neopixel_render.h"       // For hardware-specific rendering
+//#include "neopixel_render.h"     // Replaced with fastled_render.h
+#include "fastled_render.h"        // For hardware-specific rendering
 #include "../core/timer_helpers.h" // For unified tick timer
 #include "../core/debug.h"         // For debug logging
 #include <string.h>                // For strncpy, strcmp

@@ -2,11 +2,11 @@
 #define NEOPIXEL_RENDER_H
 
 #include "../../ski-clock-neo_config.h" // Import display dimensions from shared config
-#include <new>              // For placement-new operator
-#include <Adafruit_NeoPixel.h>
-#include "font_5x7.h"
-#include "../core/debug.h"
-#include "display_core.h"
+#include <new>                          // For placement-new operator
+#include <Adafruit_NeoPixel.h>          // NeoPixel library
+#include "font_5x7.h"                   // Font data
+#include "../core/debug.h"              // Debug utilities
+#include "display_core.h"               // Core display functions
 
 // ==================== GLOBAL STATE ====================
 // Static storage buffer for NeoPixel objects (no heap allocation)

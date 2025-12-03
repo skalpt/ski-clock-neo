@@ -1,11 +1,11 @@
 #ifndef FASTLED_RENDER_H
 #define FASTLED_RENDER_H
 
-#include "../../ski-clock-neo_config.h"
-#include <FastLED.h>
-#include "font_5x7.h"
-#include "../core/debug.h"
-#include "display_core.h"
+#include "../../ski-clock-neo_config.h" // Import display dimensions from shared config
+#include <FastLED.h>                    // FastLED library for LED control
+#include "font_5x7.h"                   // Font data for text rendering
+#include "../core/debug.h"              // Debug utilities
+#include "display_core.h"               // Core display functionality
 
 extern CRGB* rowLeds[DISPLAY_ROWS];
 extern uint16_t rowPixelCounts[DISPLAY_ROWS];

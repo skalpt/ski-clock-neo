@@ -1,8 +1,8 @@
 #ifndef DISPLAY_CORE_H
 #define DISPLAY_CORE_H
 
-#include <Arduino.h>
-#include "../../ski-clock-neo_config.h"
+#include <Arduino.h>                    // Core Arduino functionality for uint8_t, etc.
+#include "../../ski-clock-neo_config.h" // Import display dimensions from shared config
 
 // Maximum panels per row (for buffer sizing) - use largest configured row
 #define MAX_PANELS_PER_ROW 4

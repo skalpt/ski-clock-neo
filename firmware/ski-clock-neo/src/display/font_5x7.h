@@ -1,7 +1,7 @@
 #ifndef FONT_5X7_H
 #define FONT_5X7_H
 
-#include <Arduino.h>
+#include <Arduino.h> // Include Arduino core for PROGMEM
 
 // -------------------- Glyph indices --------------------
 enum GlyphIndex {

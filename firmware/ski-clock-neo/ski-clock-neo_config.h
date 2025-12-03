@@ -4,31 +4,30 @@
 #include <Arduino.h>
 
 // Hardware pin configuration
-#define BUTTON_PIN      0       // Button on GPIO0 (CAUTION: boot button)
-#define TEMPERATURE_PIN 2       // DS18B20 temperature sensor on GPIO2
-#define RTC_SDA_PIN     5       // RTC I2C data pin on GPIO5
-#define RTC_SCL_PIN     6       // RTC I2C clock pin on GPIO 6
+#define DISPLAY_PIN_ROW0 4       // Display row 0 on GPIO4
+#define DISPLAY_PIN_ROW1 3       // Display row 1 on GPIO3
+#define RTC_SDA_PIN      5       // RTC I2C data pin on GPIO5
+#define RTC_SCL_PIN      6       // RTC I2C clock pin on GPIO 6
+#define TEMPERATURE_PIN  2       // DS18B20 temperature sensor on GPIO2
+#define BUTTON_PIN       0       // Button on GPIO0 (CAUTION: boot button)
 
 // Display dimension configuration
 #define PANEL_WIDTH     16      // Width of each panel in pixels
 #define PANEL_HEIGHT    16      // Height of each panel in pixels
 #define DISPLAY_ROWS    2       // Number of physical display rows
 
-// Display pin configuration (one GPIO per row)
-// These are compile-time constants for FastLED compatibility
-#define DISPLAY_PIN_ROW0 4
-#define DISPLAY_PIN_ROW1 3
-static const uint8_t DISPLAY_PINS[DISPLAY_ROWS] = {DISPLAY_PIN_ROW0, DISPLAY_PIN_ROW1};
-
-// Per-row panel counts (allows different widths per row)
-// Example: Row 0 = 3 panels (48px wide), Row 1 = 4 panels (64px wide)
-static const uint8_t PANELS_PER_ROW[DISPLAY_ROWS] = {3, 3};
-
 // Display color configuration (RGB)
 #define DISPLAY_COLOR_R 255     // Red component (0-255)
 #define DISPLAY_COLOR_G 0       // Green component (0-255)
 #define DISPLAY_COLOR_B 0       // Blue component (0-255)
 #define BRIGHTNESS      255     // 0-255 (keeping dim for development)
+
+// Per-row panel counts (allows different widths per row)
+// Example: Row 0 = 3 panels (48px wide), Row 1 = 4 panels (64px wide)
+static const uint8_t PANELS_PER_ROW[DISPLAY_ROWS] = {3, 3};
+
+// Display pin configuration (one GPIO per row)
+static const uint8_t DISPLAY_PINS[DISPLAY_ROWS] = {DISPLAY_PIN_ROW0, DISPLAY_PIN_ROW1};
 
 // Helper macros for calculating row dimensions
 #define ROW_WIDTH(row) (PANELS_PER_ROW[row] * PANEL_WIDTH)

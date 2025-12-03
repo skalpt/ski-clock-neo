@@ -1,8 +1,8 @@
 #ifndef FONT_5X7_2X_OVERRIDES_H
 #define FONT_5X7_2X_OVERRIDES_H
 
-#include <Arduino.h>
-#include "font_5x7.h"
+#include <Arduino.h>  // Include Arduino core for PROGMEM
+#include "font_5x7.h" // Include the original font definitions for glyph indices
 
 // ============================================================================
 // 2x Glyph Override System

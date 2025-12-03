@@ -1,7 +1,7 @@
 #ifndef DISPLAY_CONTROLLER_H
 #define DISPLAY_CONTROLLER_H
 
-#include <Arduino.h>
+#include <Arduino.h>    // Include Arduino core for uint8_t, etc.
 
 // Display mode state machine
 enum DisplayMode {
