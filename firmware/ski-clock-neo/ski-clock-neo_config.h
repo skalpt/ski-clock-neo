@@ -51,8 +51,8 @@
 
 // Display color configuration (RGB)
 #define DISPLAY_COLOR_R 255     // Red component (0-255)
-#define DISPLAY_COLOR_G 255     // Green component (0-255)
-#define DISPLAY_COLOR_B 255     // Blue component (0-255)
+#define DISPLAY_COLOR_G 0       // Green component (0-255)
+#define DISPLAY_COLOR_B 0       // Blue component (0-255)
 #define BRIGHTNESS      10      // 0-255 (keeping dim for development)
 
 // Activity pixel - blinks bottom-right pixel of each row every second
