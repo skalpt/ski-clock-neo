@@ -134,17 +134,6 @@ void initDisplay() {
   displayConfig.bufferSize = (totalPixels + 7) / 8;
   
   clearDisplayBuffer();
-  
-  // Set initial placeholder content for both rows BEFORE hardware init
-  // This ensures LEDs show something immediately on boot, even before
-  // time/temp data is available. Without this, row 0 stays blank until
-  // the first time update because the render task can run before
-  // updateBothRows() sets content.
-  strncpy(displayText[0], "~~.~~", MAX_TEXT_LENGTH - 1);
-  displayText[0][MAX_TEXT_LENGTH - 1] = '\0';
-  strncpy(displayText[1], "~~*C", MAX_TEXT_LENGTH - 1);
-  displayText[1][MAX_TEXT_LENGTH - 1] = '\0';
-  displayDirty = true;  // Mark for initial render
 
   // Initialize hardware renderer (NeoPixels)
   initNeoPixels();
