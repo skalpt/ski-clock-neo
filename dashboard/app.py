@@ -2021,6 +2021,24 @@ def ota_logs():
         'limit': limit
     })
 
+
+@app.route('/api/ota-logs/<int:log_id>/log')
+@login_required
+def ota_log_content(log_id):
+    """Get the log content for a specific OTA update log entry"""
+    from models import OTAUpdateLog
+    
+    log = OTAUpdateLog.query.get(log_id)
+    if not log:
+        return jsonify({'error': 'Log entry not found'}), 404
+    
+    log_content = log.log_content or 'No log content available'
+    
+    # Return as plain text for easy viewing
+    from flask import Response
+    return Response(log_content, mimetype='text/plain')
+
+
 @app.route('/api/ota-progress')
 @login_required
 def ota_progress():
