@@ -203,7 +203,12 @@ h3 {
     height: 1.5em;
     width: auto;
     vertical-align: middle;
-    filter: invert(1);
+}
+
+@media (prefers-color-scheme: dark) {
+    .brand-logo {
+        filter: invert(1);
+    }
 }
 
 /* ========================================
