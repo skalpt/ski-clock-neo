@@ -5,24 +5,12 @@
 #include <stdint.h>
 #include "../core/debug.h"
 
-#ifndef DISPLAY_ROWS
-  #define DISPLAY_ROWS 2
-#endif
-
-#ifndef PANEL_WIDTH
-  #define PANEL_WIDTH 16
-#endif
-
-#ifndef PANEL_HEIGHT
-  #define PANEL_HEIGHT 16
-#endif
-
 #ifndef MAX_TEXT_LENGTH
   #define MAX_TEXT_LENGTH 32
 #endif
 
 #ifndef MAX_DISPLAY_BUFFER_SIZE
-  #define MAX_DISPLAY_BUFFER_SIZE 256
+  #define MAX_DISPLAY_BUFFER_SIZE 512
 #endif
 
 #ifndef MAX_ROWS
@@ -45,9 +33,17 @@ struct DisplayConfig {
   RowConfig rowConfig[MAX_ROWS];
 };
 
+struct DisplayInitConfig {
+  uint8_t rows;
+  uint8_t panelWidth;
+  uint8_t panelHeight;
+  const uint8_t* panelsPerRow;
+};
+
 typedef void (*RenderCallback)();
 
 void initDisplay();
+void initDisplayWithConfig(const DisplayInitConfig& config);
 
 void setText(uint8_t row, const char* text);
 bool setTextNoRender(uint8_t row, const char* text);

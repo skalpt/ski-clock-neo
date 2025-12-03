@@ -1,5 +1,4 @@
 #include "event_log.h"
-#include "../connectivity/mqtt_client.h"
 #include "device_info.h"
 #include "debug.h"
 
@@ -21,6 +20,11 @@ static volatile uint8_t queueHead = 0;
 static volatile uint8_t queueTail = 0;
 static volatile uint8_t queueCount = 0;
 static bool eventLogReady = false;
+
+static EventPublishCallback publishCallback = nullptr;
+static EventTopicBuilder topicBuilder = nullptr;
+
+static const char* MQTT_TOPIC_EVENTS = "event";
 
 static const char* getResetReason() {
 #if defined(ESP32)
@@ -62,7 +66,15 @@ void initEventLog() {
   queueTail = 0;
   queueCount = 0;
   eventLogReady = false;
+  publishCallback = nullptr;
+  topicBuilder = nullptr;
   DEBUG_PRINTLN("Event log initialized");
+}
+
+void setEventPublishCallback(EventPublishCallback callback, EventTopicBuilder builder) {
+  publishCallback = callback;
+  topicBuilder = builder;
+  DEBUG_PRINTLN("Event publish callback registered");
 }
 
 void logBootEvent() {
@@ -106,7 +118,7 @@ void logEvent(const char* type, const char* dataJson) {
   }
   
   uint8_t currentCount = queueCount;
-  bool shouldFlush = eventLogReady && mqttIsConnected;
+  bool shouldFlush = eventLogReady && publishCallback != nullptr;
   
   EVENT_EXIT_CRITICAL();
   
@@ -126,7 +138,7 @@ void logEvent(const char* type, const char* dataJson) {
 }
 
 void flushEventQueue() {
-  if (!mqttIsConnected) return;
+  if (!publishCallback || !topicBuilder) return;
   
   EVENT_ENTER_CRITICAL();
   if (queueCount == 0) {
@@ -135,7 +147,7 @@ void flushEventQueue() {
   }
   EVENT_EXIT_CRITICAL();
   
-  String topic = buildDeviceTopic(MQTT_TOPIC_EVENTS);
+  String topic = topicBuilder(MQTT_TOPIC_EVENTS);
   uint32_t now = millis();
   int flushed = 0;
   
@@ -176,7 +188,7 @@ void flushEventQueue() {
           type, offset_ms);
       }
       
-      if (publishMqttPayload(topic, payload)) {
+      if (publishCallback(topic.c_str(), payload)) {
         flushed++;
       } else {
         break;

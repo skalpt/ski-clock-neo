@@ -143,8 +143,18 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   }
 }
 
+static bool eventPublishWrapper(const char* topic, const char* payload) {
+  return publishMqttPayload(topic, payload);
+}
+
+static String eventTopicBuilderWrapper(const char* baseTopic) {
+  return buildDeviceTopic(baseTopic);
+}
+
 void initMQTT() {
   DEBUG_PRINTLN("Initializing MQTT client...");
+  
+  setEventPublishCallback(eventPublishWrapper, eventTopicBuilderWrapper);
   
   wifiSecureClient.setInsecure();
   

@@ -14,7 +14,11 @@ struct EventEntry {
     bool valid;
 };
 
+typedef bool (*EventPublishCallback)(const char* topic, const char* payload);
+typedef String (*EventTopicBuilder)(const char* baseTopic);
+
 void initEventLog();
+void setEventPublishCallback(EventPublishCallback callback, EventTopicBuilder topicBuilder);
 void logEvent(const char* type, const char* dataJson = nullptr);
 void logBootEvent();
 void flushEventQueue();

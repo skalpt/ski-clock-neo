@@ -13,7 +13,7 @@
 uint8_t displayBuffer[MAX_DISPLAY_BUFFER_SIZE] = {0};
 DisplayConfig displayConfig = {0};
 
-char displayText[DISPLAY_ROWS][MAX_TEXT_LENGTH] = {{0}};
+static char displayText[MAX_ROWS][MAX_TEXT_LENGTH] = {{0}};
 
 static volatile bool displayDirty = false;
 static volatile bool renderRequested = false;
@@ -26,28 +26,59 @@ static RenderCallback renderCallback = nullptr;
 #endif
 
 void initDisplay() {
-  displayConfig.rows = DISPLAY_ROWS;
-  displayConfig.panelWidth = PANEL_WIDTH;
-  displayConfig.panelHeight = PANEL_HEIGHT;
+  DisplayInitConfig defaultConfig;
+  defaultConfig.rows = 2;
+  defaultConfig.panelWidth = 16;
+  defaultConfig.panelHeight = 16;
+  static const uint8_t defaultPanels[] = {1, 1, 1, 1};
+  defaultConfig.panelsPerRow = defaultPanels;
+  
+  initDisplayWithConfig(defaultConfig);
+}
+
+void initDisplayWithConfig(const DisplayInitConfig& config) {
+  displayConfig.rows = config.rows;
+  displayConfig.panelWidth = config.panelWidth;
+  displayConfig.panelHeight = config.panelHeight;
   
   uint16_t pixelOffset = 0;
   uint16_t totalPixels = 0;
-  for (uint8_t row = 0; row < DISPLAY_ROWS; row++) {
-    displayConfig.rowConfig[row].panels = 1;
-    displayConfig.rowConfig[row].width = PANEL_WIDTH;
-    displayConfig.rowConfig[row].height = PANEL_HEIGHT;
+  
+  for (uint8_t row = 0; row < config.rows && row < MAX_ROWS; row++) {
+    uint8_t panels = config.panelsPerRow ? config.panelsPerRow[row] : 1;
+    displayConfig.rowConfig[row].panels = panels;
+    displayConfig.rowConfig[row].width = panels * config.panelWidth;
+    displayConfig.rowConfig[row].height = config.panelHeight;
     displayConfig.rowConfig[row].pixelOffset = pixelOffset;
     
-    uint16_t rowPixels = PANEL_WIDTH * PANEL_HEIGHT;
+    uint16_t rowPixels = displayConfig.rowConfig[row].width * config.panelHeight;
     pixelOffset += rowPixels;
     totalPixels += rowPixels;
+    
+    displayText[row][0] = '\0';
   }
+  
   displayConfig.totalPixels = totalPixels;
   displayConfig.bufferSize = (totalPixels + 7) / 8;
   
+  if (displayConfig.bufferSize > MAX_DISPLAY_BUFFER_SIZE) {
+    DEBUG_PRINTLN("WARNING: Display buffer size exceeds maximum!");
+    displayConfig.bufferSize = MAX_DISPLAY_BUFFER_SIZE;
+  }
+  
   clearDisplayBuffer();
   
-  DEBUG_PRINTLN("Display core initialized");
+  DEBUG_PRINT("Display initialized: ");
+  DEBUG_PRINT(config.rows);
+  DEBUG_PRINT(" rows, ");
+  DEBUG_PRINT(config.panelWidth);
+  DEBUG_PRINT("x");
+  DEBUG_PRINT(config.panelHeight);
+  DEBUG_PRINT(" panels, ");
+  DEBUG_PRINT(totalPixels);
+  DEBUG_PRINT(" pixels, ");
+  DEBUG_PRINT(displayConfig.bufferSize);
+  DEBUG_PRINTLN(" bytes buffer");
 }
 
 void setText(uint8_t row, const char* text) {
@@ -107,7 +138,7 @@ const char* getText(uint8_t row) {
 
 void snapshotAllText(char dest[][MAX_TEXT_LENGTH]) {
   DISPLAY_ENTER_CRITICAL();
-  for (uint8_t row = 0; row < DISPLAY_ROWS; row++) {
+  for (uint8_t row = 0; row < displayConfig.rows && row < MAX_ROWS; row++) {
     strncpy(dest[row], displayText[row], MAX_TEXT_LENGTH);
   }
   DISPLAY_EXIT_CRITICAL();
@@ -206,4 +237,7 @@ bool clearRenderFlagsIfUnchanged(uint32_t startSeq) {
 }
 
 void renderNow() {
+  if (renderCallback) {
+    renderCallback();
+  }
 }

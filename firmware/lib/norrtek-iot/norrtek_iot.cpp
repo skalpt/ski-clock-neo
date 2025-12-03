@@ -24,7 +24,12 @@ void initNorrtekIoT(const ProductConfig& config) {
   
   initLedIndicator();
   
-  initDisplay();
+  DisplayInitConfig displayInitConfig;
+  displayInitConfig.rows = config.displayRows;
+  displayInitConfig.panelWidth = config.panelWidth;
+  displayInitConfig.panelHeight = config.panelHeight;
+  displayInitConfig.panelsPerRow = (const uint8_t*)config.panelsPerRow;
+  initDisplayWithConfig(displayInitConfig);
   
   initWiFi();
   
