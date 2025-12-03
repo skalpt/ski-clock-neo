@@ -193,9 +193,6 @@ PLATFORM_CHIP_FAMILY = {
     'esp8266': 'ESP8266',
 }
 
-# Default product for backwards compatibility
-DEFAULT_PRODUCT = 'ski-clock-neo'
-
 # In-memory cache of firmware versions (loaded from database)
 # Key format: (product, platform) tuple
 LATEST_VERSIONS = {}
@@ -204,7 +201,7 @@ def _cache_key(product: str, platform: str) -> tuple:
     """Generate cache key from product and platform"""
     return (product, platform)
 
-def refresh_firmware_cache(platform: str, product: str = DEFAULT_PRODUCT):
+def refresh_firmware_cache(platform: str, product: str):
     """Refresh cache for a specific product/platform and all its aliases
     
     Loads the LATEST firmware version from database and updates LATEST_VERSIONS cache
@@ -258,14 +255,14 @@ def refresh_all_firmware_cache(product: str = None):
             for platform in CANONICAL_PLATFORMS:
                 refresh_firmware_cache(platform, prod)
 
-def get_firmware_version(platform: str, product: str = DEFAULT_PRODUCT) -> Optional[Dict[str, Any]]:
+def get_firmware_version(platform: str, product: str) -> Optional[Dict[str, Any]]:
     """
     Get firmware version with automatic DB fallback.
     Checks cache first, falls back to database if cache is empty or platform not found.
     
     Args:
         platform: Platform name (e.g., 'esp32c3', 'esp12f')
-        product: Product name (defaults to DEFAULT_PRODUCT)
+        product: Product name (required for multi-product support)
     """
     key = _cache_key(product, platform)
     
@@ -294,7 +291,7 @@ def load_versions_from_db():
     print(f"✓ Loaded {count} firmware versions from database")
     return LATEST_VERSIONS
 
-def save_version_to_db(platform: str, version_info: dict, product: str = DEFAULT_PRODUCT):
+def save_version_to_db(platform: str, version_info: dict, product: str):
     """Save or update a firmware version in the database.
     
     Now supports version history: each product+platform+version combination is unique.
@@ -304,7 +301,7 @@ def save_version_to_db(platform: str, version_info: dict, product: str = DEFAULT
     Args:
         platform: Platform name (e.g., 'esp32c3')
         version_info: Dictionary with version details
-        product: Product name (defaults to DEFAULT_PRODUCT)
+        product: Product name (required for multi-product support)
     """
     version = version_info['version']
     
@@ -416,6 +413,41 @@ def verify_user_download_token(token, max_age=3600):
     except (BadSignature, SignatureExpired):
         return None, None, None
 
+def _sync_single_firmware(product: str, platform: str, fw_data: dict) -> int:
+    """Helper function to sync a single firmware entry from production.
+    
+    Returns 1 if synced, 0 if already up to date.
+    """
+    # Check if we need to update (compare versions)
+    local_fw = FirmwareVersion.query.filter_by(product=product, platform=platform).first()
+    if local_fw and local_fw.version == fw_data.get('version'):
+        return 0  # Already up to date
+    
+    # Save/update firmware metadata in dev database (including bootloader/partitions)
+    version_info = {
+        'version': fw_data.get('version', 'Unknown'),
+        'filename': fw_data.get('filename', ''),
+        'size': fw_data.get('size', 0),
+        'sha256': fw_data.get('sha256', ''),
+        'download_url': fw_data.get('download_url', ''),
+        'storage': fw_data.get('storage', 'object_storage'),
+        'object_path': fw_data.get('object_path'),
+        'object_name': fw_data.get('object_name'),
+        'local_path': fw_data.get('local_path'),
+        
+        # Bootloader metadata
+        'bootloader_filename': fw_data.get('bootloader', {}).get('filename') if fw_data.get('bootloader') else None,
+        'bootloader_size': fw_data.get('bootloader', {}).get('size') if fw_data.get('bootloader') else None,
+        'bootloader_sha256': fw_data.get('bootloader', {}).get('sha256') if fw_data.get('bootloader') else None,
+        
+        # Partitions metadata
+        'partitions_filename': fw_data.get('partitions', {}).get('filename') if fw_data.get('partitions') else None,
+        'partitions_size': fw_data.get('partitions', {}).get('size') if fw_data.get('partitions') else None,
+        'partitions_sha256': fw_data.get('partitions', {}).get('sha256') if fw_data.get('partitions') else None
+    }
+    save_version_to_db(platform, version_info, product)
+    return 1
+
 def sync_firmware_from_production():
     """Sync firmware metadata from production to dev database (dev environment only)"""
     # Only sync in dev environment
@@ -443,42 +475,37 @@ def sync_firmware_from_production():
             print("⚠ No firmware data in production response")
             return
         
+        # Detect format: new nested {product: {platform: fw_data}} vs old flat {platform: fw_data}
+        # Check first value to determine format
+        first_key = next(iter(data['firmwares']), None)
+        first_value = data['firmwares'].get(first_key) if first_key else None
+        is_new_format = isinstance(first_value, dict) and first_value is not None and 'version' not in first_value
+        
         # Update local database with production firmware metadata
         synced_count = 0
         with app.app_context():
-            for platform, fw_data in data['firmwares'].items():
-                if fw_data is None:
-                    continue
-                
-                # Check if we need to update (compare versions)
-                local_fw = FirmwareVersion.query.filter_by(platform=platform).first()
-                if local_fw and local_fw.version == fw_data.get('version'):
-                    continue  # Already up to date
-                
-                # Save/update firmware metadata in dev database (including bootloader/partitions)
-                version_info = {
-                    'version': fw_data.get('version', 'Unknown'),
-                    'filename': fw_data.get('filename', ''),
-                    'size': fw_data.get('size', 0),
-                    'sha256': fw_data.get('sha256', ''),
-                    'download_url': fw_data.get('download_url', ''),
-                    'storage': fw_data.get('storage', 'object_storage'),
-                    'object_path': fw_data.get('object_path'),
-                    'object_name': fw_data.get('object_name'),
-                    'local_path': fw_data.get('local_path'),
+            if is_new_format:
+                # New format: {product: {platform: version_info}}
+                for product, platforms in data['firmwares'].items():
+                    if platforms is None or not isinstance(platforms, dict):
+                        continue
                     
-                    # Bootloader metadata
-                    'bootloader_filename': fw_data.get('bootloader', {}).get('filename') if fw_data.get('bootloader') else None,
-                    'bootloader_size': fw_data.get('bootloader', {}).get('size') if fw_data.get('bootloader') else None,
-                    'bootloader_sha256': fw_data.get('bootloader', {}).get('sha256') if fw_data.get('bootloader') else None,
+                    for platform, fw_data in platforms.items():
+                        if fw_data is None or not isinstance(fw_data, dict):
+                            continue
+                        
+                        synced_count += _sync_single_firmware(product, platform, fw_data)
+            else:
+                # Legacy flat format: {platform: version_info}
+                # Map to 'ski-clock-neo' product for backward compatibility during migration
+                legacy_product = 'ski-clock-neo'
+                print(f"⚠ Production using legacy format, mapping to product '{legacy_product}'")
+                
+                for platform, fw_data in data['firmwares'].items():
+                    if fw_data is None or not isinstance(fw_data, dict):
+                        continue
                     
-                    # Partitions metadata
-                    'partitions_filename': fw_data.get('partitions', {}).get('filename') if fw_data.get('partitions') else None,
-                    'partitions_size': fw_data.get('partitions', {}).get('size') if fw_data.get('partitions') else None,
-                    'partitions_sha256': fw_data.get('partitions', {}).get('sha256') if fw_data.get('partitions') else None
-                }
-                save_version_to_db(platform, version_info)
-                synced_count += 1
+                    synced_count += _sync_single_firmware(legacy_product, platform, fw_data)
             
             # Reload in-memory cache
             if synced_count > 0:
@@ -1057,9 +1084,12 @@ def download_firmware(platform):
         return jsonify({'error': 'Invalid API key'}), 401
     
     platform = platform.lower()
-    product = request.args.get('product', DEFAULT_PRODUCT)  # Product from query param
+    product = request.args.get('product')
     
-    # Apply platform firmware mapping for backward compatibility
+    if not product:
+        return jsonify({'error': 'Missing required parameter: product'}), 400
+    
+    # Apply platform firmware mapping
     if platform in PLATFORM_FIRMWARE_MAPPING:
         actual_platform = PLATFORM_FIRMWARE_MAPPING[platform]
         print(f"Platform firmware mapping: {platform} → {actual_platform}")
@@ -1178,10 +1208,10 @@ def upload_firmware():
     partitions_file = request.files.get('partitions')  # Optional
     version = request.form.get('version')
     platform = request.form.get('platform', '').lower()
-    product = request.form.get('product', DEFAULT_PRODUCT)  # Default to ski-clock-neo for backwards compatibility
+    product = request.form.get('product')
     
-    if not version or not platform:
-        return jsonify({'error': 'Missing version or platform'}), 400
+    if not version or not platform or not product:
+        return jsonify({'error': 'Missing required fields: version, platform, and product are required'}), 400
     
     # Reject uploads for aliased platforms - only accept canonical board names
     if platform in PLATFORM_FIRMWARE_MAPPING:

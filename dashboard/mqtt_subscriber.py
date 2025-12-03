@@ -17,14 +17,14 @@ MQTT_HOST = os.getenv('MQTT_HOST', 'localhost')
 MQTT_PORT = 8883
 MQTT_USERNAME = os.getenv('MQTT_USERNAME', '')
 MQTT_PASSWORD = os.getenv('MQTT_PASSWORD', '')
-MQTT_TOPIC_HEARTBEAT = "skiclock/heartbeat"
-MQTT_TOPIC_VERSION_RESPONSE = "skiclock/version/response"
-MQTT_TOPIC_OTA_START = "skiclock/ota/start"
-MQTT_TOPIC_OTA_PROGRESS = "skiclock/ota/progress"
-MQTT_TOPIC_OTA_COMPLETE = "skiclock/ota/complete"
-MQTT_TOPIC_COMMAND = "skiclock/command"
-MQTT_TOPIC_DISPLAY_SNAPSHOT = "skiclock/display/snapshot"
-MQTT_TOPIC_EVENTS = "skiclock/event"
+MQTT_TOPIC_HEARTBEAT = "norrtek-iot/heartbeat"
+MQTT_TOPIC_VERSION_RESPONSE = "norrtek-iot/version/response"
+MQTT_TOPIC_OTA_START = "norrtek-iot/ota/start"
+MQTT_TOPIC_OTA_PROGRESS = "norrtek-iot/ota/progress"
+MQTT_TOPIC_OTA_COMPLETE = "norrtek-iot/ota/complete"
+MQTT_TOPIC_COMMAND = "norrtek-iot/command"
+MQTT_TOPIC_DISPLAY_SNAPSHOT = "norrtek-iot/display/snapshot"
+MQTT_TOPIC_EVENTS = "norrtek-iot/event"
 
 # Store Flask app instance for database access
 _app_context = None
@@ -95,8 +95,8 @@ def on_connect(client, userdata, flags, rc, properties=None):
 def handle_heartbeat(client, payload, topic):
     """Handle device heartbeat messages and check for firmware updates
     
-    Device ID is extracted from topic: skiclock/heartbeat/{device_id}
-    Product defaults to 'ski-clock-neo' if not specified in payload (backward compatible)
+    Device ID is extracted from topic: norrtek-iot/heartbeat/{device_id}
+    Product is required in payload for multi-product support
     """
     # Extract device_id from topic
     topic_parts = topic.split('/')
@@ -107,7 +107,11 @@ def handle_heartbeat(client, payload, topic):
     device_id = topic_parts[2]
     board_type = payload.get('board', 'Unknown')
     current_version = payload.get('version', 'Unknown')
-    product = payload.get('product', 'ski-clock-neo')  # Product from heartbeat or default
+    product = payload.get('product')
+    
+    if not product:
+        print(f"⚠ Heartbeat missing required 'product' field from {device_id}")
+        return
     
     if device_id and _app_context:
         # Save to database
@@ -303,8 +307,8 @@ def handle_heartbeat(client, payload, topic):
 def extract_device_id_from_topic(topic: str, base_topic: str) -> Optional[str]:
     """Extract device_id from topic path: base_topic/{device_id}[/...]
     
-    Handles both single-segment (skiclock/ota/start/device123) and 
-    multi-segment topics (skiclock/display/snapshot/device123/full).
+    Handles both single-segment (norrtek-iot/ota/start/device123) and 
+    multi-segment topics (norrtek-iot/display/snapshot/device123/full).
     Returns only the first segment after base_topic as device_id.
     """
     if not topic.startswith(base_topic):
@@ -321,8 +325,8 @@ def extract_device_id_from_topic(topic: str, base_topic: str) -> Optional[str]:
 def handle_ota_start(client, payload, topic):
     """Handle OTA update start notification from device
     
-    Device ID is extracted from topic: skiclock/ota/start/{device_id}
-    Product defaults to 'ski-clock-neo' if not specified (backward compatible)
+    Device ID is extracted from topic: norrtek-iot/ota/start/{device_id}
+    Product is required in payload for multi-product support
     """
     device_id = extract_device_id_from_topic(topic, MQTT_TOPIC_OTA_START)
     if not device_id:
@@ -330,13 +334,13 @@ def handle_ota_start(client, payload, topic):
         return
     
     session_id = payload.get('session_id') or str(uuid.uuid4())
-    product = payload.get('product', 'ski-clock-neo')  # Product from payload or default
+    product = payload.get('product')
     platform = payload.get('platform')
     old_version = payload.get('old_version')
     new_version = payload.get('new_version')
     
-    if not platform or not new_version:
-        print(f"⚠ Invalid OTA start message: missing required fields (platform={platform}, new_version={new_version})")
+    if not product or not platform or not new_version:
+        print(f"⚠ Invalid OTA start message: missing required fields (product={product}, platform={platform}, new_version={new_version})")
         return
     
     if _app_context:
@@ -361,7 +365,7 @@ def handle_ota_start(client, payload, topic):
 def handle_ota_progress(client, payload, topic):
     """Handle OTA download progress updates from device
     
-    Device ID is extracted from topic: skiclock/ota/progress/{device_id}
+    Device ID is extracted from topic: norrtek-iot/ota/progress/{device_id}
     """
     device_id = extract_device_id_from_topic(topic, MQTT_TOPIC_OTA_PROGRESS)
     if not device_id:
@@ -403,7 +407,7 @@ def handle_ota_progress(client, payload, topic):
 def handle_ota_complete(client, payload, topic):
     """Handle OTA update completion (success or failure) from device
     
-    Device ID is extracted from topic: skiclock/ota/complete/{device_id}
+    Device ID is extracted from topic: norrtek-iot/ota/complete/{device_id}
     """
     device_id = extract_device_id_from_topic(topic, MQTT_TOPIC_OTA_COMPLETE)
     if not device_id:
@@ -469,7 +473,7 @@ def handle_ota_complete(client, payload, topic):
 def handle_display_snapshot(client, payload, topic):
     """Handle display snapshot messages with per-row structure or legacy format
     
-    Device ID is extracted from topic: skiclock/display/snapshot/{device_id}
+    Device ID is extracted from topic: norrtek-iot/display/snapshot/{device_id}
     
     Supports two formats:
     
@@ -624,7 +628,7 @@ def handle_event(client, payload, topic):
         "offset_ms": 45000
     }
     """
-    # Extract device_id from topic: skiclock/event/{device_id}
+    # Extract device_id from topic: norrtek-iot/event/{device_id}
     topic_parts = topic.split('/')
     if len(topic_parts) < 3:
         print(f"⚠ Invalid event topic format: {topic}")
