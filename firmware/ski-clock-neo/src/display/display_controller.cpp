@@ -14,6 +14,7 @@
 
 #include "display_controller.h"       // This file's header
 #include "display_core.h"             // Display rendering core
+#include "fastled_render.h"           // For activity LED control
 #include "../data/data_time.h"        // Time data provider
 #include "../data/data_temperature.h" // Temperature data provider
 #include "../data/data_button.h"      // Button input
@@ -55,6 +56,11 @@ static uint32_t elapsedSeconds = 0;                    // Elapsed time in second
 // Flash state
 static bool flashVisible = true;                       // Toggle for flashing display
 
+#if ACTIVITY_LED_ENABLED
+// Activity LED state (blinks every second)
+static bool activityLedState = false;
+#endif
+
 // Transition guard to prevent rapid state changes
 static volatile bool transitionInProgress = false;
 static uint32_t lastTransitionTime = 0;
@@ -87,6 +93,15 @@ void unifiedTickCallback() {
   // Increment tick counter first
   tickCounter++;
   bool needsUpdate = false;
+  
+  #if ACTIVITY_LED_ENABLED
+  // Toggle activity LED every 2 ticks (1 second)
+  if (tickCounter % TICKS_PER_SECOND == 0) {
+    activityLedState = !activityLedState;
+    setActivityLedState(activityLedState);
+    triggerRender();  // Force render even if text content unchanged
+  }
+  #endif
   
   // Capture current mode to prevent race conditions during state transitions
   DisplayMode mode = currentMode;
