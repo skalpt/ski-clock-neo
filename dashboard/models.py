@@ -304,6 +304,7 @@ class OTAUpdateLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     session_id = db.Column(db.String(36), unique=True, nullable=True, index=True)  # UUID for tracking (nullable for backward compatibility)
     device_id = db.Column(db.String(32), db.ForeignKey('devices.device_id'), nullable=False, index=True)
+    product = db.Column(db.String(64), nullable=False, index=True, default='ski-clock-neo')  # Product for multi-product support
     platform = db.Column(db.String(32), nullable=False, index=True)
     old_version = db.Column(db.String(32))
     new_version = db.Column(db.String(32), nullable=False)
@@ -318,7 +319,7 @@ class OTAUpdateLog(db.Model):
     device = db.relationship('Device', back_populates='ota_update_logs')
     
     def __repr__(self):
-        return f'<OTAUpdateLog {self.device_id}: {self.old_version} -> {self.new_version} ({self.status})>'
+        return f'<OTAUpdateLog {self.device_id} ({self.product}): {self.old_version} -> {self.new_version} ({self.status})>'
     
     def to_dict(self):
         """Convert OTA update log to dictionary"""
@@ -326,6 +327,7 @@ class OTAUpdateLog(db.Model):
             'id': self.id,
             'session_id': self.session_id,
             'device_id': self.device_id,
+            'product': self.product,
             'platform': self.platform,
             'old_version': self.old_version,
             'new_version': self.new_version,

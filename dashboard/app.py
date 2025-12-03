@@ -193,53 +193,84 @@ PLATFORM_CHIP_FAMILY = {
     'esp8266': 'ESP8266',
 }
 
+# Default product for backwards compatibility
+DEFAULT_PRODUCT = 'ski-clock-neo'
+
 # In-memory cache of firmware versions (loaded from database)
+# Key format: (product, platform) tuple
 LATEST_VERSIONS = {}
 
-def refresh_firmware_cache(platform):
-    """Refresh cache for a specific platform and all its aliases
+def _cache_key(product: str, platform: str) -> tuple:
+    """Generate cache key from product and platform"""
+    return (product, platform)
+
+def refresh_firmware_cache(platform: str, product: str = DEFAULT_PRODUCT):
+    """Refresh cache for a specific product/platform and all its aliases
     
     Loads the LATEST firmware version from database and updates LATEST_VERSIONS cache
     for both the canonical platform and all mapped aliases.
     
     Args:
         platform: Canonical platform name (e.g., 'esp32c3', 'esp12f')
+        product: Product name (e.g., 'ski-clock-neo')
     """
     global LATEST_VERSIONS
     
     # Load latest version from database (ordered by uploaded_at descending)
-    fw = FirmwareVersion.query.filter_by(platform=platform).order_by(FirmwareVersion.uploaded_at.desc()).first()
+    fw = FirmwareVersion.query.filter_by(
+        product=product, 
+        platform=platform
+    ).order_by(FirmwareVersion.uploaded_at.desc()).first()
+    
+    key = _cache_key(product, platform)
     
     if not fw:
         # Clear canonical platform and all aliases when firmware is missing
-        LATEST_VERSIONS[platform] = None
+        LATEST_VERSIONS[key] = None
         for alias in get_aliases_for_platform(platform):
-            LATEST_VERSIONS[alias] = None
+            LATEST_VERSIONS[_cache_key(product, alias)] = None
         return
     
     # Update canonical platform
     version_info = fw.to_dict()
-    LATEST_VERSIONS[platform] = version_info
+    LATEST_VERSIONS[key] = version_info
     
     # Update all aliases pointing to this platform dynamically
     for alias in get_aliases_for_platform(platform):
         alias_info = version_info.copy()
         alias_info['platform'] = alias
-        alias_info['download_url'] = f'/api/firmware/{alias}'
-        LATEST_VERSIONS[alias] = alias_info
+        alias_info['download_url'] = f'/api/firmware/{alias}?product={product}'
+        LATEST_VERSIONS[_cache_key(product, alias)] = alias_info
 
-def refresh_all_firmware_cache():
-    """Refresh cache for all canonical platforms (and their aliases)"""
-    for platform in CANONICAL_PLATFORMS:
-        refresh_firmware_cache(platform)
+def refresh_all_firmware_cache(product: str = None):
+    """Refresh cache for all canonical platforms (and their aliases)
+    
+    Args:
+        product: If specified, only refresh for this product. Otherwise refresh all products.
+    """
+    if product:
+        for platform in CANONICAL_PLATFORMS:
+            refresh_firmware_cache(platform, product)
+    else:
+        # Get all unique products from database
+        products = db.session.query(FirmwareVersion.product).distinct().all()
+        for (prod,) in products:
+            for platform in CANONICAL_PLATFORMS:
+                refresh_firmware_cache(platform, prod)
 
-def get_firmware_version(platform: str) -> Optional[Dict[str, Any]]:
+def get_firmware_version(platform: str, product: str = DEFAULT_PRODUCT) -> Optional[Dict[str, Any]]:
     """
     Get firmware version with automatic DB fallback.
     Checks cache first, falls back to database if cache is empty or platform not found.
+    
+    Args:
+        platform: Platform name (e.g., 'esp32c3', 'esp12f')
+        product: Product name (defaults to DEFAULT_PRODUCT)
     """
+    key = _cache_key(product, platform)
+    
     # Try cache first
-    version_info = LATEST_VERSIONS.get(platform)
+    version_info = LATEST_VERSIONS.get(key)
     
     # Cache miss - refresh from database
     if version_info is None:
@@ -248,8 +279,8 @@ def get_firmware_version(platform: str) -> Optional[Dict[str, Any]]:
         
         # Refresh cache for canonical platform (and all its aliases)
         if canonical_platform in CANONICAL_PLATFORMS:
-            refresh_firmware_cache(canonical_platform)
-            version_info = LATEST_VERSIONS.get(platform)
+            refresh_firmware_cache(canonical_platform, product)
+            version_info = LATEST_VERSIONS.get(key)
     
     return version_info
 
@@ -258,22 +289,27 @@ def load_versions_from_db():
     # Use centralized cache refresh to ensure aliases are updated
     refresh_all_firmware_cache()
     
-    # Count only canonical platforms (exclude aliases to avoid double-counting)
-    count = sum(1 for p in CANONICAL_PLATFORMS if LATEST_VERSIONS.get(p) is not None)
+    # Count unique product/platform combinations loaded
+    count = sum(1 for key, val in LATEST_VERSIONS.items() if val is not None)
     print(f"✓ Loaded {count} firmware versions from database")
     return LATEST_VERSIONS
 
-def save_version_to_db(platform, version_info):
+def save_version_to_db(platform: str, version_info: dict, product: str = DEFAULT_PRODUCT):
     """Save or update a firmware version in the database.
     
-    Now supports version history: each platform+version combination is unique.
+    Now supports version history: each product+platform+version combination is unique.
     If the same version is re-uploaded, it updates the existing record.
     New versions create new records, preserving history.
+    
+    Args:
+        platform: Platform name (e.g., 'esp32c3')
+        version_info: Dictionary with version details
+        product: Product name (defaults to DEFAULT_PRODUCT)
     """
     version = version_info['version']
     
-    # Check for existing platform+version combination
-    fw = FirmwareVersion.query.filter_by(platform=platform, version=version).first()
+    # Check for existing product+platform+version combination
+    fw = FirmwareVersion.query.filter_by(product=product, platform=platform, version=version).first()
     
     if fw:
         # Update existing version (re-upload of same version)
@@ -302,10 +338,11 @@ def save_version_to_db(platform, version_info):
         fw.partitions_object_path = version_info.get('partitions_object_path')
         fw.partitions_object_name = version_info.get('partitions_object_name')
         fw.partitions_local_path = version_info.get('partitions_local_path')
-        print(f"✓ Updated existing {platform} v{version} in database")
+        print(f"✓ Updated existing {product}/{platform} v{version} in database")
     else:
         # Create new version record (preserves history)
         fw = FirmwareVersion(
+            product=product,
             platform=platform,
             version=version,
             filename=version_info['filename'],
@@ -334,12 +371,12 @@ def save_version_to_db(platform, version_info):
             partitions_local_path=version_info.get('partitions_local_path')
         )
         db.session.add(fw)
-        print(f"✓ Added new {platform} v{version} to database")
+        print(f"✓ Added new {product}/{platform} v{version} to database")
     
     db.session.commit()
     
-    # Refresh cache for this platform and all aliases
-    refresh_firmware_cache(platform)
+    # Refresh cache for this product/platform and all aliases
+    refresh_firmware_cache(platform, product)
 
 def generate_user_download_token(user_id, platform, max_age=3600, version=None):
     """Generate a user-scoped signed token for firmware downloads (default 1-hour expiration)
@@ -1020,6 +1057,7 @@ def download_firmware(platform):
         return jsonify({'error': 'Invalid API key'}), 401
     
     platform = platform.lower()
+    product = request.args.get('product', DEFAULT_PRODUCT)  # Product from query param
     
     # Apply platform firmware mapping for backward compatibility
     if platform in PLATFORM_FIRMWARE_MAPPING:
@@ -1033,7 +1071,7 @@ def download_firmware(platform):
             'supported_platforms': SUPPORTED_PLATFORMS
         }), 400
     
-    version_info = get_firmware_version(platform)
+    version_info = get_firmware_version(platform, product)
     
     if not version_info:
         return jsonify({'error': 'No firmware available'}), 404
@@ -1140,6 +1178,7 @@ def upload_firmware():
     partitions_file = request.files.get('partitions')  # Optional
     version = request.form.get('version')
     platform = request.form.get('platform', '').lower()
+    product = request.form.get('product', DEFAULT_PRODUCT)  # Default to ski-clock-neo for backwards compatibility
     
     if not version or not platform:
         return jsonify({'error': 'Missing version or platform'}), 400
@@ -1167,7 +1206,7 @@ def upload_firmware():
     except (ValueError, IndexError):
         return jsonify({'error': 'Invalid version format. Use vX.Y.Z'}), 400
     
-    current_version_info = get_firmware_version(platform)
+    current_version_info = get_firmware_version(platform, product)
     if current_version_info:
         try:
             current_version_code = parse_version(current_version_info['version'])
@@ -1175,18 +1214,20 @@ def upload_firmware():
                 return jsonify({
                     'error': 'Version downgrade not allowed',
                     'current_version': current_version_info['version'],
-                    'attempted_version': version
+                    'attempted_version': version,
+                    'product': product
                 }), 400
             elif new_version_code == current_version_code:
                 return jsonify({
                     'error': 'Version already exists',
                     'current_version': current_version_info['version'],
-                    'message': 'Use a newer version number to update'
+                    'message': 'Use a newer version number to update',
+                    'product': product
                 }), 409
         except (ValueError, IndexError):
             pass
     
-    filename = f"firmware-{platform}-{version}.bin"
+    filename = f"firmware-{product}-{platform}-{version}.bin"
     object_name = f"{FIRMWARES_PREFIX}{filename}"
     
     # Read file data
@@ -1224,12 +1265,13 @@ def upload_firmware():
         storage_location = "local"
     
     version_info = {
+        'product': product,
         'version': version,
         'filename': filename,
         'size': file_size,
         'sha256': file_hash,
         'uploaded_at': datetime.utcnow().isoformat(),
-        'download_url': f'/api/firmware/{platform}',
+        'download_url': f'/api/firmware/{platform}?product={product}',
         'storage': storage_location
     }
     
@@ -1245,7 +1287,7 @@ def upload_firmware():
         if not bootloader_file.filename.endswith('.bin'):
             return jsonify({'error': 'Bootloader file must be a .bin file'}), 400
         
-        bootloader_filename = f"bootloader-{platform}-{version}.bin"
+        bootloader_filename = f"bootloader-{product}-{platform}-{version}.bin"
         bootloader_object_name = f"{FIRMWARES_PREFIX}{bootloader_filename}"
         
         # Read bootloader data
@@ -1287,7 +1329,7 @@ def upload_firmware():
         if not partitions_file.filename.endswith('.bin'):
             return jsonify({'error': 'Partitions file must be a .bin file'}), 400
         
-        partitions_filename = f"partitions-{platform}-{version}.bin"
+        partitions_filename = f"partitions-{product}-{platform}-{version}.bin"
         partitions_object_name = f"{FIRMWARES_PREFIX}{partitions_filename}"
         
         # Read partitions data
@@ -1324,22 +1366,22 @@ def upload_firmware():
         except Exception as e:
             print(f"⚠ Failed to upload partitions: {e}")
     
-    # Update in-memory cache
-    LATEST_VERSIONS[platform] = version_info
+    # Update in-memory cache (keyed by product, platform)
+    LATEST_VERSIONS[_cache_key(product, platform)] = version_info
     
     # Save to database
-    save_version_to_db(platform, version_info)
+    save_version_to_db(platform, version_info, product)
     
     # Mirror esp12f firmware to legacy esp8266 alias for monitoring visibility
     if platform == 'esp12f':
         esp8266_info = version_info.copy()
-        esp8266_info['download_url'] = '/api/firmware/esp8266'
-        LATEST_VERSIONS['esp8266'] = esp8266_info
-        save_version_to_db('esp8266', esp8266_info)
+        esp8266_info['download_url'] = f'/api/firmware/esp8266?product={product}'
+        LATEST_VERSIONS[_cache_key(product, 'esp8266')] = esp8266_info
+        # Note: Don't save alias to DB as it shares the same firmware, just cache it
     
     return jsonify({
         'success': True,
-        'message': f'Firmware uploaded successfully',
+        'message': f'Firmware uploaded successfully for {product}',
         'version_info': version_info
     }), 201
 
@@ -1388,9 +1430,15 @@ def firmware_metadata():
     if api_key != DOWNLOAD_API_KEY:
         return jsonify({'error': 'Invalid API key'}), 401
     
-    # Return firmware metadata without user-specific tokens
+    # Convert cache to serializable format: {product: {platform: version_info}}
+    firmwares = {}
+    for (product, platform), version_info in LATEST_VERSIONS.items():
+        if product not in firmwares:
+            firmwares[product] = {}
+        firmwares[product][platform] = version_info
+    
     return jsonify({
-        'firmwares': LATEST_VERSIONS,
+        'firmwares': firmwares,
         'timestamp': datetime.now(timezone.utc).isoformat()
     })
 
@@ -1405,8 +1453,12 @@ def status():
         return jsonify({'error': 'User not found'}), 401
     
     # Generate fresh user-scoped download tokens ONLY for platforms the user has permission for
+    # Structure: {product: {platform: version_info}}
     firmwares_with_tokens = {}
-    for platform, fw_data in LATEST_VERSIONS.items():
+    for (product, platform), fw_data in LATEST_VERSIONS.items():
+        if product not in firmwares_with_tokens:
+            firmwares_with_tokens[product] = {}
+            
         if fw_data:
             # Check if user has permission to download this platform
             if user.can_download_platform(platform):
@@ -1415,15 +1467,15 @@ def status():
                 token = generate_user_download_token(user_id, platform, max_age=3600)
                 fw_copy['public_download_url'] = f'/firmware/user-download-firmware/{token}'
                 fw_copy['can_download'] = True
-                firmwares_with_tokens[platform] = fw_copy
+                firmwares_with_tokens[product][platform] = fw_copy
             else:
                 # Include firmware metadata but no download token
                 fw_copy = fw_data.copy()
                 fw_copy['can_download'] = False
                 fw_copy['public_download_url'] = None
-                firmwares_with_tokens[platform] = fw_copy
+                firmwares_with_tokens[product][platform] = fw_copy
         else:
-            firmwares_with_tokens[platform] = None
+            firmwares_with_tokens[product][platform] = None
     
     return jsonify({
         'firmwares': firmwares_with_tokens,

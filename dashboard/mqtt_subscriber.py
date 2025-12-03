@@ -96,6 +96,7 @@ def handle_heartbeat(client, payload, topic):
     """Handle device heartbeat messages and check for firmware updates
     
     Device ID is extracted from topic: skiclock/heartbeat/{device_id}
+    Product defaults to 'ski-clock-neo' if not specified in payload (backward compatible)
     """
     # Extract device_id from topic
     topic_parts = topic.split('/')
@@ -106,6 +107,7 @@ def handle_heartbeat(client, payload, topic):
     device_id = topic_parts[2]
     board_type = payload.get('board', 'Unknown')
     current_version = payload.get('version', 'Unknown')
+    product = payload.get('product', 'ski-clock-neo')  # Product from heartbeat or default
     
     if device_id and _app_context:
         # Save to database
@@ -118,6 +120,7 @@ def handle_heartbeat(client, payload, topic):
                 # Update existing device
                 device.board_type = board_type
                 device.firmware_version = current_version
+                device.product = product  # Update product if device reports it
                 device.last_seen = datetime.now(timezone.utc)
                 device.last_uptime = payload.get('uptime', 0)
                 device.last_rssi = payload.get('rssi', 0)
@@ -126,9 +129,10 @@ def handle_heartbeat(client, payload, topic):
                 # Validate IP address to prevent XSS attacks
                 device.ip_address = validate_ip_address(payload.get('ip'))
             else:
-                # Create new device
+                # Create new device with product
                 device = Device(
                     device_id=device_id,
+                    product=product,
                     board_type=board_type,
                     firmware_version=current_version,
                     last_uptime=payload.get('uptime', 0),
@@ -141,7 +145,7 @@ def handle_heartbeat(client, payload, topic):
                 db.session.add(device)
                 # Flush to ensure device exists before adding EventLog (FK constraint)
                 db.session.flush()
-                print(f"✨ New device registered: {device_id} ({board_type})")
+                print(f"✨ New device registered: {device_id} ({product}/{board_type})")
             
             # Log heartbeat to history (for degraded status detection)
             heartbeat_log = HeartbeatHistory(
@@ -229,7 +233,7 @@ def handle_heartbeat(client, payload, topic):
                     db.session.commit()
                     print(f"📋 Resolved {resolved_count} stuck OTA update(s) for {device_id}")
             
-            # Check for firmware updates based on board type
+            # Check for firmware updates based on board type and product
             # Map board type to platform using authoritative mapping
             from app import get_firmware_version
             from models import FirmwareVersion
@@ -245,8 +249,9 @@ def handle_heartbeat(client, payload, topic):
                 target_version = None
                 
                 if pinned_version:
-                    # Device is pinned - verify the pinned version exists
+                    # Device is pinned - verify the pinned version exists for this product
                     pinned_fw = FirmwareVersion.query.filter_by(
+                        product=product,
                         platform=platform, 
                         version=pinned_version
                     ).first()
@@ -256,13 +261,13 @@ def handle_heartbeat(client, payload, topic):
                         print(f"📌 Device {device_id} is pinned to version {pinned_version}")
                     else:
                         # Pinned version doesn't exist - fall back to latest
-                        print(f"⚠ Pinned version {pinned_version} not found for {platform}, falling back to latest")
-                        version_info = get_firmware_version(platform)
+                        print(f"⚠ Pinned version {pinned_version} not found for {product}/{platform}, falling back to latest")
+                        version_info = get_firmware_version(platform, product)
                         if version_info:
                             target_version = version_info.get('version')
                 else:
-                    # Not pinned - use latest version
-                    version_info = get_firmware_version(platform)
+                    # Not pinned - use latest version for this product
+                    version_info = get_firmware_version(platform, product)
                     if version_info:
                         target_version = version_info.get('version')
                 
@@ -280,6 +285,7 @@ def handle_heartbeat(client, payload, topic):
                             'latest_version': target_version,
                             'current_version': current_version,
                             'update_available': True,
+                            'product': product,
                             'platform': platform,
                             'session_id': session_id,
                             'subscriber_id': _subscriber_id,  # Track which thread sent this
@@ -290,9 +296,9 @@ def handle_heartbeat(client, payload, topic):
                         print(f"📤 Version response sent to {device_id}: {target_version} (update: True, {pin_status}) [subscriber: {_subscriber_id}]")
                 else:
                     # Log when platform exists in mapping but no firmware in cache
-                    print(f"⚠ No firmware found for platform '{platform}' (board type: '{board_type}')")
+                    print(f"⚠ No firmware found for {product}/{platform} (board type: '{board_type}')")
         
-        print(f"📡 Heartbeat from {device_id} ({board_type}): v{current_version}, uptime={payload.get('uptime')}s, RSSI={payload.get('rssi')}dBm")
+        print(f"📡 Heartbeat from {device_id} ({product}/{board_type}): v{current_version}, uptime={payload.get('uptime')}s, RSSI={payload.get('rssi')}dBm")
 
 def extract_device_id_from_topic(topic: str, base_topic: str) -> Optional[str]:
     """Extract device_id from topic path: base_topic/{device_id}[/...]
@@ -316,6 +322,7 @@ def handle_ota_start(client, payload, topic):
     """Handle OTA update start notification from device
     
     Device ID is extracted from topic: skiclock/ota/start/{device_id}
+    Product defaults to 'ski-clock-neo' if not specified (backward compatible)
     """
     device_id = extract_device_id_from_topic(topic, MQTT_TOPIC_OTA_START)
     if not device_id:
@@ -323,6 +330,7 @@ def handle_ota_start(client, payload, topic):
         return
     
     session_id = payload.get('session_id') or str(uuid.uuid4())
+    product = payload.get('product', 'ski-clock-neo')  # Product from payload or default
     platform = payload.get('platform')
     old_version = payload.get('old_version')
     new_version = payload.get('new_version')
@@ -335,10 +343,11 @@ def handle_ota_start(client, payload, topic):
         from models import OTAUpdateLog, db
         
         with _app_context.app_context():
-            # Create OTA log entry
+            # Create OTA log entry with product
             log = OTAUpdateLog(
                 session_id=session_id,
                 device_id=device_id,
+                product=product,
                 platform=platform,
                 old_version=old_version,
                 new_version=new_version,
@@ -347,7 +356,7 @@ def handle_ota_start(client, payload, topic):
             db.session.add(log)
             db.session.commit()
             
-            print(f"📝 OTA update started: {device_id} ({old_version} → {new_version}) [session: {session_id}]")
+            print(f"📝 OTA update started: {device_id} ({product}/{platform}: {old_version} → {new_version}) [session: {session_id}]")
 
 def handle_ota_progress(client, payload, topic):
     """Handle OTA download progress updates from device

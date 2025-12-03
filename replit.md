@@ -1,128 +1,47 @@
-# Ski Clock Neo - Project Documentation
+# Norrtek IoT - Project Documentation
 
 ## Overview
-Ski Clock Neo integrates ESP32/ESP8266 firmware with NeoPixel LED matrix displays and a custom, secure firmware update server. This system enables dynamic content display on 16x16 NeoPixel matrices and facilitates automatic, secure over-the-air (OTA) updates via a Python Flask dashboard. The project emphasizes robust deployment, simplified embedded device management, and easy migration to self-hosted infrastructure, aiming for high reliability and seamless updates.
+Norrtek IoT is a multi-product Internet of Things (IoT) platform designed for managing various display devices, such as ski-clocks, bed-clocks, and signage. It integrates ESP32/ESP8266 firmware with NeoPixel LED matrix displays and a custom, secure firmware update server. The platform enables dynamic content display on 16x16 NeoPixel matrices and facilitates automatic, secure over-the-air (OTA) updates via a Python Flask dashboard. The project prioritizes robust deployment, simplified embedded device management, and easy migration to self-hosted infrastructure, aiming for high reliability and seamless updates across diverse IoT products.
 
 ## User Preferences
 - Target platform: ESP32/ESP8266 (not standard Arduino)
 - Multi-panel support is intentional (not a bug)
 - Private repository (no public releases)
 - Configurable server URL for future migration
+- Multi-product architecture for managing different IoT device types
 
 ## System Architecture
-The project consists of two primary components:
+The Norrtek IoT platform comprises two main components: a Firmware component for embedded devices and a Dashboard Server for management.
 
-**1. Firmware (Embedded C++ for ESP32/ESP8266):**
-*   **Features**: Drives 16x16 NeoPixel matrices with a custom 5x7 pixel font, supports multi-panel setups, includes a freeze-proof LED status indicator using hardware interrupt timers, and manages WiFi via `AutoConnect`. Secure non-blocking OTA updates are handled via a custom server with API key authentication and HTTPS. NeoPixel updates utilize FreeRTOS tasks on ESP32 for smooth rendering.
-*   **2x Glyph Override System**: The 2x font scaling uses diagonal smoothing for cleaner edges, but this can fill in small details (like the hole in °). The `font_5x7_2x_overrides.h` file provides hand-crafted 2x versions of problem glyphs, giving full artistic control while keeping automatic smoothing for other characters.
-*   **Modular Display Architecture**: Hardware configuration is centralized in `display_config.h`. The generic `display_core.{h,cpp}` library manages a bit-packed display buffer and text content, which is hardware-agnostic. The `neopixel_render.h` renderer handles pixel transformations (rotation, serpentine wiring) and commits unified frames. This architecture supports future migration to HUB75 panels.
-*   **FreeRTOS Display Task**: Display rendering runs in a dedicated FreeRTOS task (ESP32) or Ticker callback (ESP8266) for immediate, non-blocking display updates.
-*   **Deterministic Display Controller Task**: Content scheduling (e.g., time/date toggling) runs in a dedicated FreeRTOS task (ESP32) or TickTwo library (ESP8266) to prevent display "freezing" during network operations.
-*   **Centralized LED Connectivity State Management**: A priority-based system tracks WiFi and MQTT status, with a single API `setConnectivityState(wifi, mqtt)` to prevent race conditions. OTA updates use an override mode.
-*   **Production-Ready Event-Driven Rendering**: Uses critical sections for thread-safe access to shared state, ensuring zero race conditions or visual glitches during concurrent updates.
-*   **MQTT Integration**: Publishes device heartbeats to HiveMQ Cloud every 60 seconds. The dashboard automatically checks for new firmware versions and sends update notifications. Supports TLS encryption and increased buffer size for display snapshots. Topic structure uses consistent `skiclock/{type}/{deviceId}` pattern for device-specific messages.
-*   **Display Snapshot System**: Publishes hourly snapshots with per-row structure to MQTT. Each row is self-describing with independent dimensions, supporting variable panel counts per row. Payload format:
-    ```json
-    {
-      "rows": [
-        {"text": "12:34", "cols": 3, "width": 48, "height": 16, "mono": "base64...", "monoColor": [R,G,B,brightness]},
-        {"text": "68°F", "cols": 4, "width": 64, "height": 16, "mono": "base64...", "monoColor": [R,G,B,brightness]}
-      ]
-    }
-    ```
-    On-demand snapshots are supported via MQTT commands.
-*   **MQTT Command Handling**: Subscribes to device-specific topics for remote management, supporting `rollback`, `restart`, and `snapshot` commands.
-*   **OTA Progress Reporting**: Publishes real-time OTA status to MQTT topics for granular tracking.
-*   **Display Content System**: Alternates time and date every 4 seconds. Temperature (DS18B20 sensor) is displayed with non-blocking reads. Event-driven updates via `setText()` callbacks are used for all data libraries.
-*   **Button-Controlled Timer Mode**: Physical button triggers stopwatch functionality:
-    - Press in NORMAL mode: Starts countdown (3, 2, 1) with top row cycling time/date/temp
-    - Press during COUNTDOWN: Cancels and returns to normal mode
-    - Press during TIMER: Stops timer, flashes elapsed time (0.5s intervals for 8s), then holds solid for 1 minute before auto-reverting to normal
-    - State machine: NORMAL → COUNTDOWN → TIMER → FLASHING_RESULT → DISPLAY_RESULT → NORMAL
-    - Top row continues cycling time/date/temp during ALL timer modes (including result display)
-    - Button uses FALLING edge interrupt for immediate response (no debouncing)
-    - Transition lockout (200ms) prevents rapid state changes
-    - Maximum timer duration is 99:59 - automatically returns to normal at 100 minutes
-*   **RTC Integration**: DS3231 RTC module provides instant time on boot (before WiFi/NTP connects). NTP automatically syncs the RTC hourly to maintain accuracy. Falls back gracefully to NTP-only if no RTC is present. **Important**: ESP32-C3 requires explicit I2C pins via `Wire.begin(RTC_SDA_PIN, RTC_SCL_PIN)` to avoid conflict with default GPIO 8/9 (which conflicts with LED on GPIO 8).
-*   **Time Change Callbacks**: Precise minute/date change detection via callback system. The data_time library tracks last minute and day, calling registered callbacks with flags (TIME_CHANGE_MINUTE, TIME_CHANGE_DATE) when changes occur. A 1-second polling timer detects changes reliably.
-*   **Unified Timer Library**: The `timer_helpers` library provides complete platform abstraction for all timing needs:
-    - Periodic timers via `createTimer()` - FreeRTOS tasks on ESP32, TickTwo tickers on ESP8266
-    - One-shot timers via `createOneShotTimer()`/`triggerTimer()` - ESP32 Ticker.once_ms, ESP8266 TickTwo with iterations=1
-    - Notification-based tasks via `createNotificationTask()`/`notifyTask()` (ESP32 only) - for event-driven wake patterns
-    - All ESP8266 timers updated via single `updateTimers()` call in main loop
-    - Used by: display_core (1ms render/notification), display_controller (500ms unified tick), data_time (1s time check), data_temperature (30s poll + 750ms read delay)
-*   **Unified 500ms Tick Timer Architecture**: Display controller uses a single 500ms tick timer (DisplayTick) to drive all display modes:
-    - Tick counter tracks time: 8 ticks = 4s (normal mode toggle), 2 ticks = 1s (countdown/timer update), 1 tick = 0.5s (flash toggle)
-    - `updateBothRows()` performs atomic row updates via `setTextNoRender()` calls followed by single `triggerRender()`
-    - `setTextNoRender()` returns bool indicating if text changed; renders only triggered when content actually changes
-    - Mode transitions reset timerTopRowState to ensure consistent starting state
-    - Eliminates race conditions and visual tearing from independent row updates
-*   **Clean Separation of Concerns**: Temperature polling and time/date toggling are owned by their respective libraries, which update the display controller via callbacks, ensuring independent timing logic.
-*   **Event Logging System**: A ring buffer stores device events with timestamps, publishing them to MQTT when connected. Comprehensive event types include:
-    - System: boot, heartbeat, low_heap_warning
-    - Connectivity: wifi_connect, wifi_disconnect, wifi_rssi_low, mqtt_connect, mqtt_disconnect
-    - Temperature: temperature_read, temperature_error, temp_sensor_not_found, temp_read_invalid, temp_read_crc_error
-    - RTC/Time: rtc_initialized, rtc_not_found, rtc_lost_power, rtc_time_invalid, rtc_synced_from_ntp, rtc_sync_failed, rtc_drift_corrected, ntp_sync_success, ntp_sync_failed
-    - User Input: button_press
-    - Display: display_mode_change
-    Health warning events (low_heap, wifi_rssi_low) use threshold crossing detection to avoid spam.
-*   **Code Organization Convention**: All .cpp files follow a consistent structure with section headers:
-    - File banner comment explaining module purpose
-    - INCLUDES section
-    - CONSTANTS section (where applicable)
-    - STATE VARIABLES section
-    - FORWARD DECLARATIONS section (for callbacks used before definition)
-    - Grouped function sections (e.g., INITIALIZATION, TIMER CALLBACKS, PUBLIC API)
-    - Comments explain each section's purpose for easy navigation
-*   **Firmware Folder Structure**: Files are organized in `src/` for Arduino recursive compilation:
-    ```
-    firmware/ski-clock-neo/
-    ├── ski-clock-neo.ino          (main sketch, stays at root for Arduino compatibility)
-    ├── ski-clock-neo_config.h     (user-tunable configuration)
-    └── src/                        (source files, compiled recursively by Arduino)
-        ├── core/                   (shared infrastructure)
-        │   ├── timer_helpers.h/.cpp   (platform-abstracted timing)
-        │   ├── event_log.h/.cpp       (MQTT event logging)
-        │   ├── led_indicator.h/.cpp   (connectivity status LED)
-        │   ├── device_info.h/.cpp     (device ID and platform detection)
-        │   └── debug.h                (conditional debug macros)
-        ├── data/                   (sensor and time data providers)
-        │   ├── data_time.h/.cpp       (RTC/NTP time management)
-        │   ├── data_temperature.h/.cpp (DS18B20 sensor)
-        │   └── data_button.h/.cpp     (button input with FALLING edge detection)
-        ├── connectivity/           (network and updates)
-        │   ├── mqtt_client.h/.cpp     (MQTT pub/sub and commands)
-        │   ├── ota_update.h/.cpp      (OTA firmware updates)
-        │   └── wifi_config.h          (AutoConnect WiFi management)
-        └── display/                (display rendering)
-            ├── display_core.h/.cpp    (hardware-agnostic buffer management)
-            ├── display_controller.h/.cpp (content scheduling and modes)
-            ├── neopixel_render.h/.cpp (NeoPixel-specific rendering)
-            ├── font_5x7.h             (bitmap font data)
-            └── font_5x7_2x_overrides.h (hand-crafted 2x glyphs for problem characters)
-    ```
-    Include paths use `src/` prefix from .ino (e.g., `#include "src/core/timer_helpers.h"`), relative paths within src for cross-folder includes (e.g., `#include "../core/timer_helpers.h"`), and same-folder includes use flat paths (e.g., `#include "display_core.h"`).
-    Config file access: Use `#include "../../ski-clock-neo_config.h"` from src/ files (relative path to sketch root).
+**UI/UX Decisions (Dashboard):**
+The dashboard features a modern UI with CSS variables for light/dark mode, a contemporary color palette, improved typography, and responsive card-based layouts. It is branded as "Norrtek IoT - Device Fleet Management."
 
-**2. Dashboard Server (Python Flask application):**
-*   **Features**: Provides an API for firmware distribution for multiple platforms, supporting uploads with API key authentication, platform aliasing, and SHA256 checksums. Integrates with PostgreSQL for persistent device tracking and offers an interactive web dashboard.
-*   **Modern UI Design**: Redesigned dashboard with CSS variables for light/dark mode, modern color palette, improved typography, and responsive card-based layouts.
-*   **MQTT Integration**: A background subscriber processes heartbeats, persists device data to PostgreSQL, and exposes live data via a REST API. Automatically checks firmware versions on each heartbeat and sends update notifications via MQTT.
-*   **Unified History Page**: A single `/history` page with tabs for Snapshots, OTA Updates, and Events, featuring shared filter panels and URL state management.
-*   **Display Snapshot Visualization**: Stores and visualizes display snapshots in PostgreSQL, offering color-accurate canvas rendering with a grid overlay.
-*   **Live Events Feed**: Displays the last 10 events with auto-refresh and a link to the full history.
-*   **Degraded Status Detection**: Monitors device heartbeat timestamps to determine "online," "degraded," and "offline" statuses.
-*   **OTA Update Logging & Monitoring**: Tracks OTA attempts in PostgreSQL, logging progress and status via MQTT, and displaying real-time statistics and history.
-*   **MQTT Command System**: Enables sending remote `rollback`, `restart`, and `snapshot` commands via API endpoints and dashboard buttons.
-*   **Device Management**: Stores device registry in PostgreSQL, showing status and allowing deletion.
-*   **Authentication & Authorization**: Session-based authentication for dashboard routes and API key authentication for device API routes, with Role-Based Access Control (RBAC).
-*   **Browser-Based Firmware Flashing**: Integrates ESP Web Tools for direct USB flashing via manifest files.
-*   **Production Sync**: Development environments sync firmware metadata from production every 5 minutes.
-*   **Deployment**: Relies on VM deployment and GitHub Actions for CI/CD.
-*   **System Design**: Emphasizes automated versioning, secure communication, and graceful fallback.
+**Technical Implementations & Feature Specifications:**
+
+**Firmware (Embedded C++ for ESP32/ESP8266):**
+*   **Display Management:** Drives 16x16 NeoPixel matrices with a custom 5x7 pixel font, supports multi-panel setups, and includes a freeze-proof LED status indicator. NeoPixel updates utilize FreeRTOS tasks on ESP32 for smooth rendering. A modular display architecture separates hardware configuration (`display_config.h`), hardware-agnostic buffer management (`display_core`), and NeoPixel-specific rendering (`neopixel_render`). A 2x Glyph Override System provides hand-crafted 2x versions of problem glyphs for artistic control.
+*   **Connectivity & Updates:** Manages WiFi via `AutoConnect`. Secure non-blocking OTA updates are handled via a custom server with API key authentication and HTTPS. OTA progress is reported via MQTT.
+*   **MQTT Integration:** Publishes device heartbeats and display snapshots to HiveMQ Cloud. Supports TLS encryption. Subscribes to device-specific topics for remote `rollback`, `restart`, and `snapshot` commands.
+*   **Display Content & Control:** Alternates time and date, displays temperature (DS18B20), and uses event-driven updates. A button-controlled timer mode provides stopwatch functionality with a state machine for transitions.
+*   **Timekeeping:** Integrates DS3231 RTC for instant time on boot, with NTP syncing the RTC hourly.
+*   **System Stability:** Uses FreeRTOS tasks/TickTwo library for deterministic display control and rendering. Critical sections ensure thread-safe access for event-driven rendering. A centralized LED Connectivity State Management system tracks WiFi and MQTT status.
+*   **Event Logging:** A ring buffer stores and publishes device events (system, connectivity, temperature, RTC/Time, user input, display) to MQTT.
+*   **Code Organization:** Consistent structure in `.cpp` files with section headers. Files are organized in `src/` for Arduino recursive compilation with specific include path conventions.
+
+**Dashboard Server (Python Flask Application):**
+*   **Firmware Management:** Provides a multi-product API for firmware distribution, supporting uploads with API key authentication, platform aliasing, and SHA256 checksums.
+*   **Device Management:** Integrates with PostgreSQL for persistent device tracking, displaying status, and allowing deletion. Monitors device heartbeat timestamps for "online," "degraded," and "offline" statuses.
+*   **MQTT Integration:** A background subscriber processes heartbeats, persists data, and exposes live data via a REST API. Automatically checks firmware versions and sends update notifications via MQTT.
+*   **Data Visualization:** Stores and visualizes display snapshots in PostgreSQL with color-accurate canvas rendering. Provides a unified `/history` page with tabs for Snapshots, OTA Updates, and Events, featuring shared filters. Displays a live feed of the last 10 events.
+*   **Command & Control:** Enables sending remote `rollback`, `restart`, and `snapshot` commands via API endpoints and dashboard buttons.
+*   **Security:** Session-based authentication for dashboard routes and API key authentication for device API routes, with Role-Based Access Control (RBAC).
+*   **Deployment:** Supports VM deployment and GitHub Actions for CI/CD. Development environments sync firmware metadata from production.
+*   **Browser-Based Flashing:** Integrates ESP Web Tools for direct USB flashing.
+
+**System Design Choices:**
+The architecture emphasizes automated versioning, secure communication, graceful fallback mechanisms, and a multi-product design. The database and API endpoints are product-aware, allowing for distinct firmware and device management across different IoT products. Firmware caching and device heartbeats also support product differentiation.
 
 ## External Dependencies
-*   **Firmware Libraries**: Adafruit_NeoPixel OR FastLED (swappable renderers), RTClib (Adafruit), AutoConnect, PubSubClient (with TLS support), ESP32 Arduino Core, ESP8266 WiFi libraries.
-    - To use FastLED: Change `#include "neopixel_render.h"` to `#include "fastled_render.h"` in `display_core.cpp`
-*   **Dashboard Dependencies**: Flask, paho-mqtt, PostgreSQL, Replit Object Storage (optional).
-*   **Cloud Services**: HiveMQ Cloud Serverless (MQTT broker), GitHub Actions (CI/CD).
+*   **Firmware Libraries:** Adafruit_NeoPixel OR FastLED, RTClib (Adafruit), AutoConnect, PubSubClient (with TLS support), ESP32 Arduino Core, ESP8266 WiFi libraries.
+*   **Dashboard Dependencies:** Flask, paho-mqtt, PostgreSQL.
+*   **Cloud Services:** HiveMQ Cloud Serverless (MQTT broker), GitHub Actions (CI/CD).
