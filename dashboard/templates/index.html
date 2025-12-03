@@ -207,13 +207,31 @@
     let flashingInProgress = false;
     
     // USB flash logging state
-    let currentFlashSession = null;
     let currentFlashInfo = null;
+    let flashLogBuffer = [];
+    let flashInactivityTimer = null;
+    const FLASH_INACTIVITY_TIMEOUT = 5000; // 5 seconds of no log activity = flash ended
+    
+    // Success/error patterns in esptool output
+    const FLASH_SUCCESS_PATTERNS = [
+        'Hash of data verified',
+        'Leaving...',
+        'Hard resetting via RTS pin',
+        'Stay in bootloader'
+    ];
+    const FLASH_ERROR_PATTERNS = [
+        'Failed to',
+        'Error:',
+        'Timed out',
+        'Invalid head of packet',
+        'Wrong packet',
+        'A fatal error occurred'
+    ];
     
     function pauseAllRefresh() {
         if (flashingInProgress) return;
         flashingInProgress = true;
-        console.log('Pausing all refresh intervals for USB flashing...');
+        console.log('%c[USB Flash]', 'color: #FF9800', 'Pausing refresh intervals...');
         
         if (deviceRefreshInterval) clearInterval(deviceRefreshInterval);
         if (timestampInterval) clearInterval(timestampInterval);
@@ -231,7 +249,7 @@
     function resumeAllRefresh() {
         if (!flashingInProgress) return;
         flashingInProgress = false;
-        console.log('Resuming all refresh intervals...');
+        console.log('%c[USB Flash]', 'color: #4CAF50', 'Resuming refresh intervals...');
         
         timestampInterval = setInterval(updateLiveTimestamps, 1000);
         otaStatsInterval = setInterval(loadOTAStats, 30000);
@@ -239,89 +257,18 @@
         firmwareInterval = setInterval(loadFirmware, 60000);
         eventsInterval = setInterval(loadEventsFeed, 10000);
         
-        // Immediate refresh to catch up
         loadDevices();
         loadFirmware();
         loadEventsFeed();
     }
     
-    // USB Flash logging API functions
-    async function startFlashLog() {
-        if (!currentFlashInfo) return;
-        
-        try {
-            const response = await fetch('/api/usb-flash-log', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'start',
-                    platform: currentFlashInfo.platform,
-                    product: currentFlashInfo.product,
-                    version: currentFlashInfo.version,
-                    flash_mode: currentFlashInfo.flashMode
-                })
-            });
-            const data = await response.json();
-            if (data.success) {
-                currentFlashSession = data.session_id;
-                console.log('%c[USB Flash Log]', 'color: #4CAF50', 'Session started:', currentFlashSession);
-            }
-        } catch (error) {
-            console.error('%c[USB Flash Log]', 'color: #F44336', 'Failed to start log:', error);
-        }
-    }
-    
-    async function updateFlashProgress(progress, state) {
-        if (!currentFlashSession) return;
-        
-        try {
-            await fetch('/api/usb-flash-log', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'progress',
-                    session_id: currentFlashSession,
-                    progress: progress,
-                    state: state
-                })
-            });
-        } catch (error) {
-            console.error('%c[USB Flash Log]', 'color: #F44336', 'Failed to update progress:', error);
-        }
-    }
-    
-    async function completeFlashLog(success, errorMessage) {
-        if (!currentFlashSession) return;
-        
-        try {
-            await fetch('/api/usb-flash-log', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'complete',
-                    session_id: currentFlashSession,
-                    success: success,
-                    error_message: errorMessage
-                })
-            });
-            console.log('%c[USB Flash Log]', 'color: #4CAF50', 'Session completed:', success ? 'success' : 'failed');
-        } catch (error) {
-            console.error('%c[USB Flash Log]', 'color: #F44336', 'Failed to complete log:', error);
-        } finally {
-            currentFlashSession = null;
-        }
-    }
-    
-    // Extract flash info from an inline esp-web-install-button element
+    // Extract flash info from button's manifest attribute
     function extractFlashInfoFromButton(button) {
         const manifest = button.getAttribute('manifest') || '';
         const params = new URLSearchParams(manifest.split('?')[1] || '');
         
-        // Extract platform from manifest path: /firmware/manifest/{platform}.json
         const pathMatch = manifest.match(/\/manifest\/([^.]+)\.json/);
         const platform = pathMatch ? pathMatch[1] : 'unknown';
-        
-        // Get product and mode from query params
         const product = params.get('product') || 'unknown';
         const flashMode = params.get('mode') || 'quick';
         const version = params.get('version') || 'latest';
@@ -329,83 +276,155 @@
         return { platform, product, version, flashMode };
     }
     
-    // Handler for ESP Web Tools state changes
-    async function handleEspStateChange(e) {
-        const btn = e.target;
-        const state = e.detail?.state;
-        const detail = e.detail;
+    // Check if log contains success/error patterns
+    function detectFlashResult() {
+        const fullLog = flashLogBuffer.join('\n');
         
-        // Detailed logging for debugging flash issues
-        console.log('%c[ESP Flash]', 'color: #4CAF50; font-weight: bold', 'State:', state);
-        if (detail) {
-            console.log('%c[ESP Flash]', 'color: #4CAF50', 'Full detail:', JSON.stringify(detail, null, 2));
-            if (detail.message) console.log('%c[ESP Flash]', 'color: #2196F3', 'Message:', detail.message);
-            if (detail.manifest) console.log('%c[ESP Flash]', 'color: #FF9800', 'Manifest:', detail.manifest);
-            if (detail.build) console.log('%c[ESP Flash]', 'color: #9C27B0', 'Build:', detail.build);
-            if (detail.chipFamily) console.log('%c[ESP Flash]', 'color: #E91E63', 'Chip:', detail.chipFamily);
-            if (detail.details) console.log('%c[ESP Flash]', 'color: #F44336', 'Details:', detail.details);
+        for (const pattern of FLASH_ERROR_PATTERNS) {
+            if (fullLog.includes(pattern)) {
+                return { success: false, error: pattern };
+            }
         }
         
-        // Handle state transitions for logging and refresh management
-        if (state === 'initializing') {
-            pauseAllRefresh();
-            
-            // If no currentFlashInfo set (inline button), extract from button
-            if (!currentFlashInfo) {
-                currentFlashInfo = extractFlashInfoFromButton(btn);
-                console.log('%c[USB Flash Log]', 'color: #FF9800', 'Extracted flash info from inline button:', currentFlashInfo);
+        for (const pattern of FLASH_SUCCESS_PATTERNS) {
+            if (fullLog.includes(pattern)) {
+                return { success: true, error: null };
             }
-            
-            // Start flash log when initializing
-            await startFlashLog();
-        } else if (state === 'preparing') {
-            await updateFlashProgress(10, 'preparing');
-        } else if (state === 'erasing') {
-            await updateFlashProgress(20, 'erasing');
-        } else if (state === 'writing') {
-            await updateFlashProgress(50, 'writing');
-        } else if (state === 'finished') {
-            await updateFlashProgress(100, 'finished');
-            await completeFlashLog(true, null);
-            // Clear flash info after completion
-            currentFlashInfo = null;
-            // Small delay before resuming to let the browser settle
-            setTimeout(resumeAllRefresh, 1000);
-        } else if (state === 'error') {
-            const errorMsg = detail?.message || detail?.details || 'Unknown error';
-            console.error('%c[ESP Flash ERROR]', 'color: #F44336; font-weight: bold', detail);
-            await completeFlashLog(false, errorMsg);
-            // Clear flash info after error
-            currentFlashInfo = null;
-            // Small delay before resuming to let the browser settle
-            setTimeout(resumeAllRefresh, 1000);
+        }
+        
+        return null; // No definitive result yet
+    }
+    
+    // Send flash log to server
+    async function submitFlashLog(success, errorMessage) {
+        if (!currentFlashInfo) return;
+        
+        const logContent = flashLogBuffer.join('\n');
+        console.log('%c[USB Flash]', 'color: #2196F3', 'Submitting flash log:', 
+            success ? 'SUCCESS' : 'FAILED', 
+            `(${flashLogBuffer.length} lines)`);
+        
+        try {
+            const response = await fetch('/api/usb-flash-log', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'complete',
+                    platform: currentFlashInfo.platform,
+                    product: currentFlashInfo.product,
+                    version: currentFlashInfo.version,
+                    flash_mode: currentFlashInfo.flashMode,
+                    success: success,
+                    error_message: errorMessage,
+                    log_content: logContent
+                })
+            });
+            const data = await response.json();
+            if (data.success) {
+                console.log('%c[USB Flash]', 'color: #4CAF50', 'Log saved:', data.session_id);
+            }
+        } catch (error) {
+            console.error('%c[USB Flash]', 'color: #F44336', 'Failed to save log:', error);
+        }
+        
+        // Reset state
+        currentFlashInfo = null;
+        flashLogBuffer = [];
+        setTimeout(resumeAllRefresh, 500);
+    }
+    
+    // Reset inactivity timer - called on each log message
+    function resetFlashInactivityTimer() {
+        if (flashInactivityTimer) {
+            clearTimeout(flashInactivityTimer);
+        }
+        
+        flashInactivityTimer = setTimeout(() => {
+            // No log activity for a while, check if we can determine the result
+            const result = detectFlashResult();
+            if (result) {
+                submitFlashLog(result.success, result.error);
+            } else if (flashLogBuffer.length > 0) {
+                // We have logs but no clear result - assume user cancelled or unknown state
+                submitFlashLog(false, 'Flash session ended (no completion detected)');
+            }
+        }, FLASH_INACTIVITY_TIMEOUT);
+    }
+    
+    // Add log entry to buffer and check for completion patterns
+    function addFlashLogEntry(level, ...args) {
+        const message = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+        const timestamp = new Date().toISOString().substr(11, 12);
+        flashLogBuffer.push(`[${timestamp}] [${level}] ${message}`);
+        
+        // Also log to console
+        if (level === 'error') {
+            console.error('%c[esptool]', 'color: #F44336', ...args);
+        } else if (level === 'debug') {
+            console.debug('%c[esptool]', 'color: #9E9E9E', ...args);
+        } else {
+            console.log('%c[esptool]', 'color: #607D8B', ...args);
+        }
+        
+        // Reset inactivity timer
+        resetFlashInactivityTimer();
+        
+        // Check if this message indicates completion
+        const result = detectFlashResult();
+        if (result) {
+            // Clear the inactivity timer and submit immediately
+            if (flashInactivityTimer) {
+                clearTimeout(flashInactivityTimer);
+                flashInactivityTimer = null;
+            }
+            // Small delay to capture any final messages
+            setTimeout(() => submitFlashLog(result.success, result.error), 500);
         }
     }
     
-    // Setup ESP Web Tools buttons with event listeners and logging
+    // Handle click on ESP Web Tools button - start tracking
+    function handleFlashButtonClick(btn) {
+        // Extract flash info from the button
+        currentFlashInfo = extractFlashInfoFromButton(btn);
+        flashLogBuffer = [];
+        
+        console.log('%c[USB Flash]', 'color: #FF9800; font-weight: bold', 
+            'Flash started:', currentFlashInfo.platform, currentFlashInfo.product);
+        
+        // Add initial log entry
+        flashLogBuffer.push(`[${new Date().toISOString()}] Flash session started`);
+        flashLogBuffer.push(`Platform: ${currentFlashInfo.platform}`);
+        flashLogBuffer.push(`Product: ${currentFlashInfo.product}`);
+        flashLogBuffer.push(`Mode: ${currentFlashInfo.flashMode}`);
+        flashLogBuffer.push(`Version: ${currentFlashInfo.version}`);
+        flashLogBuffer.push('---');
+        
+        pauseAllRefresh();
+        resetFlashInactivityTimer();
+    }
+    
+    // Setup ESP Web Tools buttons with click handlers and custom logger
     const setupEspWebToolsButtons = () => {
         document.querySelectorAll('esp-web-install-button').forEach(btn => {
-            if (!btn._eventHandlerAttached) {
-                // Attach state-changed listener directly to the button
-                btn.addEventListener('state-changed', handleEspStateChange);
-                btn._eventHandlerAttached = true;
-                console.log('%c[ESP Setup]', 'color: #9C27B0', 'Attached state-changed listener to button:', btn.id || btn.getAttribute('manifest'));
+            if (!btn._flashHandlerAttached) {
+                // Listen for clicks on the button to start tracking
+                btn.addEventListener('click', () => handleFlashButtonClick(btn));
+                btn._flashHandlerAttached = true;
             }
-            if (!btn._loggerAttached) {
-                btn.logger = {
-                    log: (...args) => console.log('%c[esptool]', 'color: #607D8B', ...args),
-                    debug: (...args) => console.debug('%c[esptool:debug]', 'color: #9E9E9E', ...args),
-                    error: (...args) => console.error('%c[esptool:error]', 'color: #F44336', ...args),
-                };
-                btn._loggerAttached = true;
-            }
+            
+            // Set up logger that buffers output (always update in case button was recreated)
+            btn.logger = {
+                log: (...args) => addFlashLogEntry('log', ...args),
+                debug: (...args) => addFlashLogEntry('debug', ...args),
+                error: (...args) => addFlashLogEntry('error', ...args),
+            };
         });
     };
     
-    // Setup buttons on page load and after DOM updates (for dynamically added buttons)
+    // Setup buttons on page load and watch for new buttons
     setupEspWebToolsButtons();
-    const observer = new MutationObserver(() => setupEspWebToolsButtons());
-    observer.observe(document.body, { childList: true, subtree: true });
+    const espButtonObserver = new MutationObserver(() => setupEspWebToolsButtons());
+    espButtonObserver.observe(document.body, { childList: true, subtree: true });
     
     async function loadDevices() {
         try {
