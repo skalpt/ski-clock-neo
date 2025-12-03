@@ -64,7 +64,7 @@ jobs:
             done
           }
           
-          retry arduino-cli lib install "Adafruit NeoPixel"
+          retry arduino-cli lib install "FastLED"
           retry arduino-cli lib install "AutoConnect"
           retry arduino-cli lib install "PubSubClient"
           retry arduino-cli lib install "OneWire"
