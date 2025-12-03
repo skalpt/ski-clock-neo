@@ -200,6 +200,7 @@ jobs:
                 -F "partitions=@$PARTITIONS" \
                 -F "version=${{ steps.get_version.outputs.VERSION }}" \
                 -F "platform=$PLATFORM" \
+                -F "product=ski-clock-neo" \
                 -w "\n"
             else
               # ESP8266: upload firmware only
@@ -210,6 +211,7 @@ jobs:
                 -F "file=@$file" \
                 -F "version=${{ steps.get_version.outputs.VERSION }}" \
                 -F "platform=$PLATFORM" \
+                -F "product=ski-clock-neo" \
                 -w "\n"
             fi
 
