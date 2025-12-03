@@ -3,6 +3,26 @@
 
 #include <Arduino.h>
 
+// ============================================================================
+// LOCAL BUILD CREDENTIALS (Arduino IDE only)
+// ============================================================================
+// Uncomment and fill in these values when compiling directly in Arduino IDE.
+// GitHub Actions passes these as build flags, so they're not needed there.
+//
+// WARNING: Never commit this file with real credentials filled in!
+//          Keep these commented out in version control.
+// ============================================================================
+
+// #define MQTT_HOST         "your-broker.hivemq.cloud"
+// #define MQTT_USERNAME     "your-mqtt-username"
+// #define MQTT_PASSWORD     "your-mqtt-password"
+// #define UPDATE_SERVER_URL "https://your-update-server.com"
+// #define DOWNLOAD_API_KEY  "your-api-key"
+
+// ============================================================================
+// PRODUCT CONFIGURATION
+// ============================================================================
+
 // Product identification
 #define PRODUCT_NAME "ski-clock-neo"
 
