@@ -15,8 +15,9 @@
     <div class="card">
         <div class="tabs-container">
             <button class="tab-btn active" data-tab="snapshots">📸 Snapshots</button>
-            <button class="tab-btn" data-tab="ota">📦 OTA Updates</button>
+            <button class="tab-btn" data-tab="updates">📦 Updates</button>
             <button class="tab-btn" data-tab="events">📋 Events</button>
+            <button class="tab-btn" data-tab="commands">⚙️ Commands</button>
         </div>
         
         <div class="filter-bar">
@@ -34,6 +35,26 @@
                     <option value="success">Success</option>
                     <option value="failed">Failed</option>
                     <option value="in-progress">In Progress</option>
+                </select>
+            </div>
+            
+            <div class="form-group flex-1 min-width-150 mb-0 update-type-filter-group" style="display: none;">
+                <label for="update-type-filter">Update Type</label>
+                <select id="update-type-filter">
+                    <option value="">All Types</option>
+                    <option value="ota">OTA (Over-the-Air)</option>
+                    <option value="usb_flash">USB Flash</option>
+                </select>
+            </div>
+            
+            <div class="form-group flex-1 min-width-150 mb-0 command-type-filter-group" style="display: none;">
+                <label for="command-type-filter">Command Type</label>
+                <select id="command-type-filter">
+                    <option value="">All Commands</option>
+                    <option value="temp_offset">Temperature Offset</option>
+                    <option value="rollback">Rollback</option>
+                    <option value="restart">Restart</option>
+                    <option value="snapshot">Request Snapshot</option>
                 </select>
             </div>
             
@@ -111,15 +132,63 @@
             </div>
         </div>
         
-        <div id="tab-content-ota" class="tab-content" style="display: none;">
+        <div id="tab-content-updates" class="tab-content" style="display: none;">
             <div class="empty-state">
-                <p>Loading OTA history...</p>
+                <p>Loading update history...</p>
             </div>
         </div>
         
         <div id="tab-content-events" class="tab-content" style="display: none;">
             <div class="empty-state">
                 <p>Loading events...</p>
+            </div>
+        </div>
+        
+        <div id="tab-content-commands" class="tab-content" style="display: none;">
+            <div class="commands-section">
+                <div class="command-forms">
+                    <h3>Send Command</h3>
+                    <p class="muted-text" id="command-device-info">Select a device to send commands</p>
+                    
+                    <div class="command-form-group" id="command-forms-container" style="display: none;">
+                        <div class="command-card">
+                            <h4>🌡️ Temperature Offset</h4>
+                            <p class="command-description">Adjust the temperature sensor calibration offset (-20°C to +20°C)</p>
+                            <div class="command-input-row">
+                                <input type="number" id="cmd-temp-offset" placeholder="0.0" step="0.1" min="-20" max="20" class="command-input">
+                                <span class="command-unit">°C</span>
+                                <button class="command-send-btn" onclick="sendCommand('temp_offset')">Send</button>
+                            </div>
+                        </div>
+                        
+                        <div class="command-card">
+                            <h4>⏮️ Rollback Firmware</h4>
+                            <p class="command-description">Roll back to the previously installed firmware version</p>
+                            <button class="command-send-btn command-action-btn" onclick="sendCommand('rollback')">Send Rollback Command</button>
+                        </div>
+                        
+                        <div class="command-card">
+                            <h4>🔄 Restart Device</h4>
+                            <p class="command-description">Restart the device remotely</p>
+                            <button class="command-send-btn command-action-btn" onclick="sendCommand('restart')">Send Restart Command</button>
+                        </div>
+                        
+                        <div class="command-card">
+                            <h4>📸 Request Snapshot</h4>
+                            <p class="command-description">Request a display snapshot from the device</p>
+                            <button class="command-send-btn command-action-btn" onclick="sendCommand('snapshot')">Request Snapshot</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="command-history">
+                    <h3>Command History</h3>
+                    <div id="command-history-container">
+                        <div class="empty-state">
+                            <p>No commands sent yet</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -199,11 +268,35 @@
             activeContent.classList.add('active');
         }
         
-        document.querySelector('.status-filter-group').style.display = tabName === 'ota' ? 'block' : 'none';
+        // Show/hide filter groups based on tab
+        document.querySelector('.status-filter-group').style.display = tabName === 'updates' ? 'block' : 'none';
+        document.querySelector('.update-type-filter-group').style.display = tabName === 'updates' ? 'block' : 'none';
         document.querySelector('.event-type-filter-group').style.display = tabName === 'events' ? 'block' : 'none';
+        document.querySelector('.command-type-filter-group').style.display = tabName === 'commands' ? 'block' : 'none';
+        
+        // Update command forms visibility based on device selection
+        if (tabName === 'commands') {
+            updateCommandFormsVisibility();
+        }
         
         updateUrl();
         loadCurrentTab();
+    }
+
+    function updateCommandFormsVisibility() {
+        const deviceId = currentFilters.device_id;
+        const formsContainer = document.getElementById('command-forms-container');
+        const deviceInfo = document.getElementById('command-device-info');
+        
+        if (deviceId) {
+            const device = allDevices.find(d => d.device_id === deviceId);
+            const deviceName = device ? `${device.product} (${deviceId})` : deviceId;
+            deviceInfo.innerHTML = `Sending commands to: <strong>${deviceName}</strong>`;
+            formsContainer.style.display = 'grid';
+        } else {
+            deviceInfo.textContent = 'Select a device from the filter above to send commands';
+            formsContainer.style.display = 'none';
+        }
     }
 
     function loadCurrentTab() {
@@ -211,11 +304,14 @@
             case 'snapshots':
                 loadSnapshots();
                 break;
-            case 'ota':
-                loadOTAHistory();
+            case 'updates':
+                loadUpdatesHistory();
                 break;
             case 'events':
                 loadEvents();
+                break;
+            case 'commands':
+                loadCommandHistory();
                 break;
         }
     }
@@ -550,9 +646,9 @@
         }
     }
 
-    async function loadOTAHistory() {
-        const container = document.getElementById('tab-content-ota');
-        container.innerHTML = '<div class="empty-state"><p>Loading OTA history...</p></div>';
+    async function loadUpdatesHistory() {
+        const container = document.getElementById('tab-content-updates');
+        container.innerHTML = '<div class="empty-state"><p>Loading update history...</p></div>';
         
         try {
             let url = `/api/ota-logs?limit=${pageSize}&offset=${(currentPage - 1) * pageSize}`;
@@ -562,6 +658,9 @@
             }
             if (currentFilters.status) {
                 url += `&status=${encodeURIComponent(currentFilters.status)}`;
+            }
+            if (currentFilters.update_type) {
+                url += `&update_type=${encodeURIComponent(currentFilters.update_type)}`;
             }
             if (currentFilters.start_date) {
                 url += `&start_date=${encodeURIComponent(currentFilters.start_date)}`;
@@ -574,7 +673,7 @@
             const data = await response.json();
             
             if (!data.logs || data.logs.length === 0) {
-                container.innerHTML = '<div class="empty-state"><p>No OTA updates found</p></div>';
+                container.innerHTML = '<div class="empty-state"><p>No updates found</p></div>';
                 document.getElementById('pagination-container').innerHTML = '';
                 return;
             }
@@ -585,13 +684,14 @@
                         <thead>
                             <tr>
                                 <th>Timestamp</th>
+                                <th>Type</th>
                                 <th>Device ID</th>
                                 <th>Platform</th>
                                 <th>Old Version</th>
                                 <th>New Version</th>
                                 <th>Progress</th>
                                 <th>Status</th>
-                                <th>Duration</th>
+                                <th>Log</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -603,18 +703,21 @@
                                     </div>
                                 ` : `${log.download_progress}%`;
                                 
-                                const duration = log.duration_seconds ? `${log.duration_seconds}s` : '-';
+                                const typeIcon = log.update_type === 'usb_flash' ? '🔌' : '📡';
+                                const typeName = log.update_type === 'usb_flash' ? 'USB' : 'OTA';
+                                const logLink = log.has_log ? `<a href="/api/ota-logs/${log.id}/log" target="_blank" class="log-link">View</a>` : '-';
                                 
                                 return `
                                     <tr>
                                         <td>${new Date(log.started_at).toLocaleString()}</td>
-                                        <td>${escapeHtml(log.device_id)}</td>
+                                        <td><span class="type-badge ${log.update_type}">${typeIcon} ${typeName}</span></td>
+                                        <td>${escapeHtml(log.device_id || '-')}</td>
                                         <td>${escapeHtml(log.platform || '-')}</td>
                                         <td>${escapeHtml(log.old_version || '-')}</td>
                                         <td>${escapeHtml(log.new_version || '-')}</td>
                                         <td>${progressBar}</td>
                                         <td><span class="status-badge ${statusClass}">${log.status}</span></td>
-                                        <td>${duration}</td>
+                                        <td>${logLink}</td>
                                     </tr>
                                 `;
                             }).join('')}
@@ -629,8 +732,144 @@
             updatePagination(data.total, currentPage);
             
         } catch (error) {
-            console.error('Failed to load OTA history:', error);
-            container.innerHTML = '<div class="empty-state"><p>Failed to load OTA history</p></div>';
+            console.error('Failed to load update history:', error);
+            container.innerHTML = '<div class="empty-state"><p>Failed to load update history</p></div>';
+        }
+    }
+    
+    async function loadCommandHistory() {
+        const container = document.getElementById('command-history-container');
+        
+        // Update command forms visibility
+        updateCommandFormsVisibility();
+        
+        try {
+            let url = `/api/commands?limit=${pageSize}&offset=${(currentPage - 1) * pageSize}`;
+            
+            if (currentFilters.device_id) {
+                url += `&device_id=${encodeURIComponent(currentFilters.device_id)}`;
+            }
+            if (currentFilters.command_type) {
+                url += `&command_type=${encodeURIComponent(currentFilters.command_type)}`;
+            }
+            if (currentFilters.start_date) {
+                url += `&start_date=${encodeURIComponent(currentFilters.start_date)}`;
+            }
+            if (currentFilters.end_date) {
+                url += `&end_date=${encodeURIComponent(currentFilters.end_date)}`;
+            }
+            
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (!data.commands || data.commands.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>No commands found</p></div>';
+                document.getElementById('pagination-container').innerHTML = '';
+                return;
+            }
+            
+            const tableHtml = `
+                <div class="table-responsive">
+                    <table class="commands-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Device</th>
+                                <th>Command</th>
+                                <th>Parameters</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.commands.map(cmd => {
+                                const statusClass = cmd.status === 'sent' ? 'success' : cmd.status === 'failed' ? 'failed' : 'pending';
+                                const commandIcons = {
+                                    'temp_offset': '🌡️',
+                                    'rollback': '⏮️',
+                                    'restart': '🔄',
+                                    'snapshot': '📸'
+                                };
+                                const icon = commandIcons[cmd.command_type] || '⚙️';
+                                
+                                return `
+                                    <tr>
+                                        <td>${new Date(cmd.sent_at).toLocaleString()}</td>
+                                        <td>${escapeHtml(cmd.device_id)}</td>
+                                        <td>${icon} ${escapeHtml(cmd.command_type)}</td>
+                                        <td>${cmd.parameters ? escapeHtml(JSON.stringify(cmd.parameters)) : '-'}</td>
+                                        <td><span class="status-badge ${statusClass}">${cmd.status}</span></td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            container.innerHTML = tableHtml;
+            updatePagination(data.total, currentPage);
+            
+        } catch (error) {
+            console.error('Failed to load command history:', error);
+            container.innerHTML = '<div class="empty-state"><p>No commands found yet</p></div>';
+        }
+    }
+    
+    async function sendCommand(commandType) {
+        const deviceId = currentFilters.device_id;
+        if (!deviceId) {
+            alert('Please select a device first');
+            return;
+        }
+        
+        let parameters = {};
+        let confirmMessage = '';
+        
+        switch (commandType) {
+            case 'temp_offset':
+                const tempValue = parseFloat(document.getElementById('cmd-temp-offset').value);
+                if (isNaN(tempValue) || tempValue < -20 || tempValue > 20) {
+                    alert('Please enter a valid temperature offset between -20 and 20');
+                    return;
+                }
+                parameters = { temp_offset: tempValue };
+                confirmMessage = `Set temperature offset to ${tempValue}°C?`;
+                break;
+            case 'rollback':
+                confirmMessage = 'Send rollback command to revert to previous firmware?';
+                break;
+            case 'restart':
+                confirmMessage = 'Send restart command to reboot the device?';
+                break;
+            case 'snapshot':
+                confirmMessage = 'Request a display snapshot from the device?';
+                break;
+        }
+        
+        if (!confirm(confirmMessage)) return;
+        
+        try {
+            const response = await fetch('/api/commands', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    device_id: deviceId,
+                    command_type: commandType,
+                    parameters: parameters
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                alert(`Command sent successfully!`);
+                loadCommandHistory();
+            } else {
+                alert(`Failed to send command: ${data.error || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Failed to send command:', error);
+            alert('Failed to send command');
         }
     }
 
@@ -897,6 +1136,8 @@
     function applyFilters() {
         const deviceId = document.getElementById('device-filter').value;
         const status = document.getElementById('status-filter').value;
+        const updateType = document.getElementById('update-type-filter').value;
+        const commandType = document.getElementById('command-type-filter').value;
         const eventType = document.getElementById('event-type-filter').value;
         const dateFrom = document.getElementById('date-from').value;
         const dateTo = document.getElementById('date-to').value;
@@ -906,6 +1147,8 @@
         currentFilters = {};
         if (deviceId) currentFilters.device_id = deviceId;
         if (status) currentFilters.status = status;
+        if (updateType) currentFilters.update_type = updateType;
+        if (commandType) currentFilters.command_type = commandType;
         if (eventType) currentFilters.event_type = eventType;
         if (dateFrom) currentFilters.start_date = new Date(dateFrom).toISOString();
         if (dateTo) currentFilters.end_date = new Date(dateTo).toISOString();
@@ -918,6 +1161,8 @@
     function clearFilters() {
         document.getElementById('device-filter').value = '';
         document.getElementById('status-filter').value = '';
+        document.getElementById('update-type-filter').value = '';
+        document.getElementById('command-type-filter').value = '';
         document.getElementById('event-type-filter').value = '';
         document.getElementById('date-from').value = '';
         document.getElementById('date-to').value = '';

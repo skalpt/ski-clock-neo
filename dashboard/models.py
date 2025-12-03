@@ -436,3 +436,43 @@ class EventLog(db.Model):
             'event_data': self.event_data,
             'timestamp': self.timestamp.isoformat()
         }
+
+
+class CommandLog(db.Model):
+    __tablename__ = 'command_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    device_id = db.Column(db.String(32), db.ForeignKey('devices.device_id'), nullable=False, index=True)
+    command_type = db.Column(db.String(32), nullable=False, index=True)  # 'temp_offset', 'rollback', 'restart', 'snapshot'
+    parameters = db.Column(db.JSON)  # {"temp_offset": -2.0}
+    status = db.Column(db.String(16), nullable=False, default='sent', index=True)  # 'sent', 'failed'
+    sent_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
+    error_message = db.Column(db.Text)
+    
+    # Relationships
+    device = db.relationship('Device', backref=db.backref('command_logs', cascade='all, delete-orphan'))
+    
+    # Composite index for efficient queries
+    __table_args__ = (
+        db.Index('idx_command_device_timestamp', 'device_id', 'sent_at'),
+        db.Index('idx_command_type_timestamp', 'command_type', 'sent_at'),
+    )
+    
+    def __repr__(self):
+        return f'<CommandLog {self.device_id} {self.command_type} at {self.sent_at}>'
+    
+    def to_dict(self):
+        """Convert command log to dictionary"""
+        result = {
+            'id': self.id,
+            'device_id': self.device_id,
+            'command_type': self.command_type,
+            'parameters': self.parameters,
+            'status': self.status,
+            'sent_at': self.sent_at.isoformat()
+        }
+        
+        if self.error_message:
+            result['error_message'] = self.error_message
+        
+        return result

@@ -123,7 +123,7 @@
     <div class="card">
         <div class="flex-between mb-15">
             <h2>📊 OTA Update Statistics</h2>
-            <a href="/history?tab=ota" class="action-link">OTA Update History →</a>
+            <a href="/history?tab=updates" class="action-link">Update History →</a>
         </div>
         <div id="ota-stats-container">
             <div class="empty-state">
@@ -408,24 +408,10 @@
                                         🗑️ Remove
                                     </button>
                                 </div>
-                                <div class="device-config">
-                                    <div class="config-row">
-                                        <label>Temp Offset:</label>
-                                        <input type="number" class="config-input temp-offset-input" 
-                                               id="temp-offset-${safeDeviceId}" 
-                                               placeholder="-2.0" 
-                                               step="0.1" 
-                                               min="-20" 
-                                               max="20" 
-                                               ${device.status === 'offline' ? 'disabled' : ''}>
-                                        <span class="config-unit">°C</span>
-                                        <button class="config-btn" 
-                                                data-device-id="${safeDeviceId}" 
-                                                data-action="set-temp-offset"
-                                                ${device.status === 'offline' ? 'disabled title="Device must be online"' : ''}>
-                                            Set
-                                        </button>
-                                    </div>
+                                <div class="device-commands-link">
+                                    <a href="/history?tab=commands&device=${encodeURIComponent(safeDeviceId)}" class="command-link">
+                                        ⚙️ Send Command
+                                    </a>
                                 </div>
                             </div>
                         </div>

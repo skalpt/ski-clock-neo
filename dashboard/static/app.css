@@ -439,69 +439,32 @@ button {
     transform: none;
 }
 
-.device-config {
+.device-commands-link {
     margin-top: var(--spacing-md);
     padding-top: var(--spacing-md);
     border-top: 1px solid var(--border-color);
+    text-align: center;
 }
 
-.config-row {
-    display: flex;
+.command-link {
+    display: inline-flex;
     align-items: center;
-    gap: var(--spacing-sm);
-    flex-wrap: wrap;
-}
-
-.config-row label {
-    font-size: 0.75rem;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
     font-weight: 600;
-    color: var(--text-muted);
-    white-space: nowrap;
-}
-
-.config-input {
-    width: 70px;
-    padding: 0.35rem 0.5rem;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    font-size: 0.75rem;
-    background: var(--bg-card);
-    color: var(--text-primary);
-}
-
-.config-input:focus {
-    outline: none;
-    border-color: var(--brand-primary);
-    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
-}
-
-.config-unit {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-}
-
-.config-btn {
-    padding: 0.35rem 0.75rem;
-    border: none;
-    border-radius: var(--radius-sm);
-    font-size: 0.7rem;
-    font-weight: 600;
-    cursor: pointer;
+    color: var(--brand-primary);
+    text-decoration: none;
+    border: 1px solid var(--brand-primary);
+    border-radius: var(--radius-md);
     transition: all var(--transition-base);
+}
+
+.command-link:hover {
     background: var(--brand-primary);
     color: white;
-}
-
-.config-btn:hover {
-    background: var(--brand-primary-hover);
     transform: translateY(-1px);
-}
-
-.config-btn:disabled {
-    background: #9ca3af;
-    cursor: not-allowed;
-    opacity: 0.6;
-    transform: none;
+    box-shadow: var(--shadow-sm);
 }
 
 .refresh-btn {
@@ -2097,4 +2060,168 @@ body.no-web-serial .flash-column {
     display: flex;
     gap: var(--spacing-sm);
     flex-wrap: wrap;
+}
+
+/* ========================================
+   Commands Tab Styles
+   ======================================== */
+
+.commands-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-xl);
+}
+
+@media (max-width: 1024px) {
+    .commands-section {
+        grid-template-columns: 1fr;
+    }
+}
+
+.command-forms h3,
+.command-history h3 {
+    margin-bottom: var(--spacing-md);
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.muted-text {
+    color: var(--text-tertiary);
+    font-size: 0.875rem;
+}
+
+.command-form-group {
+    display: grid;
+    gap: var(--spacing-md);
+}
+
+.command-card {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+}
+
+.command-card h4 {
+    margin: 0 0 var(--spacing-xs) 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.command-description {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-bottom: var(--spacing-md);
+}
+
+.command-input-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.command-input {
+    flex: 1;
+    max-width: 120px;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.command-unit {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.command-send-btn {
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--brand-gradient);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition-base);
+}
+
+.command-send-btn:hover {
+    opacity: 0.9;
+    transform: var(--button-hover-transform);
+}
+
+.command-action-btn {
+    width: 100%;
+}
+
+.commands-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.commands-table th,
+.commands-table td {
+    padding: var(--spacing-sm) var(--spacing-md);
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.commands-table th {
+    background: var(--bg-tertiary);
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+}
+
+.commands-table td {
+    font-size: 0.875rem;
+}
+
+/* Type Badge for Updates */
+.type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.type-badge.ota {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.type-badge.usb_flash {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+[data-theme="dark"] .type-badge.ota {
+    background: #1e3a5f;
+    color: #93c5fd;
+}
+
+[data-theme="dark"] .type-badge.usb_flash {
+    background: #422006;
+    color: #fcd34d;
+}
+
+/* Log Link */
+.log-link {
+    color: var(--brand-primary);
+    text-decoration: none;
+    font-size: 0.875rem;
+}
+
+.log-link:hover {
+    text-decoration: underline;
 }

@@ -33,8 +33,8 @@ The dashboard features a modern UI with CSS variables for light/dark mode, a con
 *   **Firmware Management:** Provides a multi-product API for firmware distribution, supporting uploads with API key authentication, platform aliasing, and SHA256 checksums.
 *   **Device Management:** Integrates with PostgreSQL for persistent device tracking, displaying status, and allowing deletion. Monitors device heartbeat timestamps for "online," "degraded," and "offline" statuses.
 *   **MQTT Integration:** A background subscriber processes heartbeats, persists data, and exposes live data via a REST API. Automatically checks firmware versions and sends update notifications via MQTT.
-*   **Data Visualization:** Stores and visualizes display snapshots in PostgreSQL with color-accurate canvas rendering. Provides a unified `/history` page with tabs for Snapshots, OTA Updates, and Events, featuring shared filters. Displays a live feed of the last 10 events.
-*   **Command & Control:** Enables sending remote `rollback`, `restart`, and `snapshot` commands via API endpoints and dashboard buttons.
+*   **Data Visualization:** Stores and visualizes display snapshots in PostgreSQL with color-accurate canvas rendering. Provides a unified `/history` page with 4 tabs: Snapshots, Updates (OTA + USB Flash), Events, and Commands, featuring shared filters. Displays a live feed of the last 10 events.
+*   **Command & Control:** Dedicated Commands tab in history page for sending remote commands (`temp_offset`, `rollback`, `restart`, `snapshot`) to devices via MQTT. Command history is logged in PostgreSQL with status tracking. Device cards link directly to the Commands tab filtered by device.
 *   **Security:** Session-based authentication for dashboard routes and API key authentication for device API routes, with Role-Based Access Control (RBAC).
 *   **Deployment:** Supports VM deployment and GitHub Actions for CI/CD. Development environments sync firmware metadata from production.
 *   **Browser-Based Flashing:** Integrates ESP Web Tools for direct USB flashing.

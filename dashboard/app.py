@@ -1975,6 +1975,7 @@ def ota_logs():
     # Get query parameters
     device_id = request.args.get('device_id')
     status = request.args.get('status')
+    update_type = request.args.get('update_type')  # 'ota' or 'usb_flash'
     start_date = request.args.get('start_date')  # ISO 8601 format
     end_date = request.args.get('end_date')  # ISO 8601 format
     limit = request.args.get('limit', type=int, default=50)
@@ -1988,6 +1989,8 @@ def ota_logs():
         query = query.filter_by(device_id=device_id)
     if status:
         query = query.filter_by(status=status)
+    if update_type:
+        query = query.filter_by(update_type=update_type)
     
     # Date range filters
     if start_date:
@@ -2102,6 +2105,150 @@ def ota_stats():
         'recent_updates_7days': recent_updates,
         'failed_devices_24h': failed_devices
     })
+
+
+@app.route('/api/commands', methods=['GET'])
+@login_required
+def get_commands():
+    """Get command history with optional filters"""
+    from models import CommandLog
+    from sqlalchemy import desc
+    from datetime import datetime
+    
+    # Get query parameters
+    device_id = request.args.get('device_id')
+    command_type = request.args.get('command_type')
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    limit = request.args.get('limit', type=int, default=50)
+    offset = request.args.get('offset', type=int, default=0)
+    
+    # Build query
+    query = CommandLog.query
+    
+    # Apply filters
+    if device_id:
+        query = query.filter_by(device_id=device_id)
+    if command_type:
+        query = query.filter_by(command_type=command_type)
+    
+    # Date range filters
+    if start_date:
+        try:
+            start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+            query = query.filter(CommandLog.sent_at >= start_dt)
+        except (ValueError, AttributeError):
+            return jsonify({'error': 'Invalid start_date format. Use ISO 8601.'}), 400
+    
+    if end_date:
+        try:
+            end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+            query = query.filter(CommandLog.sent_at <= end_dt)
+        except (ValueError, AttributeError):
+            return jsonify({'error': 'Invalid end_date format. Use ISO 8601.'}), 400
+    
+    # Get total count before pagination
+    total_count = query.count()
+    
+    # Order by most recent first, apply pagination
+    commands = query.order_by(desc(CommandLog.sent_at)).limit(limit).offset(offset).all()
+    
+    return jsonify({
+        'commands': [cmd.to_dict() for cmd in commands],
+        'count': len(commands),
+        'total': total_count,
+        'offset': offset,
+        'limit': limit
+    })
+
+
+@app.route('/api/commands', methods=['POST'])
+@login_required
+def send_command():
+    """Send a command to a device and log it"""
+    from models import CommandLog, Device
+    import json
+    
+    data = request.json
+    if not data:
+        return jsonify({'error': 'JSON body required'}), 400
+    
+    device_id = data.get('device_id')
+    command_type = data.get('command_type')
+    parameters = data.get('parameters', {})
+    
+    if not device_id:
+        return jsonify({'error': 'device_id is required'}), 400
+    
+    if not command_type:
+        return jsonify({'error': 'command_type is required'}), 400
+    
+    valid_commands = ['temp_offset', 'rollback', 'restart', 'snapshot']
+    if command_type not in valid_commands:
+        return jsonify({'error': f'Invalid command_type. Must be one of: {valid_commands}'}), 400
+    
+    # Validate device exists
+    device = Device.query.filter_by(device_id=device_id).first()
+    if not device:
+        return jsonify({'error': f'Device {device_id} not found'}), 404
+    
+    # Validate parameters for temp_offset
+    if command_type == 'temp_offset':
+        temp_offset = parameters.get('temp_offset')
+        if temp_offset is None:
+            return jsonify({'error': 'temp_offset parameter is required'}), 400
+        try:
+            temp_offset = float(temp_offset)
+            if temp_offset < -20 or temp_offset > 20:
+                return jsonify({'error': 'temp_offset must be between -20 and 20'}), 400
+        except (ValueError, TypeError):
+            return jsonify({'error': 'temp_offset must be a number'}), 400
+    
+    # Send command via MQTT
+    try:
+        from mqtt_subscriber import get_mqtt_client
+        mqtt_client = get_mqtt_client()
+        
+        if mqtt_client is None:
+            raise Exception("MQTT client not connected")
+        
+        if command_type == 'temp_offset':
+            # Send config command with temp_offset
+            topic = f"norrtek-iot/config/{device_id}"
+            payload = json.dumps({'temp_offset': parameters.get('temp_offset')})
+            mqtt_client.publish(topic, payload, qos=1)
+        elif command_type == 'rollback':
+            topic = f"norrtek-iot/command/{device_id}"
+            mqtt_client.publish(topic, 'rollback', qos=1)
+        elif command_type == 'restart':
+            topic = f"norrtek-iot/command/{device_id}"
+            mqtt_client.publish(topic, 'restart', qos=1)
+        elif command_type == 'snapshot':
+            topic = f"norrtek-iot/command/{device_id}"
+            mqtt_client.publish(topic, 'snapshot', qos=1)
+        
+        status = 'sent'
+        error_message = None
+    except Exception as e:
+        status = 'failed'
+        error_message = str(e)
+    
+    # Log the command
+    command_log = CommandLog(
+        device_id=device_id,
+        command_type=command_type,
+        parameters=parameters if parameters else None,
+        status=status,
+        error_message=error_message
+    )
+    db.session.add(command_log)
+    db.session.commit()
+    
+    if status == 'failed':
+        return jsonify({'error': error_message, 'command': command_log.to_dict()}), 500
+    
+    return jsonify({'success': True, 'command': command_log.to_dict()}), 201
+
 
 if __name__ == '__main__':
     # Development mode - debug enabled
