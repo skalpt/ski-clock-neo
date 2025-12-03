@@ -258,12 +258,13 @@ h3 {
 
 .device-header-left {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
 }
 
 .device-header-text {
     display: flex;
     flex-direction: column;
+    line-height: 1.2;
 }
 
 .device-subheading {

@@ -427,6 +427,7 @@ class EventLog(db.Model):
         return {
             'id': self.id,
             'device_id': self.device_id,
+            'product': self.device.product if self.device else None,
             'event_type': self.event_type,
             'event_data': self.event_data,
             'timestamp': self.timestamp.isoformat()
