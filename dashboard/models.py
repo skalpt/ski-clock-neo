@@ -110,12 +110,13 @@ class FirmwareVersion(db.Model):
     __tablename__ = 'firmware_versions'
     
     id = db.Column(db.Integer, primary_key=True)
+    product = db.Column(db.String(64), nullable=False, index=True, default='ski-clock-neo')
     platform = db.Column(db.String(32), nullable=False, index=True)
     version = db.Column(db.String(32), nullable=False)
     
-    # Composite unique constraint: one record per platform+version combination
+    # Composite unique constraint: one record per product+platform+version combination
     __table_args__ = (
-        db.UniqueConstraint('platform', 'version', name='uix_platform_version'),
+        db.UniqueConstraint('product', 'platform', 'version', name='uix_product_platform_version'),
     )
     filename = db.Column(db.String(128), nullable=False)
     size = db.Column(db.Integer, nullable=False)
@@ -144,11 +145,12 @@ class FirmwareVersion(db.Model):
     partitions_local_path = db.Column(db.String(256))
     
     def __repr__(self):
-        return f'<FirmwareVersion {self.platform} v{self.version}>'
+        return f'<FirmwareVersion {self.product}/{self.platform} v{self.version}>'
     
     def to_dict(self):
         """Convert firmware version to dictionary for API responses"""
         result = {
+            'product': self.product,
             'version': self.version,
             'filename': self.filename,
             'size': self.size,
@@ -209,6 +211,7 @@ class Device(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     device_id = db.Column(db.String(32), unique=True, nullable=False, index=True)
+    product = db.Column(db.String(64), nullable=False, index=True, default='ski-clock-neo')
     board_type = db.Column(db.String(32), nullable=False)
     firmware_version = db.Column(db.String(32))
     first_seen = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
@@ -228,7 +231,7 @@ class Device(db.Model):
     event_logs = db.relationship('EventLog', back_populates='device', cascade='all, delete-orphan')
     
     def __repr__(self):
-        return f'<Device {self.device_id} ({self.board_type})>'
+        return f'<Device {self.device_id} ({self.product}/{self.board_type})>'
     
     def to_dict(self, online_threshold_minutes=15):
         """Convert device to dictionary with online/offline/degraded status"""
@@ -276,6 +279,7 @@ class Device(db.Model):
         
         return {
             'device_id': self.device_id,
+            'product': self.product,
             'board': self.board_type,
             'version': self.firmware_version,
             'first_seen': self.first_seen.isoformat(),
