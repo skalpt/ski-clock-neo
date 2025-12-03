@@ -5,6 +5,7 @@ import json
 import io
 import threading
 import time
+import requests
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Optional, Any
@@ -374,6 +375,124 @@ def save_version_to_db(platform: str, version_info: dict, product: str):
     # Refresh cache for this product/platform and all aliases
     refresh_firmware_cache(platform, product)
 
+def _sync_single_firmware(product: str, platform: str, fw_data: dict) -> int:
+    """Helper function to sync a single firmware entry from production.
+    
+    Returns 1 if synced, 0 if already up to date.
+    """
+    local_fw = FirmwareVersion.query.filter_by(product=product, platform=platform).first()
+    if local_fw and local_fw.version == fw_data.get('version'):
+        return 0
+    
+    version_info = {
+        'version': fw_data.get('version', 'Unknown'),
+        'filename': fw_data.get('filename', ''),
+        'size': fw_data.get('size', 0),
+        'sha256': fw_data.get('sha256', ''),
+        'download_url': fw_data.get('download_url', ''),
+        'storage': fw_data.get('storage', 'object_storage'),
+        'object_path': fw_data.get('object_path'),
+        'object_name': fw_data.get('object_name'),
+        'local_path': fw_data.get('local_path'),
+        
+        'bootloader_filename': fw_data.get('bootloader', {}).get('filename') if fw_data.get('bootloader') else None,
+        'bootloader_size': fw_data.get('bootloader', {}).get('size') if fw_data.get('bootloader') else None,
+        'bootloader_sha256': fw_data.get('bootloader', {}).get('sha256') if fw_data.get('bootloader') else None,
+        
+        'partitions_filename': fw_data.get('partitions', {}).get('filename') if fw_data.get('partitions') else None,
+        'partitions_size': fw_data.get('partitions', {}).get('size') if fw_data.get('partitions') else None,
+        'partitions_sha256': fw_data.get('partitions', {}).get('sha256') if fw_data.get('partitions') else None
+    }
+    save_version_to_db(platform, version_info, product)
+    return 1
+
+def sync_firmware_from_production():
+    """Sync firmware metadata from production to dev database (dev environment only)"""
+    env = os.getenv('REPL_DEPLOYMENT_TYPE', 'dev')
+    if env != 'dev':
+        return
+    
+    production_url = os.getenv('PRODUCTION_API_URL')
+    if not production_url:
+        print("⚠ PRODUCTION_API_URL not set, skipping firmware sync from production")
+        return
+    
+    try:
+        headers = {}
+        if DOWNLOAD_API_KEY:
+            headers['X-API-Key'] = DOWNLOAD_API_KEY
+        
+        response = requests.get(f"{production_url}/api/firmware-metadata", headers=headers, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        
+        if 'firmwares' not in data:
+            print("⚠ No firmware data in production response")
+            return
+        
+        first_key = next(iter(data['firmwares']), None)
+        first_value = data['firmwares'].get(first_key) if first_key else None
+        is_new_format = isinstance(first_value, dict) and first_value is not None and 'version' not in first_value
+        
+        synced_count = 0
+        with app.app_context():
+            if is_new_format:
+                for product, platforms in data['firmwares'].items():
+                    if platforms is None or not isinstance(platforms, dict):
+                        continue
+                    
+                    for platform, fw_data in platforms.items():
+                        if fw_data is None or not isinstance(fw_data, dict):
+                            continue
+                        
+                        synced_count += _sync_single_firmware(product, platform, fw_data)
+            else:
+                legacy_product = 'ski-clock-neo'
+                print(f"⚠ Production using legacy format, mapping to product '{legacy_product}'")
+                
+                for platform, fw_data in data['firmwares'].items():
+                    if fw_data is None or not isinstance(fw_data, dict):
+                        continue
+                    
+                    synced_count += _sync_single_firmware(legacy_product, platform, fw_data)
+            
+            if synced_count > 0:
+                load_versions_from_db()
+                print(f"✓ Synced {synced_count} firmware version(s) from production")
+    
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 401:
+            print(f"⚠ Production sync authentication failed (401). Check DOWNLOAD_API_KEY in config.")
+        else:
+            print(f"⚠ Production sync HTTP error: {e.response.status_code} - {e}")
+    except requests.exceptions.RequestException as e:
+        print(f"⚠ Failed to sync from production: {e}")
+    except Exception as e:
+        print(f"⚠ Error syncing firmware from production: {e}")
+
+def start_production_sync_thread():
+    """Start background thread that periodically syncs firmware from production (dev only)"""
+    env = os.getenv('REPL_DEPLOYMENT_TYPE', 'dev')
+    if env != 'dev':
+        return
+    
+    production_url = os.getenv('PRODUCTION_API_URL')
+    if not production_url:
+        return
+    
+    def sync_loop():
+        while True:
+            try:
+                time.sleep(300)  # 5 minutes
+                sync_firmware_from_production()
+            except Exception as e:
+                print(f"⚠ Error in production sync thread: {e}")
+                time.sleep(60)
+    
+    thread = threading.Thread(target=sync_loop, daemon=True)
+    thread.start()
+    print("✓ Started production sync thread (every 5 minutes)")
+
 def generate_user_download_token(user_id, platform, product, max_age=3600, version=None):
     """Generate a user-scoped signed token for firmware downloads (default 1-hour expiration)
     
@@ -452,6 +571,9 @@ with app.app_context():
     
     # Load firmware versions from database (must be inside app context)
     load_versions_from_db()
+    
+    # Sync firmware from production on startup (dev environment only)
+    sync_firmware_from_production()
 
 from mqtt_subscriber import start_mqtt_subscriber, stop_mqtt_subscriber, set_app_context
 import atexit
@@ -461,6 +583,9 @@ set_app_context(app)
 
 # Start MQTT subscriber in background thread (must be after db init)
 mqtt_client = start_mqtt_subscriber()
+
+# Start production sync thread (dev environment only)
+start_production_sync_thread()
 
 # Register cleanup handler to stop MQTT subscriber on app shutdown
 atexit.register(stop_mqtt_subscriber)
