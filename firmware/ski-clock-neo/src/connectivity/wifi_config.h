@@ -97,7 +97,8 @@ void initWiFi() {
   config.menuItems = AC_MENUITEM_CONFIGNEW | AC_MENUITEM_OPENSSIDS | AC_MENUITEM_RESET | AC_MENUITEM_DEVINFO | AC_MENUITEM_DELETESSID;
 
   // Minimum RSSI to connect (signal strength threshold)
-  config.minRSSI = -80;
+  // Set to -127 to accept any visible signal, no matter how weak
+  config.minRSSI = -127;
 
   // Disable auto-reset when the user clicks "Disconnect" in the portal menu
   config.autoReset = false;
