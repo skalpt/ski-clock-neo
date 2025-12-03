@@ -594,7 +594,7 @@ def history():
 @app.route('/api')
 def api_index():
     return jsonify({
-        'service': 'Ski Clock Firmware Server',
+        'service': 'Norrtek IoT Firmware Server',
         'status': 'running',
         'supported_platforms': SUPPORTED_PLATFORMS,
         'endpoints': {
@@ -704,7 +704,7 @@ def firmware_manifest(platform):
     
     # Create ESP Web Tools manifest
     manifest = {
-        "name": f"Ski Clock Neo - {platform.upper()} ({flash_mode.upper()} Flash)",
+        "name": f"Norrtek IoT - {platform.upper()} ({flash_mode.upper()} Flash)",
         "version": version_info['version'],
         "new_install_prompt_erase": True,
         "builds": [

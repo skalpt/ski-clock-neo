@@ -1,6 +1,6 @@
-# Ski Clock Neo - Dashboard Server
+# Norrtek IoT - Dashboard Server
 
-Flask-based firmware update server and device monitoring dashboard for ESP32/ESP8266 devices with MQTT telemetry, PostgreSQL persistence, and browser-based flashing.
+Flask-based firmware update server and device monitoring dashboard for ESP32/ESP8266 devices with MQTT telemetry, PostgreSQL persistence, and browser-based flashing. Supports multiple products with independent firmware versioning.
 
 ## Features
 
