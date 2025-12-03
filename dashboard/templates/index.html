@@ -997,7 +997,21 @@
         
         if (diffSeconds < 60) return `${diffSeconds}s ago`;
         if (diffSeconds < 3600) return `${Math.floor(diffSeconds / 60)}m ago`;
-        return date.toLocaleTimeString();
+        if (diffSeconds < 86400) return `${Math.floor(diffSeconds / 3600)}h ago`;
+        
+        const isToday = date.toDateString() === now.toDateString();
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const isYesterday = date.toDateString() === yesterday.toDateString();
+        
+        if (isToday) {
+            return `Today ${date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}`;
+        } else if (isYesterday) {
+            return `Yesterday ${date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}`;
+        } else {
+            return date.toLocaleDateString([], {month: 'short', day: 'numeric'}) + ' ' + 
+                   date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+        }
     }
 
     function updateLiveTimestamps() {

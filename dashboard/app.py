@@ -1392,10 +1392,12 @@ def devices():
     all_devices = Device.query.all()
     device_list = [device.to_dict(online_threshold_minutes=15) for device in all_devices]
     
-    # Sort by online status (online first) then by last seen (newest first)
-    device_list.sort(key=lambda d: (not d['online'], d['last_seen']), reverse=True)
+    # Sort: online devices alphabetically by device_id, offline devices by last_seen (most recent first)
+    online_devices = sorted([d for d in device_list if d['online']], key=lambda d: d['device_id'].lower())
+    offline_devices = sorted([d for d in device_list if not d['online']], key=lambda d: d['last_seen'], reverse=True)
+    device_list = online_devices + offline_devices
     
-    online_count = sum(1 for d in device_list if d['online'])
+    online_count = len(online_devices)
     
     return jsonify({
         'devices': device_list,
