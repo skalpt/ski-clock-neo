@@ -577,7 +577,8 @@ def handle_ota_complete(client, payload, topic):
                 db.session.commit()
                 
                 status_emoji = "✅" if success else "❌"
-                print(f"{status_emoji} OTA update {log.status}: {log.device_id} ({log.old_version} → {log.new_version})")
+                error_info = f" - {error_message}" if error_message else ""
+                print(f"{status_emoji} OTA update {log.status}: {log.device_id} ({log.old_version} → {log.new_version}){error_info}")
             else:
                 print(f"⚠ No OTA log found for device: {device_id}")
 

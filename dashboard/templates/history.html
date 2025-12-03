@@ -752,7 +752,14 @@
                                 
                                 const typeIcon = log.update_type === 'usb_flash' ? '🔌' : '📡';
                                 const typeName = log.update_type === 'usb_flash' ? 'USB' : 'OTA';
-                                const logLink = log.has_log ? `<a href="/api/ota-logs/${log.id}/log" target="_blank" class="log-link">View</a>` : '-';
+                                
+                                // Show error message for failed OTA updates, or log link for USB flash
+                                let logContent = '-';
+                                if (log.has_log) {
+                                    logContent = `<a href="/api/ota-logs/${log.id}/log" target="_blank" class="log-link">View</a>`;
+                                } else if (log.error_message) {
+                                    logContent = `<span class="error-text" title="${escapeHtml(log.error_message)}">${escapeHtml(log.error_message)}</span>`;
+                                }
                                 
                                 return `
                                     <tr>
@@ -764,7 +771,7 @@
                                         <td>${escapeHtml(log.new_version || '-')}</td>
                                         <td>${progressBar}</td>
                                         <td><span class="status-badge ${statusClass}">${log.status}</span></td>
-                                        <td>${logLink}</td>
+                                        <td>${logContent}</td>
                                     </tr>
                                 `;
                             }).join('')}
