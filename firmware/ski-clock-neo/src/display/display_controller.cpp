@@ -220,6 +220,15 @@ void onTimeChange(uint8_t flags) {
 // ROW UPDATE HELPERS
 // ============================================================================
 
+// Helper: Check if buffer has valid content (non-empty, non-whitespace)
+static bool hasValidContent(const char* buf) {
+  if (!buf || buf[0] == '\0') return false;
+  for (const char* p = buf; *p; p++) {
+    if (*p != ' ') return true;
+  }
+  return false;
+}
+
 // Set row 0 content based on current mode (does not trigger render)
 // Returns true if content actually changed
 bool updateRow0Content() {
@@ -227,19 +236,43 @@ bool updateRow0Content() {
   
   if (currentMode == MODE_NORMAL) {
     // Normal mode: alternate time/date
-    if (!isTimeSynced()) {
+    bool synced = isTimeSynced();
+    DEBUG_PRINT("[ROW0] isTimeSynced=");
+    DEBUG_PRINTLN(synced ? "true" : "false");
+    
+    if (!synced) {
+      DEBUG_PRINTLN("[ROW0] Not synced, using placeholder ~~.~~");
       return setTextNoRender(0, "~~.~~");
     }
     
     if (showingTime) {
-      if (formatTime(buffer, sizeof(buffer))) {
+      bool fmtOk = formatTime(buffer, sizeof(buffer));
+      DEBUG_PRINT("[ROW0] formatTime returned=");
+      DEBUG_PRINT(fmtOk ? "true" : "false");
+      DEBUG_PRINT(", buffer='");
+      DEBUG_PRINT(buffer);
+      DEBUG_PRINT("', len=");
+      DEBUG_PRINTLN(strlen(buffer));
+      
+      if (fmtOk && hasValidContent(buffer)) {
         return setTextNoRender(0, buffer);
       } else {
+        DEBUG_PRINTLN("[ROW0] Empty/invalid buffer, forcing ~~.~~");
         return setTextNoRender(0, "~~.~~");
       }
     } else {
-      if (formatDate(buffer, sizeof(buffer))) {
+      bool fmtOk = formatDate(buffer, sizeof(buffer));
+      DEBUG_PRINT("[ROW0] formatDate returned=");
+      DEBUG_PRINT(fmtOk ? "true" : "false");
+      DEBUG_PRINT(", buffer='");
+      DEBUG_PRINT(buffer);
+      DEBUG_PRINTLN("'");
+      
+      if (fmtOk && hasValidContent(buffer)) {
         return setTextNoRender(0, buffer);
+      } else {
+        DEBUG_PRINTLN("[ROW0] Empty/invalid date, forcing ~~.~~");
+        return setTextNoRender(0, "~~.~~");
       }
     }
   } else if (currentMode == MODE_COUNTDOWN || currentMode == MODE_TIMER) {
@@ -250,19 +283,21 @@ bool updateRow0Content() {
     
     switch (timerTopRowState) {
       case 0: // Time
-        if (formatTime(buffer, sizeof(buffer))) {
+        if (formatTime(buffer, sizeof(buffer)) && hasValidContent(buffer)) {
           return setTextNoRender(0, buffer);
         } else {
           return setTextNoRender(0, "~~.~~");
         }
         break;
       case 1: // Date
-        if (formatDate(buffer, sizeof(buffer))) {
+        if (formatDate(buffer, sizeof(buffer)) && hasValidContent(buffer)) {
           return setTextNoRender(0, buffer);
+        } else {
+          return setTextNoRender(0, "~~.~~");
         }
         break;
       case 2: // Temperature
-        if (formatTemperature(buffer, sizeof(buffer))) {
+        if (formatTemperature(buffer, sizeof(buffer)) && hasValidContent(buffer)) {
           return setTextNoRender(0, buffer);
         } else {
           return setTextNoRender(0, "~~*C");
@@ -277,19 +312,21 @@ bool updateRow0Content() {
     
     switch (timerTopRowState) {
       case 0: // Time
-        if (formatTime(buffer, sizeof(buffer))) {
+        if (formatTime(buffer, sizeof(buffer)) && hasValidContent(buffer)) {
           return setTextNoRender(0, buffer);
         } else {
           return setTextNoRender(0, "~~.~~");
         }
         break;
       case 1: // Date
-        if (formatDate(buffer, sizeof(buffer))) {
+        if (formatDate(buffer, sizeof(buffer)) && hasValidContent(buffer)) {
           return setTextNoRender(0, buffer);
+        } else {
+          return setTextNoRender(0, "~~.~~");
         }
         break;
       case 2: // Temperature
-        if (formatTemperature(buffer, sizeof(buffer))) {
+        if (formatTemperature(buffer, sizeof(buffer)) && hasValidContent(buffer)) {
           return setTextNoRender(0, buffer);
         } else {
           return setTextNoRender(0, "~~*C");
