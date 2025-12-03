@@ -82,6 +82,7 @@ void initNeoPixels() {
   #endif
 
   FastLED.setBrightness(BRIGHTNESS);
+  FastLED.setDither(0);  // Disable temporal dithering to prevent color artifacts at low brightness
   
   // Warmup sequence: WS2812 strips need a "priming" frame after cold power-up
   // to reliably latch data. Without this, the first real frame can glitch,
