@@ -2149,6 +2149,7 @@ def usb_flash_log():
     
     session_id = str(uuid.uuid4())
     
+    now = datetime.now(timezone.utc)
     log = OTAUpdateLog(
         session_id=session_id,
         device_id=None,
@@ -2161,7 +2162,8 @@ def usb_flash_log():
         download_progress=100 if success else 0,
         log_content=f"Flash mode: {flash_mode}\n---\n{log_content}",
         error_message=error_message,
-        completed_at=datetime.now(timezone.utc)
+        started_at=now,
+        completed_at=now
     )
     db.session.add(log)
     db.session.commit()

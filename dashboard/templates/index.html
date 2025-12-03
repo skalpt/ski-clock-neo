@@ -210,6 +210,7 @@
     let currentFlashInfo = null;
     let flashLogBuffer = [];
     let flashInactivityTimer = null;
+    let flashSubmitted = false; // Prevent double submits
     const FLASH_INACTIVITY_TIMEOUT = 5000; // 5 seconds of no log activity = flash ended
     
     // Success/error patterns in esptool output
@@ -298,6 +299,14 @@
     // Send flash log to server
     async function submitFlashLog(success, errorMessage) {
         if (!currentFlashInfo) return;
+        if (flashSubmitted) return; // Prevent double submit
+        flashSubmitted = true;
+        
+        // Clear inactivity timer to prevent parallel submits
+        if (flashInactivityTimer) {
+            clearTimeout(flashInactivityTimer);
+            flashInactivityTimer = null;
+        }
         
         const logContent = flashLogBuffer.join('\n');
         console.log('%c[USB Flash]', 'color: #2196F3', 'Submitting flash log:', 
@@ -340,6 +349,9 @@
         }
         
         flashInactivityTimer = setTimeout(() => {
+            // Guard against race conditions - if already submitted, skip
+            if (flashSubmitted || !currentFlashInfo) return;
+            
             // No log activity for a while, check if we can determine the result
             const result = detectFlashResult();
             if (result) {
@@ -371,13 +383,13 @@
         
         // Check if this message indicates completion
         const result = detectFlashResult();
-        if (result) {
-            // Clear the inactivity timer and submit immediately
+        if (result && !flashSubmitted) {
+            // Clear inactivity timer immediately to prevent race conditions
             if (flashInactivityTimer) {
                 clearTimeout(flashInactivityTimer);
                 flashInactivityTimer = null;
             }
-            // Small delay to capture any final messages
+            // Small delay to capture any final messages, then submit
             setTimeout(() => submitFlashLog(result.success, result.error), 500);
         }
     }
@@ -387,6 +399,7 @@
         // Extract flash info from the button
         currentFlashInfo = extractFlashInfoFromButton(btn);
         flashLogBuffer = [];
+        flashSubmitted = false; // Reset for new session
         
         console.log('%c[USB Flash]', 'color: #FF9800; font-weight: bold', 
             'Flash started:', currentFlashInfo.platform, currentFlashInfo.product);
