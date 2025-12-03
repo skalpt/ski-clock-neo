@@ -3,9 +3,7 @@
 
 #include "../../ski-clock-neo_config.h" // Import display dimensions from shared config
 #include <FastLED.h>                    // FastLED library for LED control
-#include "font_5x7.h"                   // Font data for text rendering
-#include "../core/debug.h"              // Debug utilities
-#include "display_core.h"               // Core display functionality
+#include <norrtek_iot.h>                // Library: display_core, debug, font_5x7
 
 extern CRGB* rowLeds[DISPLAY_ROWS];
 extern uint16_t rowPixelCounts[DISPLAY_ROWS];

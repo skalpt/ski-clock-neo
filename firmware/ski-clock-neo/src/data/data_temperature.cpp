@@ -15,9 +15,7 @@
 #include "data_temperature.h"              // This file's header
 #include "../../ski-clock-neo_config.h"    // For TEMPERATURE_PIN definition
 #include "../display/display_controller.h" // For display callback
-#include "../core/event_log.h"             // For logging temperature events
-#include "../core/timer_helpers.h"         // For timer management
-#include "../core/debug.h"                 // For debug logging
+#include <norrtek_iot.h>                   // Library: event_log, timer_helpers, debug
 #include <OneWire.h>                       // OneWire library for DS18B20 communication
 #include <DallasTemperature.h>             // DallasTemperature library for DS18B20
 
