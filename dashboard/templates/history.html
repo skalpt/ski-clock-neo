@@ -15,7 +15,7 @@
     <div class="card">
         <div class="tabs-container">
             <button class="tab-btn active" data-tab="snapshots">📸 Snapshots</button>
-            <button class="tab-btn" data-tab="updates">📦 Updates</button>
+            <button class="tab-btn" data-tab="updates">📦 OTA Updates</button>
             <button class="tab-btn" data-tab="events">📋 Events</button>
             <button class="tab-btn" data-tab="commands">⚙️ Commands</button>
         </div>
@@ -38,14 +38,6 @@
                 </select>
             </div>
             
-            <div class="form-group flex-1 min-width-150 mb-0 update-type-filter-group" style="display: none;">
-                <label for="update-type-filter">Update Type</label>
-                <select id="update-type-filter">
-                    <option value="">All Types</option>
-                    <option value="ota">OTA (Over-the-Air)</option>
-                    <option value="usb_flash">USB Flash</option>
-                </select>
-            </div>
             
             <div class="form-group flex-1 min-width-150 mb-0 command-type-filter-group" style="display: none;">
                 <label for="command-type-filter">Command Type</label>
@@ -317,7 +309,6 @@
         
         // Show/hide filter groups based on tab
         document.querySelector('.status-filter-group').style.display = tabName === 'updates' ? 'block' : 'none';
-        document.querySelector('.update-type-filter-group').style.display = tabName === 'updates' ? 'block' : 'none';
         document.querySelector('.event-type-filter-group').style.display = tabName === 'events' ? 'block' : 'none';
         document.querySelector('.command-type-filter-group').style.display = tabName === 'commands' ? 'block' : 'none';
         
@@ -706,9 +697,6 @@
             if (currentFilters.status) {
                 url += `&status=${encodeURIComponent(currentFilters.status)}`;
             }
-            if (currentFilters.update_type) {
-                url += `&update_type=${encodeURIComponent(currentFilters.update_type)}`;
-            }
             if (currentFilters.start_date) {
                 url += `&start_date=${encodeURIComponent(currentFilters.start_date)}`;
             }
@@ -731,7 +719,6 @@
                         <thead>
                             <tr>
                                 <th>Timestamp</th>
-                                <th>Type</th>
                                 <th>Device ID</th>
                                 <th>Platform</th>
                                 <th>Old Version</th>
@@ -750,10 +737,7 @@
                                     </div>
                                 ` : `${log.download_progress}%`;
                                 
-                                const typeIcon = log.update_type === 'usb_flash' ? '🔌' : '📡';
-                                const typeName = log.update_type === 'usb_flash' ? 'USB' : 'OTA';
-                                
-                                // Show error message for failed OTA updates, or log link for USB flash
+                                // Show error message or log link
                                 let logContent = '-';
                                 if (log.has_log) {
                                     logContent = `<a href="/api/ota-logs/${log.id}/log" target="_blank" class="log-link">View</a>`;
@@ -764,7 +748,6 @@
                                 return `
                                     <tr>
                                         <td>${new Date(log.started_at).toLocaleString()}</td>
-                                        <td><span class="type-badge ${log.update_type}">${typeIcon} ${typeName}</span></td>
                                         <td>${escapeHtml(log.device_id || '-')}</td>
                                         <td>${escapeHtml(log.platform || '-')}</td>
                                         <td>${escapeHtml(log.old_version || '-')}</td>
@@ -1194,7 +1177,6 @@
     function applyFilters() {
         const deviceId = document.getElementById('device-filter').value;
         const status = document.getElementById('status-filter').value;
-        const updateType = document.getElementById('update-type-filter').value;
         const commandType = document.getElementById('command-type-filter').value;
         const eventType = document.getElementById('event-type-filter').value;
         const dateFrom = document.getElementById('date-from').value;
@@ -1205,7 +1187,6 @@
         currentFilters = {};
         if (deviceId) currentFilters.device_id = deviceId;
         if (status) currentFilters.status = status;
-        if (updateType) currentFilters.update_type = updateType;
         if (commandType) currentFilters.command_type = commandType;
         if (eventType) currentFilters.event_type = eventType;
         if (dateFrom) currentFilters.start_date = new Date(dateFrom).toISOString();
@@ -1219,7 +1200,6 @@
     function clearFilters() {
         document.getElementById('device-filter').value = '';
         document.getElementById('status-filter').value = '';
-        document.getElementById('update-type-filter').value = '';
         document.getElementById('command-type-filter').value = '';
         document.getElementById('event-type-filter').value = '';
         document.getElementById('date-from').value = '';
