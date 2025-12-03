@@ -80,7 +80,7 @@ bool performOTAUpdate(String version) {
   // Enter LED override mode for OTA progress indication
   beginLedOverride(LED_OTA_PROGRESS);
   
-  String binaryUrl = String(UPDATE_SERVER_URL) + "/api/firmware/" + getPlatform();
+  String binaryUrl = String(UPDATE_SERVER_URL) + "/api/firmware/" + getPlatform() + "?product=" + PRODUCT_NAME;
   
   DEBUG_PRINTLN("===========================================");
   DEBUG_PRINTLN("OTA UPDATE STARTING");
@@ -144,7 +144,9 @@ bool performOTAUpdate(String version) {
   if (httpCode != HTTP_CODE_OK) {
     DEBUG_PRINT("HTTP GET failed: ");
     DEBUG_PRINTLN(httpCode);
-    publishOTAComplete(false, "HTTP GET failed");
+    char errorMsg[64];
+    snprintf(errorMsg, sizeof(errorMsg), "HTTP GET failed: %d", httpCode);
+    publishOTAComplete(false, errorMsg);
     http.end();
     if (secureClientPtr) delete secureClientPtr;
     if (plainClientPtr) delete plainClientPtr;
@@ -314,7 +316,9 @@ bool performOTAUpdate(String version) {
   if (httpCode != HTTP_CODE_OK) {
     DEBUG_PRINT("HTTP GET failed: ");
     DEBUG_PRINTLN(httpCode);
-    publishOTAComplete(false, "HTTP GET failed");
+    char errorMsg[64];
+    snprintf(errorMsg, sizeof(errorMsg), "HTTP GET failed: %d", httpCode);
+    publishOTAComplete(false, errorMsg);
     http.end();
     if (secureClientPtr) delete secureClientPtr;
     if (plainClientPtr) delete plainClientPtr;
