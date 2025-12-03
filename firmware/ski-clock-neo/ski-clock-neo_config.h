@@ -3,6 +3,9 @@
 
 #include <Arduino.h>
 
+// Product identification
+#define PRODUCT_NAME "ski-clock-neo"
+
 // Hardware pin configuration
 #define DISPLAY_PIN_ROW0 4       // Display row 0 on GPIO4
 #define DISPLAY_PIN_ROW1 3       // Display row 1 on GPIO3

@@ -13,9 +13,10 @@
 // INCLUDES
 // ============================================================================
 
-#include "ota_update.h"            // This file's header
-#include "../core/led_indicator.h" // For LED status patterns when OTA is in progress
-#include "mqtt_client.h"           // For publishing OTA progress to MQTT
+#include "ota_update.h"               // This file's header
+#include "../../ski-clock-neo_config.h" // For PRODUCT_NAME
+#include "../core/led_indicator.h"    // For LED status patterns when OTA is in progress
+#include "mqtt_client.h"              // For publishing OTA progress to MQTT
 
 // ============================================================================
 // STATE VARIABLES
@@ -31,7 +32,8 @@ bool otaUpdateInProgress = false;
 void publishOTAStart(String newVersion) {
   static char payload[256];
   snprintf(payload, sizeof(payload),
-    "{\"platform\":\"%s\",\"old_version\":\"%s\",\"new_version\":\"%s\"}",
+    "{\"product\":\"%s\",\"platform\":\"%s\",\"old_version\":\"%s\",\"new_version\":\"%s\"}",
+    PRODUCT_NAME,
     getPlatform().c_str(),
     FIRMWARE_VERSION,
     newVersion.c_str()

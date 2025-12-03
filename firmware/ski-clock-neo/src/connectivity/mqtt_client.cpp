@@ -28,14 +28,14 @@
 const uint16_t MQTT_PORT = 8883;  // TLS port for HiveMQ Cloud
 
 // MQTT topics (device-specific topics use buildDeviceTopic() which auto-adds trailing slash)
-const char MQTT_TOPIC_HEARTBEAT[] = "skiclock/heartbeat";
-const char MQTT_TOPIC_VERSION_RESPONSE[] = "skiclock/version/response";
-const char MQTT_TOPIC_COMMAND[] = "skiclock/command";
-const char MQTT_TOPIC_OTA_START[] = "skiclock/ota/start";
-const char MQTT_TOPIC_OTA_PROGRESS[] = "skiclock/ota/progress";
-const char MQTT_TOPIC_OTA_COMPLETE[] = "skiclock/ota/complete";
-const char MQTT_TOPIC_DISPLAY_SNAPSHOT[] = "skiclock/display/snapshot";
-const char MQTT_TOPIC_EVENTS[] = "skiclock/event";
+const char MQTT_TOPIC_HEARTBEAT[] = "norrtek-iot/heartbeat";
+const char MQTT_TOPIC_VERSION_RESPONSE[] = "norrtek-iot/version/response";
+const char MQTT_TOPIC_COMMAND[] = "norrtek-iot/command";
+const char MQTT_TOPIC_OTA_START[] = "norrtek-iot/ota/start";
+const char MQTT_TOPIC_OTA_PROGRESS[] = "norrtek-iot/ota/progress";
+const char MQTT_TOPIC_OTA_COMPLETE[] = "norrtek-iot/ota/complete";
+const char MQTT_TOPIC_DISPLAY_SNAPSHOT[] = "norrtek-iot/display/snapshot";
+const char MQTT_TOPIC_EVENTS[] = "norrtek-iot/event";
 
 // Timing constants
 const unsigned long HEARTBEAT_INTERVAL = 60000;           // 60 seconds
@@ -344,7 +344,8 @@ void publishHeartbeat() {
   // Build JSON payload
   static char payload[384];
   snprintf(payload, sizeof(payload),
-    "{\"board\":\"%s\",\"version\":\"%s\",\"uptime\":%lu,\"rssi\":%ld,\"free_heap\":%lu,\"ssid\":\"%s\",\"ip\":\"%s\"}",
+    "{\"product\":\"%s\",\"board\":\"%s\",\"version\":\"%s\",\"uptime\":%lu,\"rssi\":%ld,\"free_heap\":%lu,\"ssid\":\"%s\",\"ip\":\"%s\"}",
+    PRODUCT_NAME,
     getBoardType().c_str(),
     FIRMWARE_VERSION,
     millis() / 1000,
