@@ -39,9 +39,6 @@ uint8_t fastledRenderBuffer[MAX_DISPLAY_BUFFER_SIZE] = {0};
 
 static CRGB displayColor;
 
-#if ACTIVITY_PIXEL_ENABLED
-static bool activityPixelVisible = false;
-#endif
 
 // ============================================================================
 // FORWARD DECLARATIONS (internal functions)
@@ -97,11 +94,6 @@ void initNeoPixels() {
   DEBUG_PRINTLN("FastLED renderer ready (event-driven, no timers)");
 }
 
-#if ACTIVITY_PIXEL_ENABLED
-void setActivityPixelState(bool visible) {
-  activityPixelVisible = visible;
-}
-#endif
 
 // ============================================================================
 // MAIN RENDERING
@@ -146,7 +138,7 @@ void updateNeoPixels() {
     uint8_t activityX = rowCfg.width - 1;
     uint8_t activityY = ROW_HEIGHT - 1;
     uint16_t activityIdx = xyToIndex(activityX, activityY);
-    rowLeds[rowIdx][activityIdx] = activityPixelVisible ? displayColor : CRGB::Black;
+    rowLeds[rowIdx][activityIdx] = getActivityPixelVisible() ? displayColor : CRGB::Black;
     #endif
   }
   

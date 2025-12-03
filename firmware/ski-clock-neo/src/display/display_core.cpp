@@ -362,6 +362,9 @@ static bool activityPixelVisible = false;
 
 void setActivityPixelVisible(bool visible) {
   activityPixelVisible = visible;
+  // Mark display dirty so updateNeoPixels() will run
+  displayDirty = true;
+  renderRequested = true;
 }
 
 bool getActivityPixelVisible() {

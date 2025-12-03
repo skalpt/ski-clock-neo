@@ -16,10 +16,6 @@ void initNeoPixels();
 void updateNeoPixels();
 void createNeopixelSnapshot();
 
-#if ACTIVITY_PIXEL_ENABLED
-void setActivityPixelState(bool visible);
-#endif
-
 int charToGlyph(char c);
 uint16_t xyToIndex(uint8_t x, uint8_t y);
 void indexToXY(uint16_t index, uint8_t &x, uint8_t &y);

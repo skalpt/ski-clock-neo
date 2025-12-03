@@ -14,7 +14,6 @@
 
 #include "display_controller.h"       // This file's header
 #include "display_core.h"             // Display rendering core
-#include "fastled_render.h"           // For activity LED control
 #include "../data/data_time.h"        // Time data provider
 #include "../data/data_temperature.h" // Temperature data provider
 #include "../data/data_button.h"      // Button input
@@ -98,7 +97,7 @@ void unifiedTickCallback() {
   // Toggle activity pixel every 2 ticks (1 second)
   if (tickCounter % TICKS_PER_SECOND == 0) {
     activityPixelState = !activityPixelState;
-    setActivityPixelState(activityPixelState);
+    setActivityPixelVisible(activityPixelState);
     triggerRender();  // Force render even if text content unchanged
   }
   #endif
