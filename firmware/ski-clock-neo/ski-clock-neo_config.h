@@ -36,9 +36,8 @@
 #define PRODUCT_NAME "ski-clock-neo"
 
 // Hardware pin configuration
-// TEMPORARY TEST: Swapped pins to diagnose first-row blank issue
-#define DISPLAY_PIN_ROW0 3       // Display row 0 on GPIO3 (was GPIO4)
-#define DISPLAY_PIN_ROW1 4       // Display row 1 on GPIO4 (was GPIO3)
+#define DISPLAY_PIN_ROW0 4       // Display row 0 on GPIO4
+#define DISPLAY_PIN_ROW1 3       // Display row 1 on GPIO3
 #define RTC_SDA_PIN      5       // RTC I2C data pin on GPIO5
 #define RTC_SCL_PIN      6       // RTC I2C clock pin on GPIO 6
 #define TEMPERATURE_PIN  2       // DS18B20 temperature sensor on GPIO2
