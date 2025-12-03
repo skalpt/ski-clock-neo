@@ -135,11 +135,13 @@ void updateNeoPixels() {
     }
     
     #if ACTIVITY_PIXEL_ENABLED
-    // Overlay activity pixel on bottom-right of each row
-    uint8_t activityX = rowCfg.width - 1;
-    uint8_t activityY = ROW_HEIGHT - 1;
-    uint16_t activityIdx = xyToIndex(activityX, activityY);
-    rowLeds[rowIdx][activityIdx] = getActivityPixelVisible() ? displayColor : CRGB::Black;
+    // Overlay activity pixel on bottom-right of the last row only
+    if (rowIdx == DISPLAY_ROWS - 1) {
+      uint8_t activityX = rowCfg.width - 1;
+      uint8_t activityY = ROW_HEIGHT - 1;
+      uint16_t activityIdx = xyToIndex(activityX, activityY);
+      rowLeds[rowIdx][activityIdx] = getActivityPixelVisible() ? displayColor : CRGB::Black;
+    }
     #endif
   }
   
