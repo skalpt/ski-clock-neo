@@ -1,0 +1,36 @@
+Run arduino-cli compile --fqbn esp32:esp32:esp32 \
+In file included from /home/runner/work/***/***/firmware/***/src/display/neopixel_render.cpp:16:
+/home/runner/work/***/***/firmware/***/src/display/neopixel_render.h:6:10: fatal error: Adafruit_NeoPixel.h: No such file or directory
+ #include <Adafruit_NeoPixel.h>          // NeoPixel library
+          ^~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+
+Error during build: exit status 1
+
+Used library      Version Path                                                                                   
+Ticker            2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Ticker          
+WiFi              2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFi            
+WebServer         2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WebServer       
+AutoConnect       1.4.2   /home/runner/Arduino/libraries/AutoConnect                                             
+DNSServer         2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/DNSServer       
+EEPROM            2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/EEPROM          
+PageBuilder       1.5.6   /home/runner/Arduino/libraries/PageBuilder                                             
+FS                2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/FS              
+SPIFFS            2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPIFFS          
+SD                2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SD              
+SPI               2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPI             
+Preferences       2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Preferences     
+WiFiClientSecure  2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFiClientSecure
+PubSubClient      2.8     /home/runner/Arduino/libraries/PubSubClient                                            
+HTTPClient        2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPClient      
+Update            2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Update          
+OneWire           2.3.8   /home/runner/Arduino/libraries/OneWire                                                 
+DallasTemperature 4.0.5   /home/runner/Arduino/libraries/DallasTemperature                                       
+Wire              2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Wire            
+RTClib            2.1.4   /home/runner/Arduino/libraries/RTClib                                                  
+Adafruit BusIO    1.17.4  /home/runner/Arduino/libraries/Adafruit_BusIO                                          
+FastLED           3.10.3  /home/runner/Arduino/libraries/FastLED                                                 
+
+Used platform Version Path                                                        
+esp32:esp32   2.0.14  /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14
+Error: Process completed with exit code 1.
