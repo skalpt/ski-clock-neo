@@ -619,9 +619,16 @@ button {
 
 .table-responsive {
     overflow-x: auto;
+    overflow-y: visible;
     -webkit-overflow-scrolling: touch;
     margin: 0 calc(-1 * var(--spacing-md));
     padding: 0 var(--spacing-md);
+}
+
+/* Firmware table needs visible overflow for flash dropdown */
+.firmware-table .table-responsive,
+#firmware-table {
+    overflow: visible;
 }
 
 .table-responsive::-webkit-scrollbar {
@@ -735,26 +742,10 @@ button {
 .version-link {
     font-weight: 600;
     color: var(--brand-primary);
-    display: block;
 }
 
 .version-link:hover {
     text-decoration: underline;
-}
-
-.version-filename {
-    font-size: 0.75rem;
-    font-weight: 400;
-    color: var(--text-tertiary);
-    margin-top: 2px;
-}
-
-.version-link .version-filename {
-    color: var(--text-tertiary);
-}
-
-.version-link:hover .version-filename {
-    text-decoration: none;
 }
 
 /* ========================================

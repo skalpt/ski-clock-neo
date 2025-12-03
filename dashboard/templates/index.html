@@ -921,12 +921,11 @@
                     
                     return `
                         <tr id="${rowId}" data-product="${product}" data-selected-platform="${defaultPlatform}">
-                            <td><strong>${escapeHtml(product)}</strong></td>
+                            <td>${escapeHtml(product)}</td>
                             <td>${platformDropdown}</td>
                             <td>
                                 <a href="${downloadUrl}" class="table-link version-link" id="version-link-${product}" title="Download ${escapeHtml(filename)}">
                                     ${escapeHtml(version)}
-                                    <div class="version-filename">${escapeHtml(filename)}</div>
                                 </a>
                             </td>
                             <td class="flash-column" id="flash-cell-${product}">
@@ -942,12 +941,9 @@
                 } else {
                     return `
                         <tr id="${rowId}" data-product="${product}" data-selected-platform="${defaultPlatform}" class="opacity-50">
-                            <td><strong>${escapeHtml(product)}</strong></td>
+                            <td>${escapeHtml(product)}</td>
                             <td>${platformDropdown}</td>
-                            <td id="version-link-${product}">
-                                ${escapeHtml(version)}
-                                <div class="version-filename muted-text">${escapeHtml(filename)}</div>
-                            </td>
+                            <td id="version-link-${product}">${escapeHtml(version)}</td>
                             <td class="flash-column" id="flash-cell-${product}"><span class="muted-text">No Permission</span></td>
                             <td>
                                 <button class="btn-secondary btn-small" onclick="showVersionHistoryForRow('${product}')">
@@ -1029,23 +1025,13 @@
         const filename = fw.filename || '';
         const version = fw.version || 'Unknown';
         
-        // Update version link with filename subtitle
+        // Update version link
         const versionCell = document.getElementById(`version-link-${product}`);
         if (versionCell) {
             if (canDownload) {
-                versionCell.outerHTML = `
-                    <a href="${downloadUrl}" class="table-link version-link" id="version-link-${product}" title="Download ${escapeHtml(filename)}">
-                        ${escapeHtml(version)}
-                        <div class="version-filename">${escapeHtml(filename)}</div>
-                    </a>
-                `;
+                versionCell.outerHTML = `<a href="${downloadUrl}" class="table-link version-link" id="version-link-${product}" title="Download ${escapeHtml(filename)}">${escapeHtml(version)}</a>`;
             } else {
-                versionCell.outerHTML = `
-                    <span id="version-link-${product}">
-                        ${escapeHtml(version)}
-                        <div class="version-filename muted-text">${escapeHtml(filename)}</div>
-                    </span>
-                `;
+                versionCell.outerHTML = `<span id="version-link-${product}">${escapeHtml(version)}</span>`;
             }
         }
         
