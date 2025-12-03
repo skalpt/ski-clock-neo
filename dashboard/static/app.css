@@ -697,10 +697,64 @@ button {
     white-space: nowrap;
 }
 
-/* Product column with subheading */
-.firmware-table td .device-subheading {
+/* Platform selector in firmware table */
+.platform-select {
+    padding: 0.375rem 0.625rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    min-width: 140px;
+}
+
+.platform-select:hover {
+    border-color: var(--brand-primary);
+}
+
+.platform-select:focus {
+    outline: none;
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+}
+
+.platform-single {
+    display: inline-block;
+    padding: 0.375rem 0.625rem;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+/* Version link in firmware table */
+.version-link {
+    font-weight: 600;
+    color: var(--brand-primary);
+    display: block;
+}
+
+.version-link:hover {
+    text-decoration: underline;
+}
+
+.version-filename {
+    font-size: 0.75rem;
+    font-weight: 400;
     color: var(--text-tertiary);
     margin-top: 2px;
+}
+
+.version-link .version-filename {
+    color: var(--text-tertiary);
+}
+
+.version-link:hover .version-filename {
+    text-decoration: none;
 }
 
 /* ========================================

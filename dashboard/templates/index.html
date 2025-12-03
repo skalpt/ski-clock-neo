@@ -47,10 +47,10 @@
                 <thead>
                     <tr>
                         <th>Product</th>
-                        <th>Filename</th>
+                        <th>Board</th>
                         <th>Version</th>
                         <th class="flash-column">Flash to Device</th>
-                        <th>History</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="firmware-body">
@@ -871,79 +871,69 @@
         }
     }
 
+    // Store firmware data globally for platform switching
+    let firmwareData = {};
+
     async function loadFirmware() {
         try {
             const response = await fetch('/api/status');
             const data = await response.json();
             const tbody = document.getElementById('firmware-body');
             
-            // Flatten nested structure: {product: {platform: fw}} -> [{product, platform, fw}]
-            const firmwareEntries = [];
-            for (const [product, platforms] of Object.entries(data.firmwares)) {
-                for (const [platform, fw] of Object.entries(platforms)) {
-                    if (fw !== null) {
-                        firmwareEntries.push({ product, platform, fw });
-                    }
-                }
-            }
+            // Store for later use in platform switching
+            firmwareData = data.firmwares;
             
-            const rows = firmwareEntries.map(({ product, platform, fw }) => {
-                // Check if user has download permission
-                const canDownload = fw.can_download !== false;
-                const downloadUrl = fw.public_download_url || fw.download_url || '#';
-                const supportsFullFlash = fw.supports_full_flash || false;
-                const uniqueId = `${product}-${platform}`;
+            // Group by product - one row per product
+            const rows = Object.entries(data.firmwares).map(([product, platforms]) => {
+                // Get list of available platforms for this product
+                const availablePlatforms = Object.entries(platforms)
+                    .filter(([_, fw]) => fw !== null)
+                    .map(([platform, fw]) => ({ platform, fw }));
                 
-                // Render different content based on permission
+                if (availablePlatforms.length === 0) return '';
+                
+                // Use first platform as default
+                const defaultPlatform = availablePlatforms[0].platform;
+                const defaultFw = availablePlatforms[0].fw;
+                const rowId = `fw-row-${product}`;
+                
+                // Build platform dropdown
+                const platformOptions = availablePlatforms.map(({ platform }) => 
+                    `<option value="${platform}">${platform.toUpperCase()}</option>`
+                ).join('');
+                
+                const platformDropdown = availablePlatforms.length > 1 
+                    ? `<select class="platform-select" onchange="switchPlatform('${product}', this.value)">${platformOptions}</select>`
+                    : `<span class="platform-single">${defaultPlatform.toUpperCase()}</span>`;
+                
+                // Check permissions for default platform
+                const canDownload = defaultFw.can_download !== false;
+                const downloadUrl = defaultFw.public_download_url || defaultFw.download_url || '#';
+                const supportsFullFlash = defaultFw.supports_full_flash || false;
+                const uniqueId = `${product}-${defaultPlatform}`;
+                
+                const filename = defaultFw.filename || '';
+                const version = defaultFw.version || 'Unknown';
+                
                 if (canDownload) {
                     // Build flash button with dropdown for full flash if available
-                    let flashButtons;
-                    
-                    if (supportsFullFlash) {
-                        // Mode-switcher button with dropdown for Quick/Full Flash
-                        flashButtons = `
-                            <div class="split-button-group" data-platform="${platform}" data-product="${product}">
-                                <esp-web-install-button id="flash-installer-${uniqueId}" manifest="/firmware/manifest/${platform}.json?product=${encodeURIComponent(product)}&mode=quick">
-                                    <button slot="activate" class="flash-btn flash-btn-main" id="flash-btn-${uniqueId}">
-                                        <span class="flash-btn-icon">⚡</span>
-                                        <span class="flash-btn-text">Quick Flash</span>
-                                    </button>
-                                </esp-web-install-button>
-                                <button class="flash-btn flash-btn-dropdown" onclick="toggleFlashDropdown(event, '${uniqueId}')" title="Flash options">▼</button>
-                                <div class="flash-dropdown" id="flash-dropdown-${uniqueId}">
-                                    <button class="flash-dropdown-item" onclick="switchFlashMode('${uniqueId}', 'full', '${product}')" data-mode="full">
-                                        <span class="flash-btn-icon">🔧</span> Full Flash (Recovery)
-                                    </button>
-                                    <button class="flash-dropdown-item is-hidden" onclick="switchFlashMode('${uniqueId}', 'quick', '${product}')" data-mode="quick">
-                                        <span class="flash-btn-icon">⚡</span> Quick Flash
-                                    </button>
-                                </div>
-                            </div>
-                        `;
-                    } else {
-                        // Single Quick Flash button (same width as split buttons)
-                        flashButtons = `
-                            <div class="split-button-group">
-                                <esp-web-install-button manifest="/firmware/manifest/${platform}.json?product=${encodeURIComponent(product)}&mode=quick">
-                                    <button slot="activate" class="flash-btn flash-btn-main flash-btn-single">
-                                        <span class="flash-btn-icon">⚡</span>
-                                        <span class="flash-btn-text">Quick Flash</span>
-                                    </button>
-                                </esp-web-install-button>
-                            </div>
-                        `;
-                    }
+                    let flashButtons = buildFlashButtons(product, defaultPlatform, supportsFullFlash);
                     
                     return `
-                        <tr>
-                            <td><strong>${escapeHtml(product)}</strong><div class="device-subheading">${platform.toUpperCase()}</div></td>
-                            <td><a href="${downloadUrl}" class="table-link">${escapeHtml(fw.filename || 'Unknown')}</a></td>
-                            <td>${escapeHtml(fw.version || 'Unknown')}</td>
-                            <td class="flash-column">
+                        <tr id="${rowId}" data-product="${product}" data-selected-platform="${defaultPlatform}">
+                            <td><strong>${escapeHtml(product)}</strong></td>
+                            <td>${platformDropdown}</td>
+                            <td>
+                                <a href="${downloadUrl}" class="table-link version-link" id="version-link-${product}" title="Download ${escapeHtml(filename)}">
+                                    ${escapeHtml(version)}
+                                    <div class="version-filename">${escapeHtml(filename)}</div>
+                                </a>
+                            </td>
+                            <td class="flash-column" id="flash-cell-${product}">
                                 ${flashButtons}
                             </td>
                             <td>
-                                <button class="btn-secondary btn-small" onclick="showVersionHistory('${platform}', '${product}')">
+                                <button class="btn-secondary btn-small" onclick="showVersionHistoryForRow('${product}')">
                                     📜 History
                                 </button>
                             </td>
@@ -951,13 +941,16 @@
                     `;
                 } else {
                     return `
-                        <tr class="opacity-50">
-                            <td><strong>${escapeHtml(product)}</strong><div class="device-subheading">${platform.toUpperCase()}</div></td>
-                            <td>${escapeHtml(fw.filename || 'Unknown')}</td>
-                            <td>${escapeHtml(fw.version || 'Unknown')}</td>
-                            <td class="flash-column"><span class="muted-text">No Permission</span></td>
+                        <tr id="${rowId}" data-product="${product}" data-selected-platform="${defaultPlatform}" class="opacity-50">
+                            <td><strong>${escapeHtml(product)}</strong></td>
+                            <td>${platformDropdown}</td>
+                            <td id="version-link-${product}">
+                                ${escapeHtml(version)}
+                                <div class="version-filename muted-text">${escapeHtml(filename)}</div>
+                            </td>
+                            <td class="flash-column" id="flash-cell-${product}"><span class="muted-text">No Permission</span></td>
                             <td>
-                                <button class="btn-secondary btn-small" onclick="showVersionHistory('${platform}', '${product}')">
+                                <button class="btn-secondary btn-small" onclick="showVersionHistoryForRow('${product}')">
                                     📜 History
                                 </button>
                             </td>
@@ -969,6 +962,115 @@
             tbody.innerHTML = rows || '<tr><td colspan="5" class="muted-text text-center">No firmware uploaded yet</td></tr>';
         } catch (error) {
             console.error('Failed to load firmware:', error);
+        }
+    }
+
+    function buildFlashButtons(product, platform, supportsFullFlash) {
+        const uniqueId = `${product}-${platform}`;
+        
+        if (supportsFullFlash) {
+            return `
+                <div class="split-button-group" data-platform="${platform}" data-product="${product}">
+                    <esp-web-install-button id="flash-installer-${uniqueId}" manifest="/firmware/manifest/${platform}.json?product=${encodeURIComponent(product)}&mode=quick">
+                        <button slot="activate" class="flash-btn flash-btn-main" id="flash-btn-${uniqueId}">
+                            <span class="flash-btn-icon">⚡</span>
+                            <span class="flash-btn-text">Quick Flash</span>
+                        </button>
+                    </esp-web-install-button>
+                    <button class="flash-btn flash-btn-dropdown" onclick="toggleFlashDropdown(event, '${uniqueId}')" title="Flash options">▼</button>
+                    <div class="flash-dropdown" id="flash-dropdown-${uniqueId}">
+                        <button class="flash-dropdown-item" onclick="switchFlashMode('${uniqueId}', 'full', '${product}')" data-mode="full">
+                            <span class="flash-btn-icon">🔧</span> Full Flash (Recovery)
+                        </button>
+                        <button class="flash-dropdown-item is-hidden" onclick="switchFlashMode('${uniqueId}', 'quick', '${product}')" data-mode="quick">
+                            <span class="flash-btn-icon">⚡</span> Quick Flash
+                        </button>
+                    </div>
+                </div>
+            `;
+        } else {
+            return `
+                <div class="split-button-group">
+                    <esp-web-install-button manifest="/firmware/manifest/${platform}.json?product=${encodeURIComponent(product)}&mode=quick">
+                        <button slot="activate" class="flash-btn flash-btn-main flash-btn-single">
+                            <span class="flash-btn-icon">⚡</span>
+                            <span class="flash-btn-text">Quick Flash</span>
+                        </button>
+                    </esp-web-install-button>
+                </div>
+            `;
+        }
+    }
+
+    function switchPlatform(product, newPlatform) {
+        const fw = firmwareData[product]?.[newPlatform];
+        const row = document.getElementById(`fw-row-${product}`);
+        
+        // Handle missing firmware for this platform
+        if (!fw) {
+            const versionCell = document.getElementById(`version-link-${product}`);
+            if (versionCell) {
+                versionCell.outerHTML = `<span id="version-link-${product}" class="muted-text">No firmware</span>`;
+            }
+            const flashCell = document.getElementById(`flash-cell-${product}`);
+            if (flashCell) {
+                flashCell.innerHTML = '<span class="muted-text">-</span>';
+            }
+            if (row) {
+                row.classList.add('opacity-50');
+                row.dataset.selectedPlatform = newPlatform;
+            }
+            return;
+        }
+        
+        const canDownload = fw.can_download !== false;
+        const downloadUrl = fw.public_download_url || fw.download_url || '#';
+        const supportsFullFlash = fw.supports_full_flash || false;
+        const filename = fw.filename || '';
+        const version = fw.version || 'Unknown';
+        
+        // Update version link with filename subtitle
+        const versionCell = document.getElementById(`version-link-${product}`);
+        if (versionCell) {
+            if (canDownload) {
+                versionCell.outerHTML = `
+                    <a href="${downloadUrl}" class="table-link version-link" id="version-link-${product}" title="Download ${escapeHtml(filename)}">
+                        ${escapeHtml(version)}
+                        <div class="version-filename">${escapeHtml(filename)}</div>
+                    </a>
+                `;
+            } else {
+                versionCell.outerHTML = `
+                    <span id="version-link-${product}">
+                        ${escapeHtml(version)}
+                        <div class="version-filename muted-text">${escapeHtml(filename)}</div>
+                    </span>
+                `;
+            }
+        }
+        
+        // Update flash buttons
+        const flashCell = document.getElementById(`flash-cell-${product}`);
+        if (flashCell) {
+            if (canDownload) {
+                flashCell.innerHTML = buildFlashButtons(product, newPlatform, supportsFullFlash);
+            } else {
+                flashCell.innerHTML = '<span class="muted-text">No Permission</span>';
+            }
+        }
+        
+        // Update row opacity based on permission
+        if (row) {
+            row.classList.toggle('opacity-50', !canDownload);
+            row.dataset.selectedPlatform = newPlatform;
+        }
+    }
+
+    function showVersionHistoryForRow(product) {
+        const row = document.getElementById(`fw-row-${product}`);
+        const platform = row?.dataset.selectedPlatform || row?.querySelector('.platform-select')?.value || row?.querySelector('.platform-single')?.textContent?.toLowerCase();
+        if (platform) {
+            showVersionHistory(platform.toLowerCase(), product);
         }
     }
 
