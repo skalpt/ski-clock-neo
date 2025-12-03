@@ -1597,31 +1597,34 @@ def get_all_snapshots():
 @app.route('/api/firmware-history')
 @login_required
 def get_firmware_history():
-    """Get all firmware versions grouped by platform (for version pinning UI)
+    """Get all firmware versions grouped by product and platform (for version pinning UI)
     
-    Returns all historical versions per platform, ordered by upload date descending.
+    Returns all historical versions per product/platform, ordered by upload date descending.
     """
     from sqlalchemy import desc
     
-    # Get all firmware versions ordered by platform and upload date
+    # Get all firmware versions ordered by product, platform and upload date
     all_versions = FirmwareVersion.query.order_by(
+        FirmwareVersion.product,
         FirmwareVersion.platform,
         desc(FirmwareVersion.uploaded_at)
     ).all()
     
-    # Group by platform
-    platforms = {}
+    # Group by product then platform: {product: {platform: [versions]}}
+    products = {}
     for fw in all_versions:
-        if fw.platform not in platforms:
-            platforms[fw.platform] = []
+        if fw.product not in products:
+            products[fw.product] = {}
+        if fw.platform not in products[fw.product]:
+            products[fw.product][fw.platform] = []
         
         version_info = fw.to_dict()
         version_info['id'] = fw.id
-        version_info['is_latest'] = len(platforms[fw.platform]) == 0  # First one is latest
-        platforms[fw.platform].append(version_info)
+        version_info['is_latest'] = len(products[fw.product][fw.platform]) == 0  # First one is latest
+        products[fw.product][fw.platform].append(version_info)
     
     return jsonify({
-        'platforms': platforms,
+        'products': products,
         'total_versions': len(all_versions)
     }), 200
 
