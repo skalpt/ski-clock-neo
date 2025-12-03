@@ -20,6 +20,14 @@
 // #define DOWNLOAD_API_KEY  "your-api-key"
 // #define FIRMWARE_VERSION  "2025.01.01.1"
 
+// Board type - uncomment ONE of these to match your hardware:
+// #define BOARD_ESP32        // Generic ESP32
+// #define BOARD_ESP32C3      // ESP32-C3
+// #define BOARD_ESP32S3      // ESP32-S3
+// #define BOARD_ESP12F       // ESP-12F module
+// #define BOARD_ESP01        // ESP-01 module
+// #define BOARD_WEMOS_D1MINI // Wemos D1 Mini
+
 // ============================================================================
 // PRODUCT CONFIGURATION
 // ============================================================================
