@@ -430,16 +430,8 @@ def sync_firmware_from_production():
             print("⚠ No firmware data in production response")
             return
         
-        first_key = next(iter(data['firmwares']), None)
-        first_value = data['firmwares'].get(first_key) if first_key else None
-        is_new_format = isinstance(first_value, dict) and first_value is not None and 'version' not in first_value
-        
         synced_count = 0
         with app.app_context():
-            if not is_new_format:
-                print("⚠ Production using legacy format, skipping sync (multi-product format required)")
-                return
-            
             for product, platforms in data['firmwares'].items():
                 if platforms is None or not isinstance(platforms, dict):
                     continue
