@@ -1,0 +1,68 @@
+Arduino: 1.8.15 (Mac OS X), Board: "ESP32C3 Dev Module, Disabled, Enabled, Minimal SPIFFS (1.9MB APP with OTA/190KB SPIFFS), 160MHz (WiFi), QIO, 80MHz, 4MB (32Mb), 921600, Warn, Disabled"
+
+In file included from /Users/julian/Documents/GitHub/skalpt/ski-clock-neo/firmware/ski-clock-neo/src/connectivity/ota_update.cpp:16:
+/Users/julian/Documents/GitHub/skalpt/ski-clock-neo/firmware/ski-clock-neo/src/connectivity/ota_update.h:24:4: error: #error "UPDATE_SERVER_URL must be defined at compile time via -DUPDATE_SERVER_URL=\"...\""
+   #error "UPDATE_SERVER_URL must be defined at compile time via -DUPDATE_SERVER_URL=\"...\""
+    ^~~~~
+In file included from /Users/julian/Documents/GitHub/skalpt/ski-clock-neo/firmware/ski-clock-neo/src/core/event_log.cpp:16:
+/Users/julian/Documents/GitHub/skalpt/ski-clock-neo/firmware/ski-clock-neo/src/connectivity/mqtt_client.h:21:4: error: #error "MQTT_HOST must be defined at compile time via -DMQTT_HOST=\"...\""
+   #error "MQTT_HOST must be defined at compile time via -DMQTT_HOST=\"...\""
+    ^~~~~
+/Users/julian/Documents/GitHub/skalpt/ski-clock-neo/firmware/ski-clock-neo/src/connectivity/ota_update.h:28:4: error: #error "DOWNLOAD_API_KEY must be defined at compile time via -DDOWNLOAD_API_KEY=\"...\""
+   #error "DOWNLOAD_API_KEY must be defined at compile time via -DDOWNLOAD_API_KEY=\"...\""
+    ^~~~~
+/Users/julian/Documents/GitHub/skalpt/ski-clock-neo/firmware/ski-clock-neo/src/connectivity/ota_update.h:33:4: error: #error "FIRMWARE_VERSION must be defined at compile time via -DFIRMWARE_VERSION=\"...\""
+   #error "FIRMWARE_VERSION must be defined at compile time via -DFIRMWARE_VERSION=\"...\""
+    ^~~~~
+/Users/julian/Documents/GitHub/skalpt/ski-clock-neo/firmware/ski-clock-neo/src/connectivity/mqtt_client.h:25:4: error: #error "MQTT_USERNAME must be defined at compile time via -DMQTT_USERNAME=\"...\""
+   #error "MQTT_USERNAME must be defined at compile time via -DMQTT_USERNAME=\"...\""
+    ^~~~~
+/Users/julian/Documents/GitHub/skalpt/ski-clock-neo/firmware/ski-clock-neo/src/connectivity/mqtt_client.h:29:4: error: #error "MQTT_PASSWORD must be defined at compile time via -DMQTT_PASSWORD=\"...\""
+   #error "MQTT_PASSWORD must be defined at compile time via -DMQTT_PASSWORD=\"...\""
+    ^~~~~
+In file included from /Users/julian/Documents/GitHub/skalpt/ski-clock-neo/firmware/ski-clock-neo/src/connectivity/mqtt_client.cpp:17:
+/Users/julian/Documents/GitHub/skalpt/ski-clock-neo/firmware/ski-clock-neo/src/connectivity/mqtt_client.h:21:4: error: #error "MQTT_HOST must be defined at compile time via -DMQTT_HOST=\"...\""
+   #error "MQTT_HOST must be defined at compile time via -DMQTT_HOST=\"...\""
+    ^~~~~
+/Users/julian/Documents/GitHub/skalpt/ski-clock-neo/firmware/ski-clock-neo/src/connectivity/mqtt_client.h:25:4: error: #error "MQTT_USERNAME must be defined at compile time via -DMQTT_USERNAME=\"...\""
+   #error "MQTT_USERNAME must be defined at compile time via -DMQTT_USERNAME=\"...\""
+    ^~~~~
+/Users/julian/Documents/GitHub/skalpt/ski-clock-neo/firmware/ski-clock-neo/src/connectivity/mqtt_client.h:29:4: error: #error "MQTT_PASSWORD must be defined at compile time via -DMQTT_PASSWORD=\"...\""
+   #error "MQTT_PASSWORD must be defined at compile time via -DMQTT_PASSWORD=\"...\""
+    ^~~~~
+/Users/julian/Documents/GitHub/skalpt/ski-clock-neo/firmware/ski-clock-neo/src/core/event_log.cpp: In function 'void logBootEvent()':
+/Users/julian/Documents/GitHub/skalpt/ski-clock-neo/firmware/ski-clock-neo/src/core/event_log.cpp:105:15: error: 'FIRMWARE_VERSION' was not declared in this scope
+   bootData += FIRMWARE_VERSION;
+               ^~~~~~~~~~~~~~~~
+In file included from /Users/julian/Documents/Arduino/libraries/FastLED/src/FastLED.h:67,
+                 from /Users/julian/Documents/GitHub/skalpt/ski-clock-neo/firmware/ski-clock-neo/src/display/fastled_render.h:5,
+                 from /Users/julian/Documents/GitHub/skalpt/ski-clock-neo/firmware/ski-clock-neo/src/display/fastled_render.cpp:18:
+/Users/julian/Documents/Arduino/libraries/FastLED/src/fastspi.h:145:23: note: #pragma message: No hardware SPI pins defined.  All SPI access will default to bitbanged output
+ #      pragma message "No hardware SPI pins defined.  All SPI access will default to bitbanged output"
+                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/julian/Documents/GitHub/skalpt/ski-clock-neo/firmware/ski-clock-neo/src/core/event_log.cpp:105:15: note: suggested alternative: 'MQTT_VERSION'
+   bootData += FIRMWARE_VERSION;
+               ^~~~~~~~~~~~~~~~
+               MQTT_VERSION
+In file included from /Users/julian/Documents/Arduino/libraries/FastLED/src/FastLED.h:67,
+                 from /Users/julian/Documents/GitHub/skalpt/ski-clock-neo/firmware/ski-clock-neo/src/display/fastled_render.h:5,
+                 from /Users/julian/Documents/GitHub/skalpt/ski-clock-neo/firmware/ski-clock-neo/src/display/display_core.cpp:17:
+/Users/julian/Documents/Arduino/libraries/FastLED/src/fastspi.h:145:23: note: #pragma message: No hardware SPI pins defined.  All SPI access will default to bitbanged output
+ #      pragma message "No hardware SPI pins defined.  All SPI access will default to bitbanged output"
+                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Multiple libraries were found for "Ticker.h"
+ Used: /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/libraries/Ticker
+ Not used: /Users/julian/Documents/Arduino/libraries/Ticker
+Multiple libraries were found for "SD.h"
+ Used: /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/libraries/SD
+ Not used: /Applications/Arduino.app/Contents/Java/libraries/SD
+Multiple libraries were found for "WiFi.h"
+ Used: /Users/julian/Library/Arduino15/packages/esp32/hardware/esp32/2.0.16/libraries/WiFi
+ Not used: /Applications/Arduino.app/Contents/Java/libraries/WiFi
+exit status 1
+Error compiling for board ESP32C3 Dev Module.
+
+
+This report would have more information with
+"Show verbose output during compilation"
+option enabled in File -> Preferences.

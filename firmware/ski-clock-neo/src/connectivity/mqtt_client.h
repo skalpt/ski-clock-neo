@@ -1,6 +1,9 @@
 #ifndef MQTT_CLIENT_H
 #define MQTT_CLIENT_H
 
+// Include product config for local build credentials
+#include "../../ski-clock-neo_config.h"
+
 #if defined(ESP32)
   #include <WiFi.h>
   #include <WiFiClientSecure.h>

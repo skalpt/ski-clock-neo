@@ -1,6 +1,9 @@
 #ifndef OTA_UPDATE_H
 #define OTA_UPDATE_H
 
+// Include product config for local build credentials
+#include "../../ski-clock-neo_config.h"
+
 #if defined(ESP32)
   #include <WiFi.h>
   #include <HTTPClient.h>
