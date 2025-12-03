@@ -2183,7 +2183,7 @@ def send_command():
     if not command_type:
         return jsonify({'error': 'command_type is required'}), 400
     
-    valid_commands = ['temp_offset', 'rollback', 'restart', 'snapshot']
+    valid_commands = ['temp_offset', 'rollback', 'restart', 'snapshot', 'info']
     if command_type not in valid_commands:
         return jsonify({'error': f'Invalid command_type. Must be one of: {valid_commands}'}), 400
     
@@ -2226,6 +2226,9 @@ def send_command():
         elif command_type == 'snapshot':
             topic = f"norrtek-iot/command/{device_id}"
             mqtt_client.publish(topic, 'snapshot', qos=1)
+        elif command_type == 'info':
+            topic = f"norrtek-iot/command/{device_id}"
+            mqtt_client.publish(topic, 'info', qos=1)
         
         status = 'sent'
         error_message = None
