@@ -120,4 +120,16 @@ RenderCallback getRenderCallback();
 // Force immediate rendering of current display state
 void renderNow();
 
+// ============================================================================
+// ACTIVITY PIXEL API (hardware-agnostic, used by renderers)
+// ============================================================================
+
+#if ACTIVITY_PIXEL_ENABLED
+// Set activity pixel visibility state (called by display_controller)
+void setActivityPixelVisible(bool visible);
+
+// Get activity pixel visibility state (called by renderers)
+bool getActivityPixelVisible();
+#endif
+
 #endif

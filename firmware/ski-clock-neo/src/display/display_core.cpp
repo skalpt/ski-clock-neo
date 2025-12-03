@@ -352,3 +352,19 @@ RenderCallback getRenderCallback() {
 void renderNow() {
   updateNeoPixels();
 }
+
+// ============================================================================
+// ACTIVITY PIXEL STATE (hardware-agnostic storage)
+// ============================================================================
+
+#if ACTIVITY_PIXEL_ENABLED
+static bool activityPixelVisible = false;
+
+void setActivityPixelVisible(bool visible) {
+  activityPixelVisible = visible;
+}
+
+bool getActivityPixelVisible() {
+  return activityPixelVisible;
+}
+#endif
