@@ -49,7 +49,9 @@ The dashboard features a modern UI with CSS variables for light/dark mode, a con
 
 *   **Event Logging:** A ring buffer stores and publishes device events (system, connectivity, temperature, RTC/Time, user input, display) to MQTT via registered callbacks.
 
-*   **Code Organization:** Consistent structure in `.cpp` files with section headers. Library modules in `firmware/lib/norrtek-iot/`, product-specific code in `firmware/products/<product>/src/`.
+*   **Code Organization:** Consistent structure in `.cpp` files with section headers. Library modules in `firmware/lib/norrtek-iot/`, product-specific code in `firmware/ski-clock-neo/src/`.
+
+*   **Ported Products:** ski-clock-neo is now ported to use the unified library API. Product-specific modules (data_time, data_temperature, data_button, display_controller, fastled_render) use `<norrtek_iot.h>` for library includes. Duplicated core/connectivity modules have been removed.
 
 **Dashboard Server (Python Flask Application):**
 *   **Firmware Management:** Provides a multi-product API for firmware distribution, supporting uploads with API key authentication, platform aliasing, and SHA256 checksums.
