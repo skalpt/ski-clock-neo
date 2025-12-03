@@ -381,9 +381,9 @@ void startTimer() {
   tickCounter = 0;  // Reset tick counter for synchronization
   
   updateBothRows();
-  
-  // Restart tick timer to sync phase for accurate elapsed time tracking
-  restartTimer("DisplayTick");
+  // NOTE: Do NOT call restartTimer() here - this is called from within
+  // the timer callback when countdown reaches 0. Restarting the timer
+  // from inside its own callback causes a crash (use-after-free).
 }
 
 void startFlashingResult() {
@@ -395,9 +395,8 @@ void startFlashingResult() {
   logEvent("button_press", "{\"action\":\"timer_stop\"}");
   
   updateBothRows();
-  
-  // Restart tick timer to sync flash timing
-  restartTimer("DisplayTick");
+  // NOTE: restartTimer() is called by onButtonPress() after this returns,
+  // since this function is only called from button press context.
 }
 
 void startDisplayResult() {
@@ -406,9 +405,9 @@ void startDisplayResult() {
   tickCounter = 0;  // Reset tick counter for result timeout tracking
   
   updateBothRows();
-  
-  // Restart tick timer to sync result display timing
-  restartTimer("DisplayTick");
+  // NOTE: Do NOT call restartTimer() here - this is called from within
+  // the timer callback when flash period ends. Restarting the timer
+  // from inside its own callback causes a crash.
 }
 
 void returnToNormal() {
@@ -426,9 +425,9 @@ void returnToNormal() {
   logEvent("display_mode_change", "{\"from\":\"timer\",\"to\":\"normal\"}");
   
   updateBothRows();
-  
-  // Restart tick timer to sync phase
-  restartTimer("DisplayTick");
+  // NOTE: Do NOT call restartTimer() here - this may be called from within
+  // the timer callback (result timeout) or from cancelTimer (button press).
+  // The button press path handles restart separately.
 }
 
 void cancelTimer() {
@@ -460,18 +459,20 @@ void onButtonPress() {
   
   switch (currentMode) {
     case MODE_NORMAL:
-      // Start countdown
+      // Start countdown (restartTimer is called inside startCountdown)
       startCountdown();
       break;
       
     case MODE_COUNTDOWN:
       // Cancel timer, return to normal
       cancelTimer();
+      restartTimer("DisplayTick");  // Sync timer phase after cancel
       break;
       
     case MODE_TIMER:
       // Stop timer, show flashing result
       startFlashingResult();
+      restartTimer("DisplayTick");  // Sync timer phase for flash timing
       break;
       
     case MODE_FLASHING_RESULT:
@@ -479,7 +480,7 @@ void onButtonPress() {
       break;
       
     case MODE_DISPLAY_RESULT:
-      // Start new countdown from result display
+      // Start new countdown (restartTimer is called inside startCountdown)
       startCountdown();
       break;
   }
