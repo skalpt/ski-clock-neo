@@ -46,8 +46,8 @@
 #define DISPLAY_COLOR_B 0       // Blue component (0-255)
 #define BRIGHTNESS      255     // 0-255 (keeping dim for development)
 
-// Activity LED - blinks bottom-right pixel of each row every second
-#define ACTIVITY_LED_ENABLED true
+// Activity pixel - blinks bottom-right pixel of each row every second
+#define ACTIVITY_PIXEL_ENABLED true
 
 // Per-row panel counts (allows different widths per row)
 // Example: Row 0 = 3 panels (48px wide), Row 1 = 4 panels (64px wide)

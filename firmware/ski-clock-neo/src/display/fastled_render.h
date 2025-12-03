@@ -16,8 +16,8 @@ void initNeoPixels();
 void updateNeoPixels();
 void createNeopixelSnapshot();
 
-#if ACTIVITY_LED_ENABLED
-void setActivityLedState(bool visible);
+#if ACTIVITY_PIXEL_ENABLED
+void setActivityPixelState(bool visible);
 #endif
 
 int charToGlyph(char c);

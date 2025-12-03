@@ -56,9 +56,9 @@ static uint32_t elapsedSeconds = 0;                    // Elapsed time in second
 // Flash state
 static bool flashVisible = true;                       // Toggle for flashing display
 
-#if ACTIVITY_LED_ENABLED
-// Activity LED state (blinks every second)
-static bool activityLedState = false;
+#if ACTIVITY_PIXEL_ENABLED
+// Activity pixel state (blinks every second)
+static bool activityPixelState = false;
 #endif
 
 // Transition guard to prevent rapid state changes
@@ -94,11 +94,11 @@ void unifiedTickCallback() {
   tickCounter++;
   bool needsUpdate = false;
   
-  #if ACTIVITY_LED_ENABLED
-  // Toggle activity LED every 2 ticks (1 second)
+  #if ACTIVITY_PIXEL_ENABLED
+  // Toggle activity pixel every 2 ticks (1 second)
   if (tickCounter % TICKS_PER_SECOND == 0) {
-    activityLedState = !activityLedState;
-    setActivityLedState(activityLedState);
+    activityPixelState = !activityPixelState;
+    setActivityPixelState(activityPixelState);
     triggerRender();  // Force render even if text content unchanged
   }
   #endif
