@@ -193,6 +193,17 @@ h3 {
 
 .header-content h1 {
     margin-bottom: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Brand logo in headers */
+.brand-logo {
+    height: 1.5em;
+    width: auto;
+    vertical-align: middle;
+    filter: invert(1);
 }
 
 /* ========================================
@@ -826,6 +837,14 @@ button {
 .login-header h1 {
     font-size: 2rem;
     margin-bottom: var(--spacing-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.login-header .brand-logo {
+    filter: none;
 }
 
 .login-header p {
