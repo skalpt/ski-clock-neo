@@ -28,6 +28,8 @@
   #error "MQTT_PASSWORD must be defined at compile time via -DMQTT_PASSWORD=\"...\""
 #endif
 
+typedef String (*SnapshotPayloadCallback)();
+
 extern const uint16_t MQTT_PORT;
 
 extern const char* MQTT_TOPIC_HEARTBEAT;
@@ -52,6 +54,8 @@ extern Ticker displaySnapshotTicker;
 void setMqttProduct(const char* productName);
 const char* getMqttProduct();
 
+void setSnapshotPayloadCallback(SnapshotPayloadCallback callback);
+
 void initMQTT();
 bool connectMQTT();
 void disconnectMQTT();
@@ -64,6 +68,7 @@ void handleRestartCommand();
 String base64Encode(const uint8_t* data, uint16_t length);
 
 String buildDeviceTopic(const char* baseTopic);
+String buildProductTopic(const char* baseTopic);
 bool publishMqttPayload(const char* topic, const char* payload);
 bool publishMqttPayload(const String& topic, const char* payload);
 bool publishMqttPayload(const String& topic, const String& payload);

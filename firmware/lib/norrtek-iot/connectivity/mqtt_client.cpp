@@ -2,12 +2,16 @@
 #include "ota_update.h"
 #include "../core/led_indicator.h"
 #include "../core/event_log.h"
-#include "../display/display_core.h"
 
 const uint16_t MQTT_PORT = 8883;
 
 static char mqttProductName[32] = "generic";
 static char topicBase[64] = "norrtek-iot/generic";
+static SnapshotPayloadCallback snapshotPayloadCallback = nullptr;
+
+void setSnapshotPayloadCallback(SnapshotPayloadCallback callback) {
+  snapshotPayloadCallback = callback;
+}
 
 const char* MQTT_TOPIC_HEARTBEAT = "heartbeat";
 const char* MQTT_TOPIC_VERSION_RESPONSE = "version/response";
@@ -318,59 +322,19 @@ void publishDisplaySnapshot() {
     return;
   }
   
+  if (snapshotPayloadCallback == nullptr) {
+    DEBUG_PRINTLN("Snapshot callback not set, skipping snapshot");
+    return;
+  }
+  
   DEBUG_PRINTLN("Publishing display snapshot...");
   
-  DisplayConfig cfg = getDisplayConfig();
+  String payload = snapshotPayloadCallback();
   
-  if (cfg.rows == 0 || cfg.totalPixels == 0) {
-    DEBUG_PRINTLN("Invalid display configuration, skipping snapshot");
+  if (payload.length() == 0) {
+    DEBUG_PRINTLN("Empty snapshot payload, skipping");
     return;
   }
-  
-  createSnapshotBuffer();
-  
-  const uint8_t* buffer = getDisplayBuffer();
-  uint16_t bufferSize = getDisplayBufferSize();
-  
-  if (bufferSize == 0 || bufferSize > 1024) {
-    DEBUG_PRINTLN("Invalid buffer size, skipping snapshot");
-    return;
-  }
-  
-  String payload = "{\"product\":\"";
-  payload += mqttProductName;
-  payload += "\",\"rows\":[";
-  
-  for (uint8_t i = 0; i < cfg.rows; i++) {
-    if (i > 0) payload += ",";
-    
-    RowConfig& rowCfg = cfg.rowConfig[i];
-    const char* text = getText(i);
-    
-    uint16_t rowPixels = rowCfg.width * rowCfg.height;
-    uint16_t startBit = rowCfg.pixelOffset;
-    uint16_t startByte = startBit / 8;
-    uint16_t rowBytes = (rowPixels + 7) / 8;
-    
-    String rowBase64 = base64Encode(buffer + startByte, rowBytes);
-    
-    String escapedText = "";
-    for (int j = 0; text[j] != '\0' && j < MAX_TEXT_LENGTH; j++) {
-      if (text[j] == '"' || text[j] == '\\') {
-        escapedText += "\\";
-      }
-      escapedText += text[j];
-    }
-    
-    payload += "{\"text\":\"" + escapedText + "\"";
-    payload += ",\"cols\":" + String(rowCfg.panels);
-    payload += ",\"width\":" + String(rowCfg.width);
-    payload += ",\"height\":" + String(rowCfg.height);
-    payload += ",\"mono\":\"" + rowBase64 + "\"";
-    payload += "}";
-  }
-  
-  payload += "]}";
   
   if (payload.length() > 2000) {
     DEBUG_PRINT("Payload too large: ");
