@@ -18,6 +18,7 @@
 #include "../core/event_log.h"             // For logging temperature events
 #include "../core/timer_helpers.h"         // For timer management
 #include "../core/debug.h"                 // For debug logging
+#include "../core/device_config.h"         // For temperature offset
 #include <OneWire.h>                       // OneWire library for DS18B20 communication
 #include <DallasTemperature.h>             // DallasTemperature library for DS18B20
 
@@ -183,8 +184,8 @@ bool getTemperature(float* temperature) {
     return false;
   }
   
-  // Apply calibration offset from config
-  tempC += TEMPERATURE_OFFSET;
+  // Apply calibration offset from device config (stored in NVS/EEPROM)
+  tempC += getTemperatureOffset();
   
   *temperature = tempC;
   lastTemperature = tempC;

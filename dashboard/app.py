@@ -1632,6 +1632,71 @@ def request_snapshot(device_id):
             'error': 'Failed to send snapshot command (MQTT not connected)'
         }), 503
 
+@app.route('/api/devices/<device_id>/config', methods=['POST'])
+@login_required
+def set_device_config(device_id):
+    """Send configuration values to a device via MQTT
+    
+    JSON body can include:
+    - temp_offset: Temperature calibration offset in degrees C (-20.0 to 20.0)
+    """
+    from mqtt_subscriber import publish_config
+    
+    device = Device.query.filter_by(device_id=device_id).first()
+    if not device:
+        return jsonify({
+            'success': False,
+            'error': 'Device not found'
+        }), 404
+    
+    data = request.get_json(silent=True) or {}
+    
+    if not data:
+        return jsonify({
+            'success': False,
+            'error': 'No configuration values provided'
+        }), 400
+    
+    config_values = {}
+    
+    if 'temp_offset' in data:
+        try:
+            temp_offset = float(data['temp_offset'])
+            if temp_offset < -20.0 or temp_offset > 20.0:
+                return jsonify({
+                    'success': False,
+                    'error': 'temp_offset must be between -20.0 and 20.0'
+                }), 400
+            config_values['temp_offset'] = temp_offset
+        except (ValueError, TypeError):
+            return jsonify({
+                'success': False,
+                'error': 'temp_offset must be a number'
+            }), 400
+    
+    if not config_values:
+        return jsonify({
+            'success': False,
+            'error': 'No valid configuration values provided'
+        }), 400
+    
+    success = publish_config(
+        device_id=device_id,
+        **config_values
+    )
+    
+    if success:
+        return jsonify({
+            'success': True,
+            'message': f'Configuration sent to {device_id}',
+            'config': config_values
+        }), 200
+    else:
+        return jsonify({
+            'success': False,
+            'error': 'Failed to send configuration (MQTT not connected)'
+        }), 503
+
 @app.route('/api/devices/<device_id>/snapshots')
 @login_required
 def get_snapshot_history(device_id):

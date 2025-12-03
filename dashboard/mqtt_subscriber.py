@@ -23,6 +23,7 @@ MQTT_TOPIC_OTA_START = "norrtek-iot/ota/start"
 MQTT_TOPIC_OTA_PROGRESS = "norrtek-iot/ota/progress"
 MQTT_TOPIC_OTA_COMPLETE = "norrtek-iot/ota/complete"
 MQTT_TOPIC_COMMAND = "norrtek-iot/command"
+MQTT_TOPIC_CONFIG = "norrtek-iot/config"
 MQTT_TOPIC_DISPLAY_SNAPSHOT = "norrtek-iot/display/snapshot"
 MQTT_TOPIC_EVENTS = "norrtek-iot/event"
 
@@ -750,6 +751,42 @@ def publish_command(device_id: str, command: str, **kwargs) -> bool:
             return False
     except Exception as e:
         print(f"✗ Error publishing command: {e}")
+        return False
+
+def publish_config(device_id: str, **config_values) -> bool:
+    """
+    Publish configuration values to a specific device via MQTT.
+    
+    Args:
+        device_id: Target device ID
+        **config_values: Configuration key-value pairs (e.g., temp_offset=-2.0)
+    
+    Returns:
+        True if published successfully, False otherwise
+    """
+    global _mqtt_client, _subscriber_id
+    
+    if not _mqtt_client or not _mqtt_client.is_connected():
+        print(f"✗ Cannot publish config: MQTT client not connected")
+        return False
+    
+    topic = f"{MQTT_TOPIC_CONFIG}/{device_id}"
+    payload = {
+        'timestamp': datetime.now(timezone.utc).isoformat(),
+        'subscriber_id': _subscriber_id,
+        **config_values
+    }
+    
+    try:
+        result = _mqtt_client.publish(topic, json.dumps(payload), qos=1)
+        if result.rc == mqtt.MQTT_ERR_SUCCESS:
+            print(f"✓ Published config to {device_id}: {config_values} [subscriber: {_subscriber_id}]")
+            return True
+        else:
+            print(f"✗ Failed to publish config to {device_id}: error code {result.rc}")
+            return False
+    except Exception as e:
+        print(f"✗ Error publishing config: {e}")
         return False
 
 def ota_timeout_checker():

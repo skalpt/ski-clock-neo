@@ -375,6 +375,25 @@
                                         🗑️ Remove
                                     </button>
                                 </div>
+                                <div class="device-config">
+                                    <div class="config-row">
+                                        <label>Temp Offset:</label>
+                                        <input type="number" class="config-input temp-offset-input" 
+                                               id="temp-offset-${safeDeviceId}" 
+                                               placeholder="-2.0" 
+                                               step="0.1" 
+                                               min="-20" 
+                                               max="20" 
+                                               ${device.status === 'offline' ? 'disabled' : ''}>
+                                        <span class="config-unit">°C</span>
+                                        <button class="config-btn" 
+                                                data-device-id="${safeDeviceId}" 
+                                                data-action="set-temp-offset"
+                                                ${device.status === 'offline' ? 'disabled title="Device must be online"' : ''}>
+                                            Set
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <div class="device-card-back ${statusClass}" id="display-back-${safeDeviceId}">
@@ -445,6 +464,8 @@
                         requestSnapshot(deviceId);
                     } else if (action === 'unpin') {
                         unpinDeviceVersion(deviceId);
+                    } else if (action === 'set-temp-offset') {
+                        setDeviceTempOffset(deviceId);
                     }
                 });
             });
@@ -555,6 +576,45 @@
         } catch (error) {
             console.error('Failed to send restart command:', error);
             alert('Failed to send restart command');
+        }
+    }
+
+    async function setDeviceTempOffset(deviceId) {
+        const input = document.getElementById(`temp-offset-${deviceId}`);
+        if (!input) {
+            alert('Temperature offset input not found');
+            return;
+        }
+        
+        const value = parseFloat(input.value);
+        if (isNaN(value)) {
+            alert('Please enter a valid temperature offset value');
+            return;
+        }
+        
+        if (value < -20 || value > 20) {
+            alert('Temperature offset must be between -20 and 20 degrees');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/devices/${deviceId}/config`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ temp_offset: value })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                alert(data.message || 'Temperature offset sent to device');
+                input.value = '';
+            } else {
+                alert(`Failed to set temperature offset: ${data.error}`);
+            }
+        } catch (error) {
+            console.error('Failed to set temperature offset:', error);
+            alert('Failed to set temperature offset');
         }
     }
 

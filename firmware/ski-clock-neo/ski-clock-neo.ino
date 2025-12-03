@@ -4,6 +4,7 @@
 #include "src/core/timer_helpers.h"
 #include "src/core/event_log.h"
 #include "src/core/led_indicator.h"
+#include "src/core/device_config.h"
 #include "src/display/display_core.h"
 #include "src/connectivity/wifi_config.h"
 #include "src/connectivity/mqtt_client.h"
@@ -20,6 +21,9 @@ void setup() {
   // Initialize event logging and log boot event
   initEventLog();
   logBootEvent();
+
+  // Initialize device configuration (loads from NVS/EEPROM)
+  initDeviceConfig();
 
   // Initialize onboard LED indicator
   initLedIndicator();

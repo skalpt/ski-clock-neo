@@ -17,6 +17,7 @@
 #include "mqtt_client.h"               // This file's header
 #include "../../ski-clock-neo_config.h" // For importing main configuration (credentials, etc.)
 #include "../core/led_indicator.h"     // For LED status patterns when MQTT connection state changes
+#include "../core/device_config.h"     // For device configuration handling
 #include "ota_update.h"                // For OTA update publishing
 #include "../display/display_core.h"   // For display snapshot publishing
 #include "../core/event_log.h"         // For event log publishing
@@ -31,6 +32,7 @@ const uint16_t MQTT_PORT = 8883;  // TLS port for HiveMQ Cloud
 const char MQTT_TOPIC_HEARTBEAT[] = "norrtek-iot/heartbeat";
 const char MQTT_TOPIC_VERSION_RESPONSE[] = "norrtek-iot/version/response";
 const char MQTT_TOPIC_COMMAND[] = "norrtek-iot/command";
+const char MQTT_TOPIC_CONFIG[] = "norrtek-iot/config";
 const char MQTT_TOPIC_OTA_START[] = "norrtek-iot/ota/start";
 const char MQTT_TOPIC_OTA_PROGRESS[] = "norrtek-iot/ota/progress";
 const char MQTT_TOPIC_OTA_COMPLETE[] = "norrtek-iot/ota/complete";
@@ -125,6 +127,13 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
       DEBUG_PRINTLN("Unknown command type");
     }
   }
+  
+  // Handle device-specific config messages
+  String configTopic = String(MQTT_TOPIC_CONFIG) + "/" + getDeviceID();
+  if (strcmp(topic, configTopic.c_str()) == 0) {
+    DEBUG_PRINTLN("Config message received!");
+    handleConfigMessage(message);
+  }
 }
 
 // ============================================================================
@@ -197,6 +206,12 @@ bool connectMQTT() {
     if (mqttClient.subscribe(commandTopic.c_str())) {
       DEBUG_PRINT("Subscribed to topic: ");
       DEBUG_PRINTLN(commandTopic);
+    }
+    
+    String configTopic = String(MQTT_TOPIC_CONFIG) + "/" + getDeviceID();
+    if (mqttClient.subscribe(configTopic.c_str())) {
+      DEBUG_PRINT("Subscribed to topic: ");
+      DEBUG_PRINTLN(configTopic);
     }
     
     // Start heartbeat ticker
