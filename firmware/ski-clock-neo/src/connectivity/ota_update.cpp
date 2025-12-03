@@ -1,21 +1,37 @@
-#include "ota_update.h"
-#include "mqtt_client.h"
-#include "../core/led_indicator.h"
+// ============================================================================
+// ota_update.cpp - Over-the-Air firmware update handling
+// ============================================================================
+// This library handles OTA firmware updates:
+// - Secure HTTPS downloads from update server
+// - API key authentication
+// - Progress reporting via MQTT
+// - LED indication during update
+// - Supports both ESP32 and ESP8266
+// ============================================================================
 
-static char otaProductName[32] = "generic";
+// ============================================================================
+// INCLUDES
+// ============================================================================
+
+#include "ota_update.h"            // This file's header
+#include "../core/led_indicator.h" // For LED status patterns when OTA is in progress
+#include "mqtt_client.h"           // For publishing OTA progress to MQTT
+
+// ============================================================================
+// STATE VARIABLES
+// ============================================================================
 
 bool otaUpdateInProgress = false;
 
-void setOtaProduct(const char* productName) {
-  strncpy(otaProductName, productName, sizeof(otaProductName) - 1);
-  otaProductName[sizeof(otaProductName) - 1] = '\0';
-}
+// ============================================================================
+// MQTT PROGRESS REPORTING
+// ============================================================================
 
+// Publish OTA start message (to device-specific topic)
 void publishOTAStart(String newVersion) {
   static char payload[256];
   snprintf(payload, sizeof(payload),
-    "{\"product\":\"%s\",\"platform\":\"%s\",\"old_version\":\"%s\",\"new_version\":\"%s\"}",
-    otaProductName,
+    "{\"platform\":\"%s\",\"old_version\":\"%s\",\"new_version\":\"%s\"}",
     getPlatform().c_str(),
     FIRMWARE_VERSION,
     newVersion.c_str()
@@ -24,6 +40,7 @@ void publishOTAStart(String newVersion) {
   publishMqttPayload(buildDeviceTopic(MQTT_TOPIC_OTA_START), payload);
 }
 
+// Publish OTA progress message (0-100%, to device-specific topic)
 void publishOTAProgress(int progress) {
   static char payload[32];
   snprintf(payload, sizeof(payload), "{\"progress\":%d}", progress);
@@ -31,6 +48,7 @@ void publishOTAProgress(int progress) {
   publishMqttPayload(buildDeviceTopic(MQTT_TOPIC_OTA_PROGRESS), payload);
 }
 
+// Publish OTA complete message (to device-specific topic)
 void publishOTAComplete(bool success, String errorMessage) {
   static char payload[256];
   if (success) {
@@ -45,6 +63,11 @@ void publishOTAComplete(bool success, String errorMessage) {
   publishMqttPayload(buildDeviceTopic(MQTT_TOPIC_OTA_COMPLETE), payload);
 }
 
+// ============================================================================
+// OTA UPDATE EXECUTION
+// ============================================================================
+
+// Perform OTA update from custom server
 bool performOTAUpdate(String version) {
   if (!WiFi.isConnected()) {
     DEBUG_PRINTLN("OTA: WiFi not connected");
@@ -52,6 +75,7 @@ bool performOTAUpdate(String version) {
     return false;
   }
 
+  // Enter LED override mode for OTA progress indication
   beginLedOverride(LED_OTA_PROGRESS);
   
   String binaryUrl = String(UPDATE_SERVER_URL) + "/api/firmware/" + getPlatform();
@@ -59,8 +83,6 @@ bool performOTAUpdate(String version) {
   DEBUG_PRINTLN("===========================================");
   DEBUG_PRINTLN("OTA UPDATE STARTING");
   DEBUG_PRINTLN("===========================================");
-  DEBUG_PRINT("Product: ");
-  DEBUG_PRINTLN(otaProductName);
   DEBUG_PRINT("Current version: ");
   DEBUG_PRINTLN(FIRMWARE_VERSION);
   DEBUG_PRINT("New version: ");
@@ -73,13 +95,16 @@ bool performOTAUpdate(String version) {
   otaUpdateInProgress = true;
   
 #if defined(ESP32)
+  // ESP32 - Manual download with authentication
   HTTPClient http;
   bool isHttps = binaryUrl.startsWith("https://");
   
+  // Track client type for proper cleanup
   WiFiClientSecure* secureClientPtr = nullptr;
   WiFiClient* plainClientPtr = nullptr;
   WiFiClient* clientPtr = nullptr;
   
+  // Setup HTTP connection
   if (isHttps) {
     secureClientPtr = new WiFiClientSecure();
     secureClientPtr->setInsecure();
@@ -107,8 +132,9 @@ bool performOTAUpdate(String version) {
     }
   }
   
+  // Add authentication headers
   http.addHeader("X-API-Key", DOWNLOAD_API_KEY);
-  http.addHeader("User-Agent", "NorrtekIoT-OTA");
+  http.addHeader("User-Agent", "SkiClockNeo-OTA");
   
   DEBUG_PRINTLN("Starting ESP32 OTA download...");
   int httpCode = http.GET();
@@ -140,6 +166,7 @@ bool performOTAUpdate(String version) {
     return false;
   }
   
+  // Begin OTA update
   bool canBegin = Update.begin(contentLength);
   if (!canBegin) {
     DEBUG_PRINTLN("Not enough space for OTA");
@@ -154,11 +181,12 @@ bool performOTAUpdate(String version) {
   
   WiFiClient * stream = http.getStreamPtr();
   
+  // Download in chunks with progress reporting
   uint8_t buff[512] = { 0 };
   size_t written = 0;
   int lastReportedProgress = 0;
   
-  while (http.connected() && (written < (size_t)contentLength)) {
+  while (http.connected() && (written < contentLength)) {
     size_t available = stream->available();
     if (available) {
       size_t bytesToRead = ((available > sizeof(buff)) ? sizeof(buff) : available);
@@ -178,6 +206,7 @@ bool performOTAUpdate(String version) {
       
       written += bytesWritten;
       
+      // Report progress every 10%
       int progress = (written * 100) / contentLength;
       if (progress >= lastReportedProgress + 10) {
         publishOTAProgress(progress);
@@ -187,7 +216,7 @@ bool performOTAUpdate(String version) {
     delay(1);
   }
   
-  if (written == (size_t)contentLength) {
+  if (written == contentLength) {
     DEBUG_PRINTLN("Firmware written successfully");
     publishOTAProgress(100);
   } else {
@@ -204,6 +233,7 @@ bool performOTAUpdate(String version) {
     return false;
   }
   
+  // Finalize update
   if (Update.end()) {
     if (Update.isFinished()) {
       DEBUG_PRINTLN("OTA Update successful! Rebooting...");
@@ -235,13 +265,16 @@ bool performOTAUpdate(String version) {
   return false;
   
 #elif defined(ESP8266)
+  // ESP8266 - Manual download with authentication
   HTTPClient http;
   bool isHttps = binaryUrl.startsWith("https://");
   
+  // Track client type for proper cleanup
   WiFiClientSecure* secureClientPtr = nullptr;
   WiFiClient* plainClientPtr = nullptr;
   WiFiClient* clientPtr = nullptr;
   
+  // Setup HTTP connection
   if (isHttps) {
     secureClientPtr = new WiFiClientSecure();
     secureClientPtr->setInsecure();
@@ -269,8 +302,9 @@ bool performOTAUpdate(String version) {
     }
   }
   
+  // Add authentication headers
   http.addHeader("X-API-Key", DOWNLOAD_API_KEY);
-  http.addHeader("User-Agent", "NorrtekIoT-OTA");
+  http.addHeader("User-Agent", "SkiClockNeo-OTA");
   
   DEBUG_PRINTLN("Starting ESP8266 OTA download...");
   int httpCode = http.GET();
@@ -302,6 +336,7 @@ bool performOTAUpdate(String version) {
     return false;
   }
   
+  // Begin OTA update
   bool canBegin = Update.begin(contentLength);
   if (!canBegin) {
     DEBUG_PRINTLN("Not enough space for OTA");
@@ -316,11 +351,12 @@ bool performOTAUpdate(String version) {
   
   WiFiClient * stream = http.getStreamPtr();
   
+  // Download in chunks with progress reporting
   uint8_t buff[512] = { 0 };
   size_t written = 0;
   int lastReportedProgress = 0;
   
-  while (http.connected() && (written < (size_t)contentLength)) {
+  while (http.connected() && (written < contentLength)) {
     size_t available = stream->available();
     if (available) {
       size_t bytesToRead = ((available > sizeof(buff)) ? sizeof(buff) : available);
@@ -340,6 +376,7 @@ bool performOTAUpdate(String version) {
       
       written += bytesWritten;
       
+      // Report progress every 10%
       int progress = (written * 100) / contentLength;
       if (progress >= lastReportedProgress + 10) {
         publishOTAProgress(progress);
@@ -349,7 +386,7 @@ bool performOTAUpdate(String version) {
     delay(1);
   }
   
-  if (written == (size_t)contentLength) {
+  if (written == contentLength) {
     DEBUG_PRINTLN("Firmware written successfully");
     publishOTAProgress(100);
   } else {
@@ -366,6 +403,7 @@ bool performOTAUpdate(String version) {
     return false;
   }
   
+  // Finalize update
   if (Update.end()) {
     if (Update.isFinished()) {
       DEBUG_PRINTLN("OTA Update successful! Rebooting...");
@@ -398,6 +436,11 @@ bool performOTAUpdate(String version) {
   return false;
 }
 
+// ============================================================================
+// PUBLIC API
+// ============================================================================
+
+// Trigger OTA update when MQTT version response indicates update available
 void triggerOTAUpdate(String newVersion) {
   if (otaUpdateInProgress) {
     DEBUG_PRINTLN("OTA update already in progress");
@@ -409,6 +452,7 @@ void triggerOTAUpdate(String newVersion) {
     return;
   }
   
+  // Compare versions
   long currentVer = parseVersion(FIRMWARE_VERSION);
   long latestVer = parseVersion(newVersion);
   

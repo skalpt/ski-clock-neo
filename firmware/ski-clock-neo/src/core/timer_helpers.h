@@ -1,5 +1,5 @@
-#ifndef NORRTEK_TIMER_HELPERS_H
-#define NORRTEK_TIMER_HELPERS_H
+#ifndef TIMER_HELPERS_H
+#define TIMER_HELPERS_H
 
 #include <Arduino.h>
 #include "debug.h"
@@ -31,6 +31,7 @@ struct TimerConfig {
   #endif
 };
 
+// Task function type for notification-based tasks (ESP32 only)
 typedef void (*TaskFunction)(void* parameter);
 
 class TimerTaskManager {
@@ -44,8 +45,12 @@ public:
   bool triggerTimer(const char* name);
   
   #if defined(ESP32)
+    // Create a notification-based task (ESP32 only)
+    // Task blocks on ulTaskNotifyTake() and wakes when notifyTask() is called
+    // Returns task handle for external notification, or NULL on failure
     TaskHandle_t createNotificationTask(const char* name, TaskFunction taskFn, uint16_t stackSize = 2048, uint8_t priority = 2);
     
+    // Notify a task to wake up (use with createNotificationTask)
     bool notifyTask(TaskHandle_t taskHandle);
   #endif
   

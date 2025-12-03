@@ -1,5 +1,5 @@
-#ifndef NORRTEK_MQTT_CLIENT_H
-#define NORRTEK_MQTT_CLIENT_H
+#ifndef MQTT_CLIENT_H
+#define MQTT_CLIENT_H
 
 #if defined(ESP32)
   #include <WiFi.h>
@@ -16,6 +16,7 @@
 #include "../core/debug.h"
 #include "../core/device_info.h"
 
+// MQTT broker configuration (injected at build time)
 #ifndef MQTT_HOST
   #error "MQTT_HOST must be defined at compile time via -DMQTT_HOST=\"...\""
 #endif
@@ -28,34 +29,33 @@
   #error "MQTT_PASSWORD must be defined at compile time via -DMQTT_PASSWORD=\"...\""
 #endif
 
-typedef String (*SnapshotPayloadCallback)();
-
+// MQTT broker port
 extern const uint16_t MQTT_PORT;
 
-extern const char* MQTT_TOPIC_HEARTBEAT;
-extern const char* MQTT_TOPIC_VERSION_RESPONSE;
-extern const char* MQTT_TOPIC_COMMAND;
-extern const char* MQTT_TOPIC_OTA_START;
-extern const char* MQTT_TOPIC_OTA_PROGRESS;
-extern const char* MQTT_TOPIC_OTA_COMPLETE;
-extern const char* MQTT_TOPIC_DISPLAY_SNAPSHOT;
-extern const char* MQTT_TOPIC_EVENTS;
+// MQTT topics (constexpr for compile-time optimization)
+extern const char MQTT_TOPIC_HEARTBEAT[];
+extern const char MQTT_TOPIC_VERSION_RESPONSE[];
+extern const char MQTT_TOPIC_COMMAND[];
+extern const char MQTT_TOPIC_OTA_START[];
+extern const char MQTT_TOPIC_OTA_PROGRESS[];
+extern const char MQTT_TOPIC_OTA_COMPLETE[];
+extern const char MQTT_TOPIC_DISPLAY_SNAPSHOT[];
+extern const char MQTT_TOPIC_EVENTS[];
 
+// MQTT client objects
 extern WiFiClientSecure wifiSecureClient;
 extern PubSubClient mqttClient;
 
+// Heartbeat timing
 extern const unsigned long HEARTBEAT_INTERVAL;
 extern Ticker heartbeatTicker;
 extern bool mqttIsConnected;
 
+// Display snapshot timing
 extern const unsigned long DISPLAY_SNAPSHOT_INTERVAL;
 extern Ticker displaySnapshotTicker;
 
-void setMqttProduct(const char* productName);
-const char* getMqttProduct();
-
-void setSnapshotPayloadCallback(SnapshotPayloadCallback callback);
-
+// Function declarations
 void initMQTT();
 bool connectMQTT();
 void disconnectMQTT();
@@ -67,12 +67,13 @@ void handleRollbackCommand(String message);
 void handleRestartCommand();
 String base64Encode(const uint8_t* data, uint16_t length);
 
+// MQTT publishing helpers (reduces code duplication across modules)
 String buildDeviceTopic(const char* baseTopic);
-String buildProductTopic(const char* baseTopic);
 bool publishMqttPayload(const char* topic, const char* payload);
 bool publishMqttPayload(const String& topic, const char* payload);
 bool publishMqttPayload(const String& topic, const String& payload);
 
+// WiFi event handlers
 #if defined(ESP32)
   void onWiFiConnected(WiFiEvent_t event, WiFiEventInfo_t info);
   void onWiFiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info);

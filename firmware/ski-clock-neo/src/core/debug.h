@@ -1,5 +1,8 @@
-#ifndef NORRTEK_DEBUG_H
-#define NORRTEK_DEBUG_H
+#ifndef DEBUG_H
+#define DEBUG_H
+
+// Debug logging enabled for development
+#define DEBUG_LOGGING
 
 #ifdef DEBUG_LOGGING
   #define DEBUG_BEGIN(baud) Serial.begin(baud)

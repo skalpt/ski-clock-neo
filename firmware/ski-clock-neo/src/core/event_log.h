@@ -1,5 +1,5 @@
-#ifndef NORRTEK_EVENT_LOG_H
-#define NORRTEK_EVENT_LOG_H
+#ifndef EVENT_LOG_H
+#define EVENT_LOG_H
 
 #include <Arduino.h>
 
@@ -14,11 +14,7 @@ struct EventEntry {
     bool valid;
 };
 
-typedef bool (*EventPublishCallback)(const char* topic, const char* payload);
-typedef String (*EventTopicBuilder)(const char* baseTopic);
-
 void initEventLog();
-void setEventPublishCallback(EventPublishCallback callback, EventTopicBuilder topicBuilder);
 void logEvent(const char* type, const char* dataJson = nullptr);
 void logBootEvent();
 void flushEventQueue();
