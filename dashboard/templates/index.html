@@ -201,6 +201,65 @@
     let deviceRefreshInterval = null;
     let currentRefreshRate = 10000; // Default: 10 seconds
     
+    // All refresh intervals (for pausing during USB flash)
+    let timestampInterval = null;
+    let otaStatsInterval = null;
+    let firmwareInterval = null;
+    let eventsInterval = null;
+    let flashingInProgress = false;
+    
+    function pauseAllRefresh() {
+        if (flashingInProgress) return;
+        flashingInProgress = true;
+        console.log('Pausing all refresh intervals for USB flashing...');
+        
+        if (deviceRefreshInterval) clearInterval(deviceRefreshInterval);
+        if (timestampInterval) clearInterval(timestampInterval);
+        if (otaStatsInterval) clearInterval(otaStatsInterval);
+        if (firmwareInterval) clearInterval(firmwareInterval);
+        if (eventsInterval) clearInterval(eventsInterval);
+        
+        deviceRefreshInterval = null;
+        timestampInterval = null;
+        otaStatsInterval = null;
+        firmwareInterval = null;
+        eventsInterval = null;
+    }
+    
+    function resumeAllRefresh() {
+        if (!flashingInProgress) return;
+        flashingInProgress = false;
+        console.log('Resuming all refresh intervals...');
+        
+        timestampInterval = setInterval(updateLiveTimestamps, 1000);
+        otaStatsInterval = setInterval(loadOTAStats, 30000);
+        deviceRefreshInterval = setInterval(loadDevices, currentRefreshRate);
+        firmwareInterval = setInterval(loadFirmware, 60000);
+        eventsInterval = setInterval(loadEventsFeed, 10000);
+        
+        // Immediate refresh to catch up
+        loadDevices();
+        loadFirmware();
+        loadEventsFeed();
+    }
+    
+    // Listen for ESP Web Tools state changes on all install buttons
+    // This handles inline flash buttons that don't go through the modal
+    document.addEventListener('state-changed', function(e) {
+        // Only handle events from esp-web-install-button elements
+        if (!e.target || e.target.tagName !== 'ESP-WEB-INSTALL-BUTTON') return;
+        
+        const state = e.detail?.state;
+        console.log('ESP Web Tools state:', state);
+        
+        if (state === 'initializing' || state === 'preparing' || state === 'erasing' || state === 'writing') {
+            pauseAllRefresh();
+        } else if (state === 'finished' || state === 'error') {
+            // Small delay before resuming to let the browser settle
+            setTimeout(resumeAllRefresh, 1000);
+        }
+    });
+    
     async function loadDevices() {
         try {
             const [devicesResponse, progressResponse] = await Promise.all([
@@ -1337,6 +1396,9 @@
         const quickInstaller = document.getElementById('flash-modal-installer-quick');
         const fullInstaller = document.getElementById('flash-modal-installer-full');
         
+        // Pause all refresh intervals to reduce memory pressure during flashing
+        pauseAllRefresh();
+        
         title.textContent = `USB Flash - ${platform.toUpperCase()} v${version}`;
         versionInfo.textContent = `Flashing ${platform.toUpperCase()} firmware version ${version}`;
         
@@ -1354,6 +1416,8 @@
     
     function closeFlashModal() {
         document.getElementById('flash-modal').classList.add('hidden');
+        // Resume all refresh intervals after flashing completes
+        resumeAllRefresh();
     }
     
     async function pinDeviceVersion(deviceId, version) {
@@ -1426,18 +1490,18 @@
     loadEventsFeed();
 
     // Update live timestamps every second for smooth counting
-    setInterval(updateLiveTimestamps, 1000);
+    timestampInterval = setInterval(updateLiveTimestamps, 1000);
     
     // Refresh OTA stats every 30 seconds
-    setInterval(loadOTAStats, 30000);
+    otaStatsInterval = setInterval(loadOTAStats, 30000);
 
     // Device refresh interval is managed dynamically by adjustRefreshInterval()
     // based on OTA status (1s during OTA, 10s otherwise)
     deviceRefreshInterval = setInterval(loadDevices, currentRefreshRate);
     
-    setInterval(loadFirmware, 60000);
+    firmwareInterval = setInterval(loadFirmware, 60000);
     
     // Refresh events feed every 10 seconds
-    setInterval(loadEventsFeed, 10000);
+    eventsInterval = setInterval(loadEventsFeed, 10000);
 </script>
 {% endblock %}
