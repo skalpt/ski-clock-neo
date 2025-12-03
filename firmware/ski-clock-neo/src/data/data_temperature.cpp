@@ -183,6 +183,9 @@ bool getTemperature(float* temperature) {
     return false;
   }
   
+  // Apply calibration offset from config
+  tempC += TEMPERATURE_OFFSET;
+  
   *temperature = tempC;
   lastTemperature = tempC;
   lastReadValid = true;
