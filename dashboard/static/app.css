@@ -619,16 +619,9 @@ button {
 
 .table-responsive {
     overflow-x: auto;
-    overflow-y: visible;
     -webkit-overflow-scrolling: touch;
     margin: 0 calc(-1 * var(--spacing-md));
     padding: 0 var(--spacing-md);
-}
-
-/* Firmware table needs visible overflow for flash dropdown */
-.firmware-table .table-responsive,
-#firmware-table {
-    overflow: visible;
 }
 
 .table-responsive::-webkit-scrollbar {
