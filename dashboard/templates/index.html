@@ -329,12 +329,9 @@
         return { platform, product, version, flashMode };
     }
     
-    // Listen for ESP Web Tools state changes on all install buttons
-    // This handles inline flash buttons that don't go through the modal
-    document.addEventListener('state-changed', async function(e) {
-        // Only handle events from esp-web-install-button elements
-        if (!e.target || e.target.tagName !== 'ESP-WEB-INSTALL-BUTTON') return;
-        
+    // Handler for ESP Web Tools state changes
+    async function handleEspStateChange(e) {
+        const btn = e.target;
         const state = e.detail?.state;
         const detail = e.detail;
         
@@ -355,7 +352,7 @@
             
             // If no currentFlashInfo set (inline button), extract from button
             if (!currentFlashInfo) {
-                currentFlashInfo = extractFlashInfoFromButton(e.target);
+                currentFlashInfo = extractFlashInfoFromButton(btn);
                 console.log('%c[USB Flash Log]', 'color: #FF9800', 'Extracted flash info from inline button:', currentFlashInfo);
             }
             
@@ -383,11 +380,17 @@
             // Small delay before resuming to let the browser settle
             setTimeout(resumeAllRefresh, 1000);
         }
-    });
+    }
     
-    // Add logger to all ESP Web Tools buttons for verbose output
-    const setupEspWebToolsLogging = () => {
+    // Setup ESP Web Tools buttons with event listeners and logging
+    const setupEspWebToolsButtons = () => {
         document.querySelectorAll('esp-web-install-button').forEach(btn => {
+            if (!btn._eventHandlerAttached) {
+                // Attach state-changed listener directly to the button
+                btn.addEventListener('state-changed', handleEspStateChange);
+                btn._eventHandlerAttached = true;
+                console.log('%c[ESP Setup]', 'color: #9C27B0', 'Attached state-changed listener to button:', btn.id || btn.getAttribute('manifest'));
+            }
             if (!btn._loggerAttached) {
                 btn.logger = {
                     log: (...args) => console.log('%c[esptool]', 'color: #607D8B', ...args),
@@ -399,9 +402,9 @@
         });
     };
     
-    // Setup logging on page load and after DOM updates
-    setupEspWebToolsLogging();
-    const observer = new MutationObserver(() => setupEspWebToolsLogging());
+    // Setup buttons on page load and after DOM updates (for dynamically added buttons)
+    setupEspWebToolsButtons();
+    const observer = new MutationObserver(() => setupEspWebToolsButtons());
     observer.observe(document.body, { childList: true, subtree: true });
     
     async function loadDevices() {
