@@ -122,6 +122,7 @@ The project consists of two primary components:
 *   **System Design**: Emphasizes automated versioning, secure communication, and graceful fallback.
 
 ## External Dependencies
-*   **Firmware Libraries**: Adafruit_NeoPixel, RTClib (Adafruit), AutoConnect, PubSubClient (with TLS support), ESP32 Arduino Core, ESP8266 WiFi libraries.
+*   **Firmware Libraries**: Adafruit_NeoPixel OR FastLED (swappable renderers), RTClib (Adafruit), AutoConnect, PubSubClient (with TLS support), ESP32 Arduino Core, ESP8266 WiFi libraries.
+    - To use FastLED: Change `#include "neopixel_render.h"` to `#include "fastled_render.h"` in `display_core.cpp`
 *   **Dashboard Dependencies**: Flask, paho-mqtt, PostgreSQL, Replit Object Storage (optional).
 *   **Cloud Services**: HiveMQ Cloud Serverless (MQTT broker), GitHub Actions (CI/CD).

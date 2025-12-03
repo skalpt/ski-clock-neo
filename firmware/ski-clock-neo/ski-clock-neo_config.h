@@ -15,7 +15,10 @@
 #define DISPLAY_ROWS    2       // Number of physical display rows
 
 // Display pin configuration (one GPIO per row)
-static const uint8_t DISPLAY_PINS[DISPLAY_ROWS] = {4, 3};
+// These are compile-time constants for FastLED compatibility
+#define DISPLAY_PIN_ROW0 4
+#define DISPLAY_PIN_ROW1 3
+static const uint8_t DISPLAY_PINS[DISPLAY_ROWS] = {DISPLAY_PIN_ROW0, DISPLAY_PIN_ROW1};
 
 // Per-row panel counts (allows different widths per row)
 // Example: Row 0 = 3 panels (48px wide), Row 1 = 4 panels (64px wide)
