@@ -1233,7 +1233,6 @@ body.no-web-serial .flash-column {
     height: auto;
     image-rendering: pixelated;
     background: #000;
-    border-radius: var(--radius-sm);
 }
 
 .muted-text {
