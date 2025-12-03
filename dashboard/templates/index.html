@@ -356,7 +356,7 @@
                                     <div><strong>WiFi Signal:</strong> ${getSignalStrengthIcon(device.rssi)}${device.rssi} dBm</div>
                                     <div><strong>Free Memory:</strong> ${(device.free_heap / 1024).toFixed(1)} KB</div>
                                     <div><strong>Last Seen:</strong> <span class="live-timestamp" data-timestamp="${escapeHtml(device.last_seen)}">${formatTimestamp(device.last_seen)}</span></div>
-                                    <div><strong>First Seen:</strong> ${new Date(device.first_seen).toLocaleString()}</div>
+                                    <div><strong>First Seen:</strong> ${formatTimestamp(device.first_seen)}</div>
                                 </div>
                                 ${otaHtml}
                                 <div class="device-actions">
