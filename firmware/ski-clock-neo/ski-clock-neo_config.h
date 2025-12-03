@@ -18,6 +18,7 @@
 // #define MQTT_PASSWORD     "your-mqtt-password"
 // #define UPDATE_SERVER_URL "https://your-update-server.com"
 // #define DOWNLOAD_API_KEY  "your-api-key"
+// #define FIRMWARE_VERSION  "2025.01.01.1"
 
 // ============================================================================
 // PRODUCT CONFIGURATION
