@@ -40,9 +40,7 @@ void processNorrtekIoT() {
   
   updateMQTT();
   
-  #if defined(ESP8266)
-    updateTimers();
-  #endif
+  updateTimers();
 }
 
 void setDisplayUpdateCallback(DisplayUpdateCallback callback) {
