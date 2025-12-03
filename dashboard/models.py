@@ -302,8 +302,8 @@ class OTAUpdateLog(db.Model):
     __tablename__ = 'ota_update_logs'
     
     id = db.Column(db.Integer, primary_key=True)
-    session_id = db.Column(db.String(36), unique=True, nullable=False, index=True)  # UUID for tracking OTA sessions
-    device_id = db.Column(db.String(32), db.ForeignKey('devices.device_id'), nullable=False, index=True)
+    session_id = db.Column(db.String(36), unique=True, nullable=False, index=True)  # UUID for tracking sessions
+    device_id = db.Column(db.String(32), db.ForeignKey('devices.device_id'), nullable=True, index=True)  # Nullable for USB flash (device may not exist yet)
     product = db.Column(db.String(64), nullable=False, index=True)
     platform = db.Column(db.String(32), nullable=False, index=True)
     old_version = db.Column(db.String(32))
@@ -314,6 +314,8 @@ class OTAUpdateLog(db.Model):
     completed_at = db.Column(db.DateTime(timezone=True))
     error_message = db.Column(db.Text)
     download_progress = db.Column(db.Integer, default=0)  # 0-100 percentage
+    update_type = db.Column(db.String(16), nullable=False, default='ota', index=True)  # 'ota' or 'usb_flash'
+    log_content = db.Column(db.Text)  # Detailed log output (especially for USB flash)
     
     # Relationships
     device = db.relationship('Device', back_populates='ota_update_logs')
@@ -322,7 +324,7 @@ class OTAUpdateLog(db.Model):
         return f'<OTAUpdateLog {self.device_id} ({self.product}): {self.old_version} -> {self.new_version} ({self.status})>'
     
     def to_dict(self):
-        """Convert OTA update log to dictionary"""
+        """Convert update log to dictionary"""
         result = {
             'id': self.id,
             'session_id': self.session_id,
@@ -333,7 +335,9 @@ class OTAUpdateLog(db.Model):
             'new_version': self.new_version,
             'status': self.status,
             'started_at': self.started_at.isoformat(),
-            'download_progress': self.download_progress
+            'download_progress': self.download_progress,
+            'update_type': self.update_type,
+            'has_log': bool(self.log_content)
         }
         
         if self.completed_at:
