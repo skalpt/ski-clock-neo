@@ -436,25 +436,19 @@ def sync_firmware_from_production():
         
         synced_count = 0
         with app.app_context():
-            if is_new_format:
-                for product, platforms in data['firmwares'].items():
-                    if platforms is None or not isinstance(platforms, dict):
-                        continue
-                    
-                    for platform, fw_data in platforms.items():
-                        if fw_data is None or not isinstance(fw_data, dict):
-                            continue
-                        
-                        synced_count += _sync_single_firmware(product, platform, fw_data)
-            else:
-                legacy_product = 'ski-clock-neo'
-                print(f"⚠ Production using legacy format, mapping to product '{legacy_product}'")
+            if not is_new_format:
+                print("⚠ Production using legacy format, skipping sync (multi-product format required)")
+                return
+            
+            for product, platforms in data['firmwares'].items():
+                if platforms is None or not isinstance(platforms, dict):
+                    continue
                 
-                for platform, fw_data in data['firmwares'].items():
+                for platform, fw_data in platforms.items():
                     if fw_data is None or not isinstance(fw_data, dict):
                         continue
                     
-                    synced_count += _sync_single_firmware(legacy_product, platform, fw_data)
+                    synced_count += _sync_single_firmware(product, platform, fw_data)
             
             if synced_count > 0:
                 load_versions_from_db()

@@ -96,8 +96,6 @@ dashboard/
 | `FLASK_SECRET_KEY` | Session encryption key | Random (insecure) |
 | `PRODUCTION_API_URL` | Production server for dev sync | None |
 | `DEV_MODE` | Force development mode | false |
-| `DASHBOARD_USERNAME` | Legacy auth (deprecated) | None |
-| `DASHBOARD_PASSWORD` | Legacy auth (deprecated) | None |
 
 ## API Endpoints
 

@@ -110,7 +110,7 @@ class FirmwareVersion(db.Model):
     __tablename__ = 'firmware_versions'
     
     id = db.Column(db.Integer, primary_key=True)
-    product = db.Column(db.String(64), nullable=False, index=True, default='ski-clock-neo')
+    product = db.Column(db.String(64), nullable=False, index=True)
     platform = db.Column(db.String(32), nullable=False, index=True)
     version = db.Column(db.String(32), nullable=False)
     
@@ -211,7 +211,7 @@ class Device(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     device_id = db.Column(db.String(32), unique=True, nullable=False, index=True)
-    product = db.Column(db.String(64), nullable=False, index=True, default='ski-clock-neo')
+    product = db.Column(db.String(64), nullable=False, index=True)
     board_type = db.Column(db.String(32), nullable=False)
     firmware_version = db.Column(db.String(32))
     first_seen = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
@@ -302,9 +302,9 @@ class OTAUpdateLog(db.Model):
     __tablename__ = 'ota_update_logs'
     
     id = db.Column(db.Integer, primary_key=True)
-    session_id = db.Column(db.String(36), unique=True, nullable=True, index=True)  # UUID for tracking (nullable for backward compatibility)
+    session_id = db.Column(db.String(36), unique=True, nullable=False, index=True)  # UUID for tracking OTA sessions
     device_id = db.Column(db.String(32), db.ForeignKey('devices.device_id'), nullable=False, index=True)
-    product = db.Column(db.String(64), nullable=False, index=True, default='ski-clock-neo')  # Product for multi-product support
+    product = db.Column(db.String(64), nullable=False, index=True)
     platform = db.Column(db.String(32), nullable=False, index=True)
     old_version = db.Column(db.String(32))
     new_version = db.Column(db.String(32), nullable=False)

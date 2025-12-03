@@ -638,6 +638,8 @@ def handle_event(client, payload, topic):
     event_type = payload.get('type')
     event_data = payload.get('data')
     offset_ms = payload.get('offset_ms', 0)
+    product = payload.get('product')
+    board_type = payload.get('board')
     
     if not event_type:
         print(f"⚠ Missing event type in payload from {device_id}")
@@ -655,13 +657,17 @@ def handle_event(client, payload, topic):
             # Ensure device exists (create if new)
             device = Device.query.filter_by(device_id=device_id).first()
             if not device:
+                if not product:
+                    print(f"⚠ Cannot register new device via event: missing 'product' in payload from {device_id}")
+                    return
                 device = Device(
                     device_id=device_id,
-                    board_type='Unknown',
+                    product=product,
+                    board_type=board_type or 'Unknown',
                     firmware_version='Unknown'
                 )
                 db.session.add(device)
-                print(f"✨ New device registered via event: {device_id}")
+                print(f"✨ New device registered via event: {device_id} ({product})")
             
             # Store the event
             event_log = EventLog(
