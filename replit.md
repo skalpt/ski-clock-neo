@@ -14,6 +14,7 @@ The project consists of two primary components:
 
 **1. Firmware (Embedded C++ for ESP32/ESP8266):**
 *   **Features**: Drives 16x16 NeoPixel matrices with a custom 5x7 pixel font, supports multi-panel setups, includes a freeze-proof LED status indicator using hardware interrupt timers, and manages WiFi via `AutoConnect`. Secure non-blocking OTA updates are handled via a custom server with API key authentication and HTTPS. NeoPixel updates utilize FreeRTOS tasks on ESP32 for smooth rendering.
+*   **2x Glyph Override System**: The 2x font scaling uses diagonal smoothing for cleaner edges, but this can fill in small details (like the hole in °). The `font_5x7_2x_overrides.h` file provides hand-crafted 2x versions of problem glyphs, giving full artistic control while keeping automatic smoothing for other characters.
 *   **Modular Display Architecture**: Hardware configuration is centralized in `display_config.h`. The generic `display_core.{h,cpp}` library manages a bit-packed display buffer and text content, which is hardware-agnostic. The `neopixel_render.h` renderer handles pixel transformations (rotation, serpentine wiring) and commits unified frames. This architecture supports future migration to HUB75 panels.
 *   **FreeRTOS Display Task**: Display rendering runs in a dedicated FreeRTOS task (ESP32) or Ticker callback (ESP8266) for immediate, non-blocking display updates.
 *   **Deterministic Display Controller Task**: Content scheduling (e.g., time/date toggling) runs in a dedicated FreeRTOS task (ESP32) or TickTwo library (ESP8266) to prevent display "freezing" during network operations.
@@ -97,7 +98,8 @@ The project consists of two primary components:
             ├── display_core.h/.cpp    (hardware-agnostic buffer management)
             ├── display_controller.h/.cpp (content scheduling and modes)
             ├── neopixel_render.h/.cpp (NeoPixel-specific rendering)
-            └── font_5x7.h             (bitmap font data)
+            ├── font_5x7.h             (bitmap font data)
+            └── font_5x7_2x_overrides.h (hand-crafted 2x glyphs for problem characters)
     ```
     Include paths use `src/` prefix from .ino (e.g., `#include "src/core/timer_helpers.h"`), relative paths within src for cross-folder includes (e.g., `#include "../core/timer_helpers.h"`), and same-folder includes use flat paths (e.g., `#include "display_core.h"`).
     Config file access: Use `#include "../../ski-clock-neo_config.h"` from src/ files (relative path to sketch root).

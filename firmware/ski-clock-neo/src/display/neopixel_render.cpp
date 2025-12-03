@@ -13,7 +13,8 @@
 // INCLUDES
 // ============================================================================
 
-#include "neopixel_render.h"  // This file's header
+#include "neopixel_render.h"       // This file's header
+#include "font_5x7_2x_overrides.h" // Hand-crafted 2x glyphs for problem characters
 
 // ============================================================================
 // GLOBAL VARIABLES
@@ -345,6 +346,28 @@ void drawGlyphForRow(Adafruit_NeoPixel &strip,
 
   // Special handling for scale == 2 with diagonal smoothing
   if (scale == 2) {
+    // Check for hand-crafted 2x override first
+    const Glyph2xOverride* override = find2xOverride(glyphIndex);
+    
+    if (override != nullptr) {
+      // Use the hand-crafted 2x glyph (preserves artistic details like holes)
+      uint8_t overrideW = pgm_read_byte(&override->width);
+      uint8_t overrideH = pgm_read_byte(&override->height);
+      const uint8_t* overrideData = (const uint8_t*)pgm_read_ptr(&override->data);
+      
+      for (uint8_t r = 0; r < overrideH; r++) {
+        uint8_t bits = pgm_read_byte(&overrideData[r]);
+        for (uint8_t c = 0; c < overrideW; c++) {
+          bool on = bits & (1 << (overrideW - 1 - c));
+          if (on) {
+            setPixelRow(strip, rowIdx, x0 + c, y0 + r, color);
+          }
+        }
+      }
+      return;
+    }
+    
+    // No override - use automatic 2x scaling with diagonal smoothing
     const uint8_t W = w0 * 2;
     const uint8_t H = h0 * 2;
 
@@ -390,7 +413,17 @@ uint16_t textWidth(const char *text, uint8_t scale) {
   for (uint8_t i = 0; text[i] != '\0'; i++) {
     int gi = charToGlyph(text[i]);
     if (gi >= 0) {
-      width += FONT_WIDTH_TABLE[gi] * scale;
+      // Check for 2x override width
+      if (scale == 2) {
+        const Glyph2xOverride* override = find2xOverride(gi);
+        if (override != nullptr) {
+          width += pgm_read_byte(&override->width);
+        } else {
+          width += FONT_WIDTH_TABLE[gi] * scale;
+        }
+      } else {
+        width += FONT_WIDTH_TABLE[gi] * scale;
+      }
 
       if (text[i+1] != '\0') {
         width += SPACING_SCALES ? (CHAR_SPACING * scale)
@@ -421,7 +454,19 @@ void drawTextCenteredForRow(Adafruit_NeoPixel &strip,
     if (gi >= 0) {
       drawGlyphForRow(strip, rowIdx, gi, x0, y0, color, scale);
 
-      uint8_t charW = FONT_WIDTH_TABLE[gi] * scale;
+      // Use override width if available at scale 2
+      uint8_t charW;
+      if (scale == 2) {
+        const Glyph2xOverride* override = find2xOverride(gi);
+        if (override != nullptr) {
+          charW = pgm_read_byte(&override->width);
+        } else {
+          charW = FONT_WIDTH_TABLE[gi] * scale;
+        }
+      } else {
+        charW = FONT_WIDTH_TABLE[gi] * scale;
+      }
+      
       uint8_t spacing = SPACING_SCALES ? (CHAR_SPACING * scale)
                                        : CHAR_SPACING;
 
