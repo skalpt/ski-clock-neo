@@ -437,7 +437,11 @@ def sync_firmware_from_production():
                     continue
                 
                 for platform, fw_data in platforms.items():
+                    if platform not in CANONICAL_PLATFORMS:
+                        continue
                     if fw_data is None or not isinstance(fw_data, dict):
+                        continue
+                    if 'version' not in fw_data:
                         continue
                     
                     synced_count += _sync_single_firmware(product, platform, fw_data)
