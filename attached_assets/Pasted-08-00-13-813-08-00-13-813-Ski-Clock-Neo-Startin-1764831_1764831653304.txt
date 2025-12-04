@@ -1,0 +1,109 @@
+08:00:13.813 -> ===========================================
+08:00:13.813 -> Ski Clock Neo - Starting Up
+08:00:13.813 -> ===========================================
+08:00:13.813 -> Firmware version: 2025.12.3.104
+08:00:13.813 -> Event log initialized
+08:00:13.813 -> Event queued: boot {"reason":"software","version":"2025.12.3.104"} (queue: 1)
+08:00:13.813 -> Boot event logged: {"reason":"software","version":"2025.12.3.104"}
+08:00:13.813 -> Initializing device configuration...
+08:00:13.813 -> Loaded temperature offset from NVS: 0.00
+08:00:13.813 -> Device configuration initialized
+08:00:13.813 -> LED indicator initialized on GPIO8
+08:00:13.813 -> ESP32 hardware timer initialized (Core 2.x, 100ms interval)
+08:00:13.813 -> FastLED row 1 (3 panels, 768 pixels, GPIO 4) initialised.
+08:00:13.813 -> FastLED row 2 (3 panels, 768 pixels, GPIO 3) initialised.
+08:00:13.887 -> FastLED renderer ready (event-driven, no timers)
+08:00:13.887 -> Display FreeRTOS task started - waiting for notifications
+08:00:13.887 -> Notification task created (ESP32-C3): Display
+08:00:13.887 -> Initializing display controller
+08:00:13.887 -> [updateBothRows] Starting...
+08:00:13.887 -> [ROW0] isTimeSynced=false
+08:00:13.887 -> [ROW0] Not synced, using placeholder ~~.~~
+08:00:13.887 -> [ROW1] formatTemperature returned=false, buffer=''
+08:00:13.887 -> [ROW1] Using fallback ~~*C
+08:00:13.887 -> [updateBothRows] row0Changed=true, row1Changed=true
+08:00:13.887 -> [updateBothRows] Calling triggerRender()
+08:00:13.887 -> [RENDER] updateNeoPixels() called
+08:00:13.887 -> [RENDER] Row0 text='~~.~~', len=5
+08:00:13.887 -> [RENDER] Row1 text='~~*C', len=4
+08:00:13.887 -> FreeRTOS task started: DisplayTick
+08:00:13.887 -> Timer created (ESP32-C3 FreeRTOS): DisplayTick @ 500ms
+08:00:13.887 -> Display controller initialized
+08:00:13.887 -> Initializing time system (RTC + NTP)
+08:00:13.887 -> DS3231 RTC found on I2C bus
+08:00:13.887 -> Event queued: rtc_initialized (queue: 2)
+08:00:13.887 -> RTC time valid: 2025-12-4 7:0:13
+08:00:13.887 -> System time set from RTC
+08:00:13.887 -> Initializing NTP time sync for Sweden (Europe/Stockholm)
+08:00:13.887 -> FreeRTOS task started: TimeCheck
+08:00:13.887 -> Timer created (ESP32-C3 FreeRTOS): TimeCheck @ 1000ms
+08:00:13.887 -> Time system initialized
+08:00:13.887 -> Time change callback registered
+08:00:13.887 -> Initializing DS18B20 temperature sensor on GPIO 2
+08:00:13.995 -> Found 1 DS18B20 device(s)
+08:00:14.032 -> FreeRTOS task started: TemperaturePoll
+08:00:14.032 -> Timer created (ESP32-C3 FreeRTOS): TemperaturePoll @ 30000ms
+08:00:14.032 -> One-shot timer registered: TemperatureRead @ 750ms (dormant)
+08:00:14.032 -> Temperature read requested (timer)
+08:00:14.032 -> One-shot timer triggered: TemperatureRead
+08:00:14.032 -> Temperature sensor initialized (non-blocking mode, first poll triggered)
+08:00:14.032 -> Initializing button on GPIO 0
+08:00:14.032 -> Button initialized (FALLING edge)
+08:00:14.032 -> FreeRTOS task started: ButtonPoll
+08:00:14.032 -> Timer created (ESP32-C3 FreeRTOS): ButtonPoll @ 10ms
+08:00:14.032 -> Button initialized and callback registered
+08:00:14.032 -> Registering WiFi connection event handlers...
+08:00:14.032 -> Initializing WiFi with AutoConnect...
+08:00:14.032 -> Generated AP SSID: SkiClockNeo-4fec74aec24
+08:00:14.756 -> WiFi connected, connecting to MQTT...
+08:00:14.756 -> Event queued: wifi_connect {"ssid":"TP-LINK_IoT","rssi":-52,"ip":"192.168.68.117"} (queue: 3)
+08:00:14.756 -> Connecting to MQTT broker...
+08:00:14.756 -> MQTT broker connection failed, rc=-2
+08:00:14.756 -> WiFi connected successfully!
+08:00:14.756 -> IP address: 192.168.68.117
+08:00:14.756 -> SSID: TP-LINK_IoT
+08:00:14.756 -> AutoConnect portal is running
+08:00:14.756 -> Portal SSID: SkiClockNeo-4fec74aec24
+08:00:14.756 -> Portal Password: configure
+08:00:14.756 -> Portal remains accessible even when connected to WiFi
+08:00:14.756 -> Access portal at device IP address (redirects / to /_ac)
+08:00:14.756 -> Initializing MQTT client...
+08:00:14.756 -> MQTT broker: 067cdeba5be946b6930820f48d86afc3.s1.eu.hivemq.cloud:8883
+08:00:14.756 -> TLS encryption enabled (no cert validation)
+08:00:14.756 -> Connecting to MQTT broker...
+08:00:14.793 -> [updateBothRows] Starting...
+08:00:14.793 -> [ROW0] isTimeSynced=true
+08:00:14.793 -> [ROW0] formatTime returned=true, buffer='08.00', len=5
+08:00:14.793 -> [ROW1] formatTemperature returned=true, buffer='16*C'
+08:00:14.793 -> [updateBothRows] row0Changed=true, row1Changed=true
+08:00:14.793 -> [updateBothRows] Calling triggerRender()
+08:00:14.793 -> Temperature updated: 16.37
+08:00:14.793 -> Event queued: temperature_read {"celsius":16.4} (queue: 4)
+08:00:14.793 -> First temperature read complete
+08:00:14.793 -> [RENDER] updateNeoPixels() called
+08:00:14.793 -> [RENDER] Row0 text='08.00', len=5
+08:00:14.793 -> [RENDER] Row1 text='16*C', len=4
+08:00:14.863 -> [RENDER] updateNeoPixels() called
+08:00:14.863 -> [RENDER] Row0 text='08.00', len=5
+08:00:14.863 -> [RENDER] Row1 text='16*C', len=4
+08:00:15.879 -> [RENDER] updateNeoPixels() called
+08:00:15.879 -> [RENDER] Row0 text='08.00', len=5
+08:00:15.879 -> [RENDER] Row1 text='16*C', len=4
+08:00:15.879 -> MQTT broker connected!
+08:00:15.879 -> Event queued: mqtt_connect (queue: 5)
+08:00:15.879 -> Published to norrtek-iot/event/4fec74aec24: {"type":"boot","data":{"reason":"software","version":"2025.12.3.104"},"offset_ms":2070}
+08:00:15.879 -> Published to norrtek-iot/event/4fec74aec24: {"type":"rtc_initialized","offset_ms":1993}
+08:00:15.917 -> Published to norrtek-iot/event/4fec74aec24: {"type":"wifi_connect","data":{"ssid":"TP-LINK_IoT","rssi":-52,"ip":"192.168.68.117"},"offset_ms":1153}
+08:00:15.917 -> Published to norrtek-iot/event/4fec74aec24: {"type":"temperature_read","data":{"celsius":16.4},"offset_ms":1096}
+08:00:15.917 -> Published to norrtek-iot/event/4fec74aec24: {"type":"mqtt_connect","offset_ms":1}
+08:00:15.917 -> Flushed 5 events from queue
+08:00:15.917 -> Subscribed to topic: norrtek-iot/version/response/4fec74aec24
+08:00:15.917 -> Subscribed to topic: norrtek-iot/command/4fec74aec24
+08:00:15.917 -> Subscribed to topic: norrtek-iot/config/4fec74aec24
+08:00:15.917 -> Publishing device info...
+08:00:15.954 -> Published to norrtek-iot/info/4fec74aec24: {"product":"ski-clock-neo","board":"ESP32-C3","version":"2025.12.3.104","config":{"temp_offset":0.0},"supported_commands":["temp_offset","rollback","restart","snapshot","info"]}
+08:00:15.954 -> Device info published successfully
+08:00:15.954 -> Published to norrtek-iot/heartbeat/4fec74aec24: {"uptime":2,"rssi":-52,"free_heap":120984,"ssid":"TP-LINK_IoT","ip":"192.168.68.117"}
+08:00:15.954 -> Publishing display snapshot...
+08:00:15.954 -> Published to norrtek-iot/display/snapshot/4fec74aec24: {"rows":[{"text":"08.00","cols":3,"width":48,"height":16,"mono":"AAAAAAAA+MEP8IMf/OMf+Mc/Dnc4HO5wBjYwDGxghjcwDG94xnc4jG985uYfzG1uduYf7GxnPnY4fOxjHjYwPOxhBjYwDGxgDnc4HO5w/OOf+cc/+MGP8YMfAAAAAAAA","monoColor":[255,0,0,10]},{"text":"16*C","cols":3,"width":48,"height":16,"mono":"AAAAAAAAAAN4MPgBAAN8ePwDwAMOzA4HwAMHzAYGAIMDeAYAAIMBMAYAAIN/AAYAAIP/AAYAAIPBAQYAAIOBAQYAAIOBAQYGAIPDAQ4HwA//APwDwA9+APgBAAAAAAAA","monoColor":[255,0,0,10]}]}
+08:00:15.954 -> Display snapshot size: 433 bytes
