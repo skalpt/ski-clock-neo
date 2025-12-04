@@ -100,21 +100,10 @@ void updateNeoPixels() {
     return;
   }
   
-  DEBUG_PRINTLN("[RENDER] updateNeoPixels() called");
-  
   uint32_t startSeq = getUpdateSequence();
   
   char textSnapshot[DISPLAY_ROWS][MAX_TEXT_LENGTH];
   snapshotAllText(textSnapshot);
-  
-  DEBUG_PRINT("[RENDER] Row0 text='");
-  DEBUG_PRINT(textSnapshot[0]);
-  DEBUG_PRINT("', len=");
-  DEBUG_PRINTLN(strlen(textSnapshot[0]));
-  DEBUG_PRINT("[RENDER] Row1 text='");
-  DEBUG_PRINT(textSnapshot[1]);
-  DEBUG_PRINT("', len=");
-  DEBUG_PRINTLN(strlen(textSnapshot[1]));
   
   DisplayConfig cfg = getDisplayConfig();
   

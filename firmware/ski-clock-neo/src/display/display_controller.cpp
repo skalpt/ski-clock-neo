@@ -220,15 +220,6 @@ void onTimeChange(uint8_t flags) {
 // ROW UPDATE HELPERS
 // ============================================================================
 
-// Helper: Check if buffer has valid content (non-empty, non-whitespace)
-static bool hasValidContent(const char* buf) {
-  if (!buf || buf[0] == '\0') return false;
-  for (const char* p = buf; *p; p++) {
-    if (*p != ' ') return true;
-  }
-  return false;
-}
-
 // Set row 0 content based on current mode (does not trigger render)
 // Returns true if content actually changed
 bool updateRow0Content() {
@@ -236,43 +227,19 @@ bool updateRow0Content() {
   
   if (currentMode == MODE_NORMAL) {
     // Normal mode: alternate time/date
-    bool synced = isTimeSynced();
-    DEBUG_PRINT("[ROW0] isTimeSynced=");
-    DEBUG_PRINTLN(synced ? "true" : "false");
-    
-    if (!synced) {
-      DEBUG_PRINTLN("[ROW0] Not synced, using placeholder ~~.~~");
+    if (!isTimeSynced()) {
       return setTextNoRender(0, "~~.~~");
     }
     
     if (showingTime) {
-      bool fmtOk = formatTime(buffer, sizeof(buffer));
-      DEBUG_PRINT("[ROW0] formatTime returned=");
-      DEBUG_PRINT(fmtOk ? "true" : "false");
-      DEBUG_PRINT(", buffer='");
-      DEBUG_PRINT(buffer);
-      DEBUG_PRINT("', len=");
-      DEBUG_PRINTLN(strlen(buffer));
-      
-      if (fmtOk && hasValidContent(buffer)) {
+      if (formatTime(buffer, sizeof(buffer))) {
         return setTextNoRender(0, buffer);
       } else {
-        DEBUG_PRINTLN("[ROW0] Empty/invalid buffer, forcing ~~.~~");
         return setTextNoRender(0, "~~.~~");
       }
     } else {
-      bool fmtOk = formatDate(buffer, sizeof(buffer));
-      DEBUG_PRINT("[ROW0] formatDate returned=");
-      DEBUG_PRINT(fmtOk ? "true" : "false");
-      DEBUG_PRINT(", buffer='");
-      DEBUG_PRINT(buffer);
-      DEBUG_PRINTLN("'");
-      
-      if (fmtOk && hasValidContent(buffer)) {
+      if (formatDate(buffer, sizeof(buffer))) {
         return setTextNoRender(0, buffer);
-      } else {
-        DEBUG_PRINTLN("[ROW0] Empty/invalid date, forcing ~~.~~");
-        return setTextNoRender(0, "~~.~~");
       }
     }
   } else if (currentMode == MODE_COUNTDOWN || currentMode == MODE_TIMER) {
@@ -283,21 +250,19 @@ bool updateRow0Content() {
     
     switch (timerTopRowState) {
       case 0: // Time
-        if (formatTime(buffer, sizeof(buffer)) && hasValidContent(buffer)) {
+        if (formatTime(buffer, sizeof(buffer))) {
           return setTextNoRender(0, buffer);
         } else {
           return setTextNoRender(0, "~~.~~");
         }
         break;
       case 1: // Date
-        if (formatDate(buffer, sizeof(buffer)) && hasValidContent(buffer)) {
+        if (formatDate(buffer, sizeof(buffer))) {
           return setTextNoRender(0, buffer);
-        } else {
-          return setTextNoRender(0, "~~.~~");
         }
         break;
       case 2: // Temperature
-        if (formatTemperature(buffer, sizeof(buffer)) && hasValidContent(buffer)) {
+        if (formatTemperature(buffer, sizeof(buffer))) {
           return setTextNoRender(0, buffer);
         } else {
           return setTextNoRender(0, "~~*C");
@@ -312,21 +277,19 @@ bool updateRow0Content() {
     
     switch (timerTopRowState) {
       case 0: // Time
-        if (formatTime(buffer, sizeof(buffer)) && hasValidContent(buffer)) {
+        if (formatTime(buffer, sizeof(buffer))) {
           return setTextNoRender(0, buffer);
         } else {
           return setTextNoRender(0, "~~.~~");
         }
         break;
       case 1: // Date
-        if (formatDate(buffer, sizeof(buffer)) && hasValidContent(buffer)) {
+        if (formatDate(buffer, sizeof(buffer))) {
           return setTextNoRender(0, buffer);
-        } else {
-          return setTextNoRender(0, "~~.~~");
         }
         break;
       case 2: // Temperature
-        if (formatTemperature(buffer, sizeof(buffer)) && hasValidContent(buffer)) {
+        if (formatTemperature(buffer, sizeof(buffer))) {
           return setTextNoRender(0, buffer);
         } else {
           return setTextNoRender(0, "~~*C");
@@ -344,17 +307,9 @@ bool updateRow1Content() {
   
   if (currentMode == MODE_NORMAL) {
     // Normal mode: show temperature
-    bool fmtOk = formatTemperature(buffer, sizeof(buffer));
-    DEBUG_PRINT("[ROW1] formatTemperature returned=");
-    DEBUG_PRINT(fmtOk ? "true" : "false");
-    DEBUG_PRINT(", buffer='");
-    DEBUG_PRINT(buffer);
-    DEBUG_PRINTLN("'");
-    
-    if (fmtOk && hasValidContent(buffer)) {
+    if (formatTemperature(buffer, sizeof(buffer))) {
       return setTextNoRender(1, buffer);
     } else {
-      DEBUG_PRINTLN("[ROW1] Using fallback ~~*C");
       return setTextNoRender(1, "~~*C");
     }
   } else if (currentMode == MODE_COUNTDOWN) {
@@ -389,21 +344,12 @@ bool updateRow1Content() {
 
 // Update both rows atomically (set content, then trigger single render if changed)
 void updateBothRows() {
-  DEBUG_PRINTLN("[updateBothRows] Starting...");
   bool row0Changed = updateRow0Content();
   bool row1Changed = updateRow1Content();
   
-  DEBUG_PRINT("[updateBothRows] row0Changed=");
-  DEBUG_PRINT(row0Changed ? "true" : "false");
-  DEBUG_PRINT(", row1Changed=");
-  DEBUG_PRINTLN(row1Changed ? "true" : "false");
-  
   // Only trigger render if something actually changed
   if (row0Changed || row1Changed) {
-    DEBUG_PRINTLN("[updateBothRows] Calling triggerRender()");
     triggerRender();
-  } else {
-    DEBUG_PRINTLN("[updateBothRows] No changes, skipping render");
   }
 }
 
@@ -445,9 +391,9 @@ void startFlashingResult() {
   currentMode = MODE_FLASHING_RESULT;
   flashVisible = true;
   tickCounter = 0;  // Reset tick counter for flash duration tracking
-  
+
   logEvent("button_press", "{\"action\":\"timer_stop\"}");
-  
+
   updateBothRows();
   // NOTE: restartTimer() is called by onButtonPress() after this returns,
   // since this function is only called from button press context.
@@ -457,7 +403,7 @@ void startDisplayResult() {
   DEBUG_PRINTLN("Starting display result mode");
   currentMode = MODE_DISPLAY_RESULT;
   tickCounter = 0;  // Reset tick counter for result timeout tracking
-  
+
   updateBothRows();
   // NOTE: Do NOT call restartTimer() here - this is called from within
   // the timer callback when flash period ends. Restarting the timer
@@ -469,15 +415,15 @@ void returnToNormal() {
   currentMode = MODE_NORMAL;
   showingTime = true;
   tickCounter = 0;  // Reset tick counter for synchronization
-  
+
   // Reset timer state for next use
   timerTopRowState = 0;
   elapsedSeconds = 0;
   countdownValue = 3;
   flashVisible = true;
-  
+
   logEvent("display_mode_change", "{\"from\":\"timer\",\"to\":\"normal\"}");
-  
+
   updateBothRows();
   // NOTE: Do NOT call restartTimer() here - this may be called from within
   // the timer callback (result timeout) or from cancelTimer (button press).
@@ -497,42 +443,42 @@ void cancelTimer() {
 // Button press callback (called by data_button library)
 void onButtonPress() {
   uint32_t now = millis();
-  
+
   // Transition lockout to prevent rapid state changes from button bounce
   if (transitionInProgress || (now - lastTransitionTime) < TRANSITION_LOCKOUT_MS) {
     DEBUG_PRINTLN("Button press ignored (transition lockout)");
     clearButtonPressed();  // Discard any pending bounces
     return;
   }
-  
+
   transitionInProgress = true;
   lastTransitionTime = now;
-  
+
   DEBUG_PRINT("Button pressed in mode: ");
   DEBUG_PRINTLN(currentMode);
-  
+
   switch (currentMode) {
     case MODE_NORMAL:
       // Start countdown (restartTimer is called inside startCountdown)
       startCountdown();
       break;
-      
+
     case MODE_COUNTDOWN:
       // Cancel timer, return to normal
       cancelTimer();
       restartTimer("DisplayTick");  // Sync timer phase after cancel
       break;
-      
+
     case MODE_TIMER:
       // Stop timer, show flashing result
       startFlashingResult();
       restartTimer("DisplayTick");  // Sync timer phase for flash timing
       break;
-      
+
     case MODE_FLASHING_RESULT:
       // Ignore button presses during flashing
       break;
-      
+
     case MODE_DISPLAY_RESULT:
       // Start new countdown (restartTimer is called inside startCountdown)
       startCountdown();
