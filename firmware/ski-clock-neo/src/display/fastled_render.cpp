@@ -74,12 +74,11 @@ void initNeoPixels() {
     DEBUG_PRINTLN(") initialised.");
   }
   
-  // Add row 1 first to test if RMT channel order affects first-render bug
-  #if DISPLAY_ROWS >= 2
-    FastLED.addLeds<NEOPIXEL, DISPLAY_PIN_ROW1>(rowLeds[1], rowPixelCounts[1]);
-  #endif
   #if DISPLAY_ROWS >= 1
     FastLED.addLeds<NEOPIXEL, DISPLAY_PIN_ROW0>(rowLeds[0], rowPixelCounts[0]);
+  #endif
+  #if DISPLAY_ROWS >= 2
+    FastLED.addLeds<NEOPIXEL, DISPLAY_PIN_ROW1>(rowLeds[1], rowPixelCounts[1]);
   #endif
 
   FastLED.setBrightness(BRIGHTNESS);
