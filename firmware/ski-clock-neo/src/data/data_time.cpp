@@ -18,6 +18,7 @@
 #include "../core/event_log.h"       // For logging time events
 #include "../core/debug.h"           // For debug logging
 #include "../core/timer_helpers.h"   // For 1-second polling timer
+#include "../display/display_controller.h" // For forceDisplayUpdate after RTC init
 #include <time.h>                    // For time functions
 #include <sys/time.h>                // For settimeofday
 #include <Wire.h>                    // For I2C communication with RTC
@@ -130,6 +131,10 @@ void initTimeData() {
   
   timeInitialized = true;
   DEBUG_PRINTLN("Time system initialized");
+  
+  // Trigger display update now that time is available
+  // This ensures RTC time shows immediately instead of placeholder
+  forceDisplayUpdate();
 }
 
 // ============================================================================
