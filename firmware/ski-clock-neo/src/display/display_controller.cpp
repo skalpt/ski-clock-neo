@@ -265,7 +265,7 @@ bool updateRow0Content() {
         if (formatTemperature(buffer, sizeof(buffer))) {
           return setTextNoRender(0, buffer);
         } else {
-          return setTextNoRender(0, "~~*C");
+          return setTextNoRender(0, "~~.~*C");
         }
         break;
     }
@@ -292,7 +292,7 @@ bool updateRow0Content() {
         if (formatTemperature(buffer, sizeof(buffer))) {
           return setTextNoRender(0, buffer);
         } else {
-          return setTextNoRender(0, "~~*C");
+          return setTextNoRender(0, "~~.~*C");
         }
         break;
     }
@@ -310,7 +310,7 @@ bool updateRow1Content() {
     if (formatTemperature(buffer, sizeof(buffer))) {
       return setTextNoRender(1, buffer);
     } else {
-      return setTextNoRender(1, "~~*C");
+      return setTextNoRender(1, "~~.~*C");
     }
   } else if (currentMode == MODE_COUNTDOWN) {
     // Countdown mode: show countdown number

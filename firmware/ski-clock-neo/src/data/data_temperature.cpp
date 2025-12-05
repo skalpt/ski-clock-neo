@@ -197,17 +197,14 @@ bool getTemperature(float* temperature) {
 // PUBLIC API
 // ============================================================================
 
-// Format temperature as string (e.g., "23*C" or "-5*C")
+// Format temperature as string (e.g., "23.5*C" or "-5.2*C")
 bool formatTemperature(char* output, size_t outputSize) {
-  if (!initialized || !lastReadValid || output == nullptr || outputSize < 5) {
+  if (!initialized || !lastReadValid || output == nullptr || outputSize < 8) {
     return false;
   }
   
-  // Round to nearest integer (correctly handles negative temperatures)
-  int tempInt = (int)lroundf(lastTemperature);
-  
-  // Format as "XX*C" where * will be rendered as degree symbol
-  snprintf(output, outputSize, "%d*C", tempInt);
+  // Format with one decimal place (e.g., "25.7*C", "-2.7*C", "-28.9*C")
+  snprintf(output, outputSize, "%.1f*C", lastTemperature);
   return true;
 }
 
