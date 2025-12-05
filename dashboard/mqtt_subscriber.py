@@ -458,6 +458,21 @@ def handle_ota_start(client, payload, topic):
         from models import OTAUpdateLog, db
         
         with _app_context.app_context():
+            # Mark any existing in-progress OTA logs for this device as failed
+            # This handles the case where a previous OTA was interrupted (e.g., WiFi dropped)
+            interrupted_logs = OTAUpdateLog.query.filter(
+                OTAUpdateLog.device_id == device_id,
+                OTAUpdateLog.status.in_(['started', 'downloading'])
+            ).all()
+            
+            if interrupted_logs:
+                for interrupted_log in interrupted_logs:
+                    interrupted_log.status = 'failed'
+                    interrupted_log.completed_at = datetime.now(timezone.utc)
+                    interrupted_log.error_message = 'Interrupted by new OTA attempt'
+                    print(f"⚠️ Marked interrupted OTA as failed: {interrupted_log.session_id} (was at {interrupted_log.download_progress}%)")
+                db.session.commit()
+            
             # Create OTA log entry with product
             log = OTAUpdateLog(
                 session_id=session_id,
