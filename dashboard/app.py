@@ -291,7 +291,7 @@ def load_versions_from_db():
     print(f"✓ Loaded {count} firmware versions from database")
     return LATEST_VERSIONS
 
-def save_version_to_db(platform: str, version_info: dict, product: str):
+def save_version_to_db(platform: str, version_info: dict, product: str, is_sync: bool = False):
     """Save or update a firmware version in the database.
     
     Now supports version history: each product+platform+version combination is unique.
@@ -302,6 +302,7 @@ def save_version_to_db(platform: str, version_info: dict, product: str):
         platform: Platform name (e.g., 'esp32c3')
         version_info: Dictionary with version details
         product: Product name (required for multi-product support)
+        is_sync: If True, preserves existing uploaded_at on updates (for production sync)
     """
     version = version_info['version']
     
@@ -313,7 +314,9 @@ def save_version_to_db(platform: str, version_info: dict, product: str):
         fw.filename = version_info['filename']
         fw.size = version_info['size']
         fw.sha256 = version_info['sha256']
-        fw.uploaded_at = datetime.now(timezone.utc)
+        # Only update uploaded_at on actual uploads, not syncs
+        if not is_sync:
+            fw.uploaded_at = datetime.now(timezone.utc)
         fw.download_url = version_info['download_url']
         fw.storage = version_info['storage']
         fw.object_path = version_info.get('object_path')
@@ -337,6 +340,15 @@ def save_version_to_db(platform: str, version_info: dict, product: str):
         fw.partitions_local_path = version_info.get('partitions_local_path')
         print(f"✓ Updated existing {product}/{platform} v{version} in database")
     else:
+        # Parse uploaded_at from version_info if provided (from production sync)
+        # Falls back to model default (current time) if not provided
+        uploaded_at = None
+        if version_info.get('uploaded_at'):
+            try:
+                uploaded_at = datetime.fromisoformat(version_info['uploaded_at'].replace('Z', '+00:00'))
+            except (ValueError, AttributeError):
+                uploaded_at = None  # Use model default
+        
         # Create new version record (preserves history)
         fw = FirmwareVersion(
             product=product,
@@ -367,6 +379,9 @@ def save_version_to_db(platform: str, version_info: dict, product: str):
             partitions_object_name=version_info.get('partitions_object_name'),
             partitions_local_path=version_info.get('partitions_local_path')
         )
+        # Set uploaded_at if parsed from production, otherwise use model default
+        if uploaded_at:
+            fw.uploaded_at = uploaded_at
         db.session.add(fw)
         print(f"✓ Added new {product}/{platform} v{version} to database")
     
@@ -394,6 +409,7 @@ def _sync_single_firmware(product: str, platform: str, fw_data: dict) -> int:
         'object_path': fw_data.get('object_path'),
         'object_name': fw_data.get('object_name'),
         'local_path': fw_data.get('local_path'),
+        'uploaded_at': fw_data.get('uploaded_at'),  # Preserve original upload timestamp from production
         
         'bootloader_filename': fw_data.get('bootloader', {}).get('filename') if fw_data.get('bootloader') else None,
         'bootloader_size': fw_data.get('bootloader', {}).get('size') if fw_data.get('bootloader') else None,
@@ -403,7 +419,7 @@ def _sync_single_firmware(product: str, platform: str, fw_data: dict) -> int:
         'partitions_size': fw_data.get('partitions', {}).get('size') if fw_data.get('partitions') else None,
         'partitions_sha256': fw_data.get('partitions', {}).get('sha256') if fw_data.get('partitions') else None
     }
-    save_version_to_db(platform, version_info, product)
+    save_version_to_db(platform, version_info, product, is_sync=True)
     return 1
 
 def sync_firmware_from_production():
