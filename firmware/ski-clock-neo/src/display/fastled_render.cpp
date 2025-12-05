@@ -84,6 +84,23 @@ void initNeoPixels() {
   FastLED.setBrightness(BRIGHTNESS);
   FastLED.setDither(0);  // Disable temporal dithering to prevent color artifacts at low brightness
   
+  // ESP32-C3 RMT driver workaround: Prime each strip with a dummy render
+  // The first FastLED.show() after addLeds() can fail on ESP32-C3 due to RMT init timing
+  // Rendering a single dim pixel per strip and then clearing forces proper RMT initialization
+  #ifdef ESP32
+    DEBUG_PRINTLN("Priming RMT channels with dummy render...");
+    for (uint8_t i = 0; i < DISPLAY_ROWS; i++) {
+      rowLeds[i][0] = CRGB(1, 1, 1);  // Single dim pixel
+    }
+    FastLED.show();
+    
+    for (uint8_t i = 0; i < DISPLAY_ROWS; i++) {
+      rowLeds[i][0] = CRGB::Black;
+    }
+    FastLED.show();
+    DEBUG_PRINTLN("RMT priming complete");
+  #endif
+  
   FastLED.clear();
   FastLED.show();
   
