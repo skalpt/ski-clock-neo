@@ -39,6 +39,11 @@ uint8_t fastledRenderBuffer[MAX_DISPLAY_BUFFER_SIZE] = {0};
 
 static CRGB displayColor;
 
+// ESP32-C3 RMT workaround: first frame needs double-show
+#ifdef ESP32
+static bool firstFramePending = true;
+#endif
+
 
 // ============================================================================
 // FORWARD DECLARATIONS (internal functions)
@@ -84,27 +89,10 @@ void initNeoPixels() {
   FastLED.setBrightness(BRIGHTNESS);
   FastLED.setDither(0);  // Disable temporal dithering to prevent color artifacts at low brightness
   
-  // ESP32-C3 RMT driver workaround: Prime each strip with a dummy render
-  // The first FastLED.show() after addLeds() can fail on ESP32-C3 due to RMT init timing
-  // Rendering a single dim pixel per strip and then clearing forces proper RMT initialization
-  #ifdef ESP32
-    DEBUG_PRINTLN("Priming RMT channels with dummy render...");
-    for (uint8_t i = 0; i < DISPLAY_ROWS; i++) {
-      rowLeds[i][0] = CRGB(1, 1, 1);  // Single dim pixel
-    }
-    FastLED.show();
-    
-    for (uint8_t i = 0; i < DISPLAY_ROWS; i++) {
-      rowLeds[i][0] = CRGB::Black;
-    }
-    FastLED.show();
-    DEBUG_PRINTLN("RMT priming complete");
-  #endif
-  
   FastLED.clear();
   FastLED.show();
   
-  DEBUG_PRINTLN("FastLED renderer ready (event-driven, no timers)");
+  DEBUG_PRINTLN("FastLED renderer ready (first frame will double-show for ESP32 RMT workaround)");
 }
 
 
@@ -158,6 +146,18 @@ void updateNeoPixels() {
   }
   
   FastLED.show();
+  
+  // ESP32-C3 RMT workaround: double-show the first content frame
+  // The first FastLED.show() after init can fail to render the first strip
+  // Sending the frame twice with a small delay ensures both rows display
+  #ifdef ESP32
+  if (firstFramePending) {
+    delayMicroseconds(200);
+    FastLED.show();
+    firstFramePending = false;
+    DEBUG_PRINTLN("First frame double-show complete (ESP32 RMT workaround)");
+  }
+  #endif
   
   bool allDone = clearRenderFlagsIfUnchanged(startSeq);
   (void)allDone;
