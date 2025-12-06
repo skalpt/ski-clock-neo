@@ -447,7 +447,8 @@ bool performOTAUpdate(String version) {
 // ============================================================================
 
 // Trigger OTA update when MQTT version response indicates update available
-void triggerOTAUpdate(String newVersion) {
+// isPinned: if true, allows downgrade to older version (for pinned devices)
+void triggerOTAUpdate(String newVersion, bool isPinned) {
   if (otaUpdateInProgress) {
     DEBUG_PRINTLN("OTA update already in progress");
     return;
@@ -466,9 +467,17 @@ void triggerOTAUpdate(String newVersion) {
   DEBUG_PRINTLN(currentVer);
   DEBUG_PRINT("Latest version code: ");
   DEBUG_PRINTLN(latestVer);
+  DEBUG_PRINT("Pinned: ");
+  DEBUG_PRINTLN(isPinned ? "yes" : "no");
   
+  // Allow update if:
+  // 1. New version is greater (normal upgrade), OR
+  // 2. Server says this is a pinned version (allows rollback/downgrade)
   if (latestVer > currentVer) {
     DEBUG_PRINTLN("New version available! Starting OTA update...");
+    performOTAUpdate(newVersion);
+  } else if (isPinned && latestVer != currentVer) {
+    DEBUG_PRINTLN("Pinned to older version - starting OTA downgrade...");
     performOTAUpdate(newVersion);
   } else {
     DEBUG_PRINTLN("Firmware is up to date");

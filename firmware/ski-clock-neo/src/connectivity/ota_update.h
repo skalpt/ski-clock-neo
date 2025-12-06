@@ -41,7 +41,7 @@ extern bool otaUpdateInProgress;
 
 // Function declarations
 void setupOTA();
-void triggerOTAUpdate(String newVersion);
+void triggerOTAUpdate(String newVersion, bool isPinned = false);
 bool performOTAUpdate(String version);
 void publishOTAStart(String newVersion);
 void publishOTAProgress(int progress);

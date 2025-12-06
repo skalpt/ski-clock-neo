@@ -87,7 +87,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   if (strcmp(topic, versionResponseTopic.c_str()) == 0) {
     DEBUG_PRINTLN("Version response received!");
     
-    // Simple JSON parsing to extract update_available and latest_version
+    // Simple JSON parsing to extract update_available, latest_version, and pinned flag
     if (message.indexOf("\"update_available\": true") > 0 || message.indexOf("\"update_available\":true") > 0) {
       int versionIndex = message.indexOf("\"latest_version\"");
       if (versionIndex > 0) {
@@ -100,8 +100,27 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
           DEBUG_PRINT("New version available: ");
           DEBUG_PRINTLN(latestVersion);
           
-          // Trigger OTA update
-          triggerOTAUpdate(latestVersion);
+          // Check if this is a pinned version (allows downgrades)
+          // Handle various JSON formats: "pinned":true, "pinned": true, "pinned" : true
+          bool isPinned = false;
+          int pinnedIndex = message.indexOf("\"pinned\"");
+          if (pinnedIndex > 0) {
+            // Find the value after the colon
+            int colonIndex = message.indexOf(":", pinnedIndex);
+            if (colonIndex > pinnedIndex) {
+              // Check for "true" after the colon (case-insensitive, handles whitespace)
+              String valueSection = message.substring(colonIndex + 1, colonIndex + 10);
+              valueSection.toLowerCase();
+              valueSection.trim();
+              isPinned = valueSection.startsWith("true");
+            }
+          }
+          if (isPinned) {
+            DEBUG_PRINTLN("Device is pinned to this version");
+          }
+          
+          // Trigger OTA update (isPinned allows downgrade)
+          triggerOTAUpdate(latestVersion, isPinned);
         }
       }
     } else {
