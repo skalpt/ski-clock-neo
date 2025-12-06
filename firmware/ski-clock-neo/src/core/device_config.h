@@ -8,6 +8,9 @@ void initDeviceConfig();
 float getTemperatureOffset();
 void setTemperatureOffset(float offset);
 
+const char* getEnvironmentScope();
+void setEnvironmentScope(const char* scope);
+
 void handleConfigMessage(const String& message);
 
 #endif

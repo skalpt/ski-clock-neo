@@ -28,17 +28,19 @@
 
 const uint16_t MQTT_PORT = 8883;  // TLS port for HiveMQ Cloud
 
-// MQTT topics (device-specific topics use buildDeviceTopic() which auto-adds trailing slash)
-const char MQTT_TOPIC_HEARTBEAT[] = "norrtek-iot/heartbeat";
-const char MQTT_TOPIC_INFO[] = "norrtek-iot/info";
-const char MQTT_TOPIC_VERSION_RESPONSE[] = "norrtek-iot/version/response";
-const char MQTT_TOPIC_COMMAND[] = "norrtek-iot/command";
-const char MQTT_TOPIC_CONFIG[] = "norrtek-iot/config";
-const char MQTT_TOPIC_OTA_START[] = "norrtek-iot/ota/start";
-const char MQTT_TOPIC_OTA_PROGRESS[] = "norrtek-iot/ota/progress";
-const char MQTT_TOPIC_OTA_COMPLETE[] = "norrtek-iot/ota/complete";
-const char MQTT_TOPIC_DISPLAY_SNAPSHOT[] = "norrtek-iot/display/snapshot";
-const char MQTT_TOPIC_EVENTS[] = "norrtek-iot/event";
+// MQTT topic base paths (environment scope is prepended dynamically)
+// Format: norrtek-iot/{env}/{path}/{device_id}
+// Example: norrtek-iot/prod/heartbeat/abc123
+const char MQTT_TOPIC_HEARTBEAT[] = "heartbeat";
+const char MQTT_TOPIC_INFO[] = "info";
+const char MQTT_TOPIC_VERSION_RESPONSE[] = "version/response";
+const char MQTT_TOPIC_COMMAND[] = "command";
+const char MQTT_TOPIC_CONFIG[] = "config";
+const char MQTT_TOPIC_OTA_START[] = "ota/start";
+const char MQTT_TOPIC_OTA_PROGRESS[] = "ota/progress";
+const char MQTT_TOPIC_OTA_COMPLETE[] = "ota/complete";
+const char MQTT_TOPIC_DISPLAY_SNAPSHOT[] = "display/snapshot";
+const char MQTT_TOPIC_EVENTS[] = "event";
 
 // Timing constants
 const unsigned long HEARTBEAT_INTERVAL = 60000;           // 60 seconds
@@ -83,7 +85,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   DEBUG_PRINTLN(message);
   
   // Handle device-specific version responses
-  String versionResponseTopic = String(MQTT_TOPIC_VERSION_RESPONSE) + "/" + getDeviceID();
+  String versionResponseTopic = buildDeviceTopic(MQTT_TOPIC_VERSION_RESPONSE);
   if (strcmp(topic, versionResponseTopic.c_str()) == 0) {
     DEBUG_PRINTLN("Version response received!");
     
@@ -129,7 +131,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   }
   
   // Handle device-specific command messages
-  String commandTopic = String(MQTT_TOPIC_COMMAND) + "/" + getDeviceID();
+  String commandTopic = buildDeviceTopic(MQTT_TOPIC_COMMAND);
   if (strcmp(topic, commandTopic.c_str()) == 0) {
     DEBUG_PRINTLN("Command received!");
     
@@ -152,7 +154,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   }
   
   // Handle device-specific config messages
-  String configTopic = String(MQTT_TOPIC_CONFIG) + "/" + getDeviceID();
+  String configTopic = buildDeviceTopic(MQTT_TOPIC_CONFIG);
   if (strcmp(topic, configTopic.c_str()) == 0) {
     DEBUG_PRINTLN("Config message received!");
     handleConfigMessage(message);
@@ -218,20 +220,20 @@ bool connectMQTT() {
     setEventLogReady(true);
     flushEventQueue();
 
-    // Subscribe to topics
-    String versionResponseTopic = String(MQTT_TOPIC_VERSION_RESPONSE) + "/" + getDeviceID();
+    // Subscribe to topics (using environment-scoped topics)
+    String versionResponseTopic = buildDeviceTopic(MQTT_TOPIC_VERSION_RESPONSE);
     if (mqttClient.subscribe(versionResponseTopic.c_str())) {
       DEBUG_PRINT("Subscribed to topic: ");
       DEBUG_PRINTLN(versionResponseTopic);
     }
     
-    String commandTopic = String(MQTT_TOPIC_COMMAND) + "/" + getDeviceID();
+    String commandTopic = buildDeviceTopic(MQTT_TOPIC_COMMAND);
     if (mqttClient.subscribe(commandTopic.c_str())) {
       DEBUG_PRINT("Subscribed to topic: ");
       DEBUG_PRINTLN(commandTopic);
     }
     
-    String configTopic = String(MQTT_TOPIC_CONFIG) + "/" + getDeviceID();
+    String configTopic = buildDeviceTopic(MQTT_TOPIC_CONFIG);
     if (mqttClient.subscribe(configTopic.c_str())) {
       DEBUG_PRINT("Subscribed to topic: ");
       DEBUG_PRINTLN(configTopic);
@@ -307,16 +309,27 @@ void updateMQTT() {
 // MQTT PUBLISHING HELPERS
 // ============================================================================
 
-// Build a device-specific topic by appending device ID to base topic
-String buildDeviceTopic(const char* baseTopic) {
-  String topic = String(baseTopic);
-  
-  // Auto-insert trailing slash if base topic lacks one
-  if (topic.length() > 0 && topic.charAt(topic.length() - 1) != '/') {
-    topic += '/';
-  }
-  
-  return topic + getDeviceID();
+// Build a device-specific topic with environment scope
+// Format: norrtek-iot/{env}/{path}/{device_id}
+// Example: norrtek-iot/prod/heartbeat/abc123
+String buildDeviceTopic(const char* basePath) {
+  String topic = "norrtek-iot/";
+  topic += getEnvironmentScope();
+  topic += '/';
+  topic += basePath;
+  topic += '/';
+  topic += getDeviceID();
+  return topic;
+}
+
+// Build a topic without device ID suffix (for subscriptions with wildcards)
+// Format: norrtek-iot/{env}/{path}
+String buildBaseTopic(const char* basePath) {
+  String topic = "norrtek-iot/";
+  topic += getEnvironmentScope();
+  topic += '/';
+  topic += basePath;
+  return topic;
 }
 
 // Publish payload to topic with connection check and logging (char* overloads)
@@ -407,12 +420,14 @@ void publishDeviceInfo() {
   DEBUG_PRINTLN("Publishing device info...");
   
   // Build JSON payload with static device info, config, and supported commands
+  // Include environment scope so dashboard knows which namespace the device uses
   static char payload[512];
   snprintf(payload, sizeof(payload),
-    "{\"product\":\"%s\",\"board\":\"%s\",\"version\":\"%s\",\"config\":{\"temp_offset\":%.1f},\"supported_commands\":[\"temp_offset\",\"rollback\",\"restart\",\"snapshot\",\"info\"]}",
+    "{\"product\":\"%s\",\"board\":\"%s\",\"version\":\"%s\",\"environment\":\"%s\",\"config\":{\"temp_offset\":%.1f},\"supported_commands\":[\"temp_offset\",\"rollback\",\"restart\",\"snapshot\",\"info\",\"environment\"]}",
     PRODUCT_NAME,
     getBoardType().c_str(),
     FIRMWARE_VERSION,
+    getEnvironmentScope(),
     getTemperatureOffset()
   );
   

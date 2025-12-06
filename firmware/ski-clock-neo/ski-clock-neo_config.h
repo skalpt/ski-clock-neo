@@ -20,6 +20,15 @@
 // #define DOWNLOAD_API_KEY  "your-api-key"
 // #define FIRMWARE_VERSION  "2025.01.01.1"
 
+// Environment scope for MQTT topics (dev or prod)
+// This is set via build flags in GitHub Actions:
+// - deploy-dev.yml sets ENV_SCOPE=dev
+// - deploy-prod.yml sets ENV_SCOPE=prod
+// Default to "prod" for safety if not specified
+#ifndef ENV_SCOPE
+  #define ENV_SCOPE "prod"
+#endif
+
 // Board type - uncomment ONE of these to match your hardware:
 // #define BOARD_ESP32        // Generic ESP32
 // #define BOARD_ESP32C3      // ESP32-C3

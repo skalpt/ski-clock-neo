@@ -17,16 +17,40 @@ MQTT_HOST = os.getenv('MQTT_HOST', 'localhost')
 MQTT_PORT = 8883
 MQTT_USERNAME = os.getenv('MQTT_USERNAME', '')
 MQTT_PASSWORD = os.getenv('MQTT_PASSWORD', '')
-MQTT_TOPIC_HEARTBEAT = "norrtek-iot/heartbeat"
-MQTT_TOPIC_INFO = "norrtek-iot/info"
-MQTT_TOPIC_VERSION_RESPONSE = "norrtek-iot/version/response"
-MQTT_TOPIC_OTA_START = "norrtek-iot/ota/start"
-MQTT_TOPIC_OTA_PROGRESS = "norrtek-iot/ota/progress"
-MQTT_TOPIC_OTA_COMPLETE = "norrtek-iot/ota/complete"
-MQTT_TOPIC_COMMAND = "norrtek-iot/command"
-MQTT_TOPIC_CONFIG = "norrtek-iot/config"
-MQTT_TOPIC_DISPLAY_SNAPSHOT = "norrtek-iot/display/snapshot"
-MQTT_TOPIC_EVENTS = "norrtek-iot/event"
+
+def get_environment_scope() -> str:
+    """Get the current environment scope based on PRODUCTION_API_URL presence.
+    Production environments don't have this set (they ARE production).
+    Dev environments have it set to sync with production.
+    """
+    production_url = os.getenv('PRODUCTION_API_URL')
+    if production_url:
+        return 'dev'
+    return 'prod'
+
+def build_topic(base_path: str) -> str:
+    """Build an environment-scoped MQTT topic.
+    Format: norrtek-iot/{env}/{path}
+    Example: norrtek-iot/prod/heartbeat
+    """
+    env = get_environment_scope()
+    return f"norrtek-iot/{env}/{base_path}"
+
+# Base topic prefix for all MQTT messages
+MQTT_TOPIC_PREFIX = "norrtek-iot"
+
+# Environment-scoped MQTT topic builders
+# Format: norrtek-iot/{env}/{path}/{device_id}
+MQTT_TOPIC_HEARTBEAT = lambda: build_topic("heartbeat")
+MQTT_TOPIC_INFO = lambda: build_topic("info")
+MQTT_TOPIC_VERSION_RESPONSE = lambda: build_topic("version/response")
+MQTT_TOPIC_OTA_START = lambda: build_topic("ota/start")
+MQTT_TOPIC_OTA_PROGRESS = lambda: build_topic("ota/progress")
+MQTT_TOPIC_OTA_COMPLETE = lambda: build_topic("ota/complete")
+MQTT_TOPIC_COMMAND = lambda: build_topic("command")
+MQTT_TOPIC_CONFIG = lambda: build_topic("config")
+MQTT_TOPIC_DISPLAY_SNAPSHOT = lambda: build_topic("display/snapshot")
+MQTT_TOPIC_EVENTS = lambda: build_topic("event")
 
 # Store Flask app instance for database access
 _app_context = None
@@ -78,28 +102,33 @@ def validate_ip_address(ip: str) -> Optional[str]:
 
 def on_connect(client, userdata, flags, rc, properties=None):
     if rc == 0:
-        print(f"✓ Connected to MQTT broker: {MQTT_HOST}")
-        client.subscribe(f"{MQTT_TOPIC_HEARTBEAT}/+")
-        print(f"✓ Subscribed to topic: {MQTT_TOPIC_HEARTBEAT}/+")
-        client.subscribe(f"{MQTT_TOPIC_INFO}/+")
-        print(f"✓ Subscribed to topic: {MQTT_TOPIC_INFO}/+")
-        client.subscribe(f"{MQTT_TOPIC_OTA_START}/+")
-        print(f"✓ Subscribed to topic: {MQTT_TOPIC_OTA_START}/+")
-        client.subscribe(f"{MQTT_TOPIC_OTA_PROGRESS}/+")
-        print(f"✓ Subscribed to topic: {MQTT_TOPIC_OTA_PROGRESS}/+")
-        client.subscribe(f"{MQTT_TOPIC_OTA_COMPLETE}/+")
-        print(f"✓ Subscribed to topic: {MQTT_TOPIC_OTA_COMPLETE}/+")
-        client.subscribe(f"{MQTT_TOPIC_DISPLAY_SNAPSHOT}/#")
-        print(f"✓ Subscribed to topic: {MQTT_TOPIC_DISPLAY_SNAPSHOT}/#")
-        client.subscribe(f"{MQTT_TOPIC_EVENTS}/#")
-        print(f"✓ Subscribed to topic: {MQTT_TOPIC_EVENTS}/#")
+        env = get_environment_scope()
+        print(f"✓ Connected to MQTT broker: {MQTT_HOST} (dashboard env: {env})")
+        
+        # Subscribe to BOTH environments (dev and prod) so dashboard can manage all devices
+        # Use + wildcard for environment: norrtek-iot/+/{path}/+
+        for target_env in ['dev', 'prod']:
+            client.subscribe(f"{MQTT_TOPIC_PREFIX}/{target_env}/heartbeat/+")
+            print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{target_env}/heartbeat/+")
+            client.subscribe(f"{MQTT_TOPIC_PREFIX}/{target_env}/info/+")
+            print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{target_env}/info/+")
+            client.subscribe(f"{MQTT_TOPIC_PREFIX}/{target_env}/ota/start/+")
+            print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{target_env}/ota/start/+")
+            client.subscribe(f"{MQTT_TOPIC_PREFIX}/{target_env}/ota/progress/+")
+            print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{target_env}/ota/progress/+")
+            client.subscribe(f"{MQTT_TOPIC_PREFIX}/{target_env}/ota/complete/+")
+            print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{target_env}/ota/complete/+")
+            client.subscribe(f"{MQTT_TOPIC_PREFIX}/{target_env}/display/snapshot/#")
+            print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{target_env}/display/snapshot/#")
+            client.subscribe(f"{MQTT_TOPIC_PREFIX}/{target_env}/event/#")
+            print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{target_env}/event/#")
     else:
         print(f"✗ Failed to connect to MQTT broker, return code {rc}")
 
 def handle_heartbeat(client, payload, topic):
     """Handle device heartbeat messages - updates telemetry data only
     
-    Device ID is extracted from topic: norrtek-iot/heartbeat/{device_id}
+    Device ID is extracted from topic: norrtek-iot/{env}/heartbeat/{device_id}
     
     New slimmed-down format contains only dynamic telemetry:
     - rssi, uptime, free_heap, ssid, ip
@@ -107,13 +136,19 @@ def handle_heartbeat(client, payload, topic):
     Legacy format (backwards compatible) may also include:
     - product, board, version (now handled by device_info topic)
     """
-    # Extract device_id from topic
+    # Extract device_id and environment from topic (format: norrtek-iot/{env}/heartbeat/{device_id})
     topic_parts = topic.split('/')
-    if len(topic_parts) < 3:
+    if len(topic_parts) < 4:
         print(f"⚠ Invalid heartbeat topic format: {topic}")
         return
     
-    device_id = topic_parts[2]
+    environment = topic_parts[1]  # 'dev' or 'prod'
+    device_id = topic_parts[3]
+    
+    # Validate environment
+    if environment not in ('dev', 'prod'):
+        print(f"⚠ Invalid environment in topic: {environment}")
+        environment = 'prod'  # Default to prod for safety
     
     # Legacy format: product, board, version in heartbeat payload
     # New format: these fields come from info topic instead
@@ -136,6 +171,9 @@ def handle_heartbeat(client, payload, topic):
                 device.ssid = payload.get('ssid')
                 device.ip_address = validate_ip_address(payload.get('ip'))
                 
+                # Update environment from topic - authoritative source
+                device.environment = environment
+                
                 # Legacy format: update static fields if present in payload
                 if board_type:
                     device.board_type = board_type
@@ -152,6 +190,7 @@ def handle_heartbeat(client, payload, topic):
                         product=product,
                         board_type=board_type,
                         firmware_version=current_version or 'Unknown',
+                        environment=environment,
                         last_uptime=payload.get('uptime', 0),
                         last_rssi=payload.get('rssi', 0),
                         last_free_heap=payload.get('free_heap', 0),
@@ -160,10 +199,10 @@ def handle_heartbeat(client, payload, topic):
                     )
                     db.session.add(device)
                     db.session.flush()
-                    print(f"✨ New device registered: {device_id} ({product}/{board_type})")
+                    print(f"✨ New device registered: {device_id} ({product}/{board_type}, env={environment})")
                 else:
                     # New format: device must first send info message before heartbeat is processed
-                    print(f"⚠ Heartbeat from unknown device {device_id} - waiting for device info")
+                    print(f"⚠ Heartbeat from unknown device {device_id} (env={environment}) - waiting for device info")
                     return
             
             # Use device's stored values for static fields if not in payload (new format)
@@ -303,8 +342,9 @@ def handle_heartbeat(client, payload, topic):
                     
                     if update_available:
                         # Send version response to notify device of update
+                        # Use the device's environment from the topic
                         session_id = str(uuid.uuid4())
-                        response_topic = f"{MQTT_TOPIC_VERSION_RESPONSE}/{device_id}"
+                        response_topic = f"{MQTT_TOPIC_PREFIX}/{environment}/version/response/{device_id}"
                         response_payload = {
                             'latest_version': target_version,
                             'current_version': effective_version,
@@ -317,7 +357,7 @@ def handle_heartbeat(client, payload, topic):
                         }
                         client.publish(response_topic, json.dumps(response_payload), qos=1)
                         pin_status = "pinned" if pinned_version else "latest"
-                        print(f"📤 Version response sent to {device_id}: {target_version} (update: True, {pin_status}) [subscriber: {_subscriber_id}]")
+                        print(f"📤 Version response sent to {device_id} (env={environment}): {target_version} (update: True, {pin_status}) [subscriber: {_subscriber_id}]")
                 else:
                     # Log when platform exists in mapping but no firmware in cache
                     print(f"⚠ No firmware found for {effective_product}/{platform} (board type: '{effective_board}')")
@@ -327,13 +367,14 @@ def handle_heartbeat(client, payload, topic):
 def handle_device_info(client, payload, topic):
     """Handle device info messages - updates static device data and capabilities
     
-    Device ID is extracted from topic: norrtek-iot/info/{device_id}
+    Device ID is extracted from topic: norrtek-iot/{env}/info/{device_id}
     
     Payload format:
     {
         "product": "ski-clock",
         "board": "ESP32-C3",
         "version": "1.2.3",
+        "environment": "prod",
         "config": {"temp_offset": -2.0},
         "supported_commands": ["temp_offset", "rollback", "restart", "snapshot", "info"]
     }
@@ -343,18 +384,30 @@ def handle_device_info(client, payload, topic):
     - After config changes
     - On 'info' command
     """
-    # Extract device_id from topic
+    # Extract device_id and environment from topic (format: norrtek-iot/{env}/info/{device_id})
     topic_parts = topic.split('/')
-    if len(topic_parts) < 3:
+    if len(topic_parts) < 4:
         print(f"⚠ Invalid device info topic format: {topic}")
         return
     
-    device_id = topic_parts[2]
+    environment = topic_parts[1]  # 'dev' or 'prod' - authoritative source from topic
+    device_id = topic_parts[3]
+    
+    # Validate environment
+    if environment not in ('dev', 'prod'):
+        print(f"⚠ Invalid environment in topic: {environment}")
+        environment = 'prod'  # Default to prod for safety
+    
     product = payload.get('product')
     board_type = payload.get('board')
     version = payload.get('version')
+    payload_environment = payload.get('environment')  # Device's reported environment (for logging only)
     config = payload.get('config')
     supported_commands = payload.get('supported_commands')
+    
+    # Log if payload environment differs from topic (indicates potential firmware/topic mismatch)
+    if payload_environment and payload_environment != environment:
+        print(f"⚠ Device {device_id} reports env={payload_environment} but published to topic env={environment}")
     
     if not product or not board_type:
         print(f"⚠ Device info missing required fields from {device_id}")
@@ -373,6 +426,7 @@ def handle_device_info(client, payload, topic):
                 device.board_type = board_type
                 if version:
                     device.firmware_version = version
+                device.environment = environment
                 device.last_info_at = now
                 device.last_seen = now  # Also update last_seen
                 
@@ -382,7 +436,7 @@ def handle_device_info(client, payload, topic):
                 if config is not None:
                     device.last_config = config
                 
-                print(f"📋 Updated device info: {device_id} ({product}/{board_type} v{version})")
+                print(f"📋 Updated device info: {device_id} ({product}/{board_type} v{version}, env={environment})")
             else:
                 # Create new device
                 device = Device(
@@ -390,6 +444,7 @@ def handle_device_info(client, payload, topic):
                     product=product,
                     board_type=board_type,
                     firmware_version=version or 'Unknown',
+                    environment=environment,
                     last_info_at=now,
                     supported_commands=supported_commands,
                     last_config=config
@@ -436,10 +491,18 @@ def extract_device_id_from_topic(topic: str, base_topic: str) -> Optional[str]:
 def handle_ota_start(client, payload, topic):
     """Handle OTA update start notification from device
     
-    Device ID is extracted from topic: norrtek-iot/ota/start/{device_id}
+    Device ID is extracted from topic: norrtek-iot/{env}/ota/start/{device_id}
     Product is required in payload for multi-product support
     """
-    device_id = extract_device_id_from_topic(topic, MQTT_TOPIC_OTA_START)
+    # Extract environment and device_id from topic (format: norrtek-iot/{env}/ota/start/{device_id})
+    topic_parts = topic.split('/')
+    if len(topic_parts) < 5:
+        print(f"⚠ Invalid OTA start topic format: {topic}")
+        return
+    
+    environment = topic_parts[1]
+    device_id = topic_parts[4]
+    
     if not device_id:
         print(f"⚠ Invalid OTA start topic format: {topic}")
         return
@@ -491,9 +554,17 @@ def handle_ota_start(client, payload, topic):
 def handle_ota_progress(client, payload, topic):
     """Handle OTA download progress updates from device
     
-    Device ID is extracted from topic: norrtek-iot/ota/progress/{device_id}
+    Device ID is extracted from topic: norrtek-iot/{env}/ota/progress/{device_id}
     """
-    device_id = extract_device_id_from_topic(topic, MQTT_TOPIC_OTA_PROGRESS)
+    # Extract environment and device_id from topic (format: norrtek-iot/{env}/ota/progress/{device_id})
+    topic_parts = topic.split('/')
+    if len(topic_parts) < 5:
+        print(f"⚠ Invalid OTA progress topic format: {topic}")
+        return
+    
+    environment = topic_parts[1]
+    device_id = topic_parts[4]
+    
     if not device_id:
         print(f"⚠ Invalid OTA progress topic format: {topic}")
         return
@@ -533,9 +604,17 @@ def handle_ota_progress(client, payload, topic):
 def handle_ota_complete(client, payload, topic):
     """Handle OTA update completion (success or failure) from device
     
-    Device ID is extracted from topic: norrtek-iot/ota/complete/{device_id}
+    Device ID is extracted from topic: norrtek-iot/{env}/ota/complete/{device_id}
     """
-    device_id = extract_device_id_from_topic(topic, MQTT_TOPIC_OTA_COMPLETE)
+    # Extract environment and device_id from topic (format: norrtek-iot/{env}/ota/complete/{device_id})
+    topic_parts = topic.split('/')
+    if len(topic_parts) < 5:
+        print(f"⚠ Invalid OTA complete topic format: {topic}")
+        return
+    
+    environment = topic_parts[1]
+    device_id = topic_parts[4]
+    
     if not device_id:
         print(f"⚠ Invalid OTA complete topic format: {topic}")
         return
@@ -600,7 +679,7 @@ def handle_ota_complete(client, payload, topic):
 def handle_display_snapshot(client, payload, topic):
     """Handle display snapshot messages with per-row structure or legacy format
     
-    Device ID is extracted from topic: norrtek-iot/display/snapshot/{device_id}
+    Device ID is extracted from topic: norrtek-iot/{env}/display/snapshot/{device_id}
     
     Supports two formats:
     
@@ -623,7 +702,15 @@ def handle_display_snapshot(client, payload, topic):
         "row_text": ["12:34", "68°F"]
     }
     """
-    device_id = extract_device_id_from_topic(topic, MQTT_TOPIC_DISPLAY_SNAPSHOT)
+    # Extract environment and device_id from topic (format: norrtek-iot/{env}/display/snapshot/{device_id})
+    topic_parts = topic.split('/')
+    if len(topic_parts) < 5:
+        print(f"⚠ Invalid display snapshot topic format: {topic}")
+        return
+    
+    environment = topic_parts[1]
+    device_id = topic_parts[4]
+    
     if not device_id:
         print(f"⚠ Invalid display snapshot topic format: {topic}")
         return
@@ -634,6 +721,11 @@ def handle_display_snapshot(client, payload, topic):
             
             device = Device.query.filter_by(device_id=device_id).first()
             if device:
+                # Validate environment match - only store snapshots for matching environment
+                if device.environment != environment:
+                    print(f"⚠ Snapshot env mismatch: device {device_id} has env={device.environment} but received from topic env={environment}, skipping")
+                    return
+                
                 try:
                     # Check for new per-row format: {"rows": [{...}, {...}]}
                     rows_data = payload.get('rows')
@@ -755,13 +847,14 @@ def handle_event(client, payload, topic):
         "offset_ms": 45000
     }
     """
-    # Extract device_id from topic: norrtek-iot/event/{device_id}
+    # Extract environment and device_id from topic (format: norrtek-iot/{env}/event/{device_id})
     topic_parts = topic.split('/')
-    if len(topic_parts) < 3:
+    if len(topic_parts) < 4:
         print(f"⚠ Invalid event topic format: {topic}")
         return
     
-    device_id = topic_parts[2]
+    environment = topic_parts[1]  # 'dev' or 'prod'
+    device_id = topic_parts[3]
     event_type = payload.get('type')
     event_data = payload.get('data')
     offset_ms = payload.get('offset_ms', 0)
@@ -816,21 +909,28 @@ def on_message(client, userdata, msg):
         payload = json.loads(msg.payload.decode())
         
         # Route message to appropriate handler based on topic
-        # Device-specific topics use pattern: base_topic/{device_id}
-        if msg.topic.startswith(MQTT_TOPIC_HEARTBEAT):
-            handle_heartbeat(client, payload, msg.topic)
-        elif msg.topic.startswith(MQTT_TOPIC_INFO):
-            handle_device_info(client, payload, msg.topic)
-        elif msg.topic.startswith(MQTT_TOPIC_OTA_START):
-            handle_ota_start(client, payload, msg.topic)
-        elif msg.topic.startswith(MQTT_TOPIC_OTA_PROGRESS):
-            handle_ota_progress(client, payload, msg.topic)
-        elif msg.topic.startswith(MQTT_TOPIC_OTA_COMPLETE):
-            handle_ota_complete(client, payload, msg.topic)
-        elif msg.topic.startswith(MQTT_TOPIC_DISPLAY_SNAPSHOT):
-            handle_display_snapshot(client, payload, msg.topic)
-        elif msg.topic.startswith(MQTT_TOPIC_EVENTS):
-            handle_event(client, payload, msg.topic)
+        # Device-specific topics use pattern: norrtek-iot/{env}/{path}/{device_id}
+        # Match topics from both dev and prod environments
+        topic_parts = msg.topic.split('/')
+        if len(topic_parts) >= 3 and topic_parts[0] == 'norrtek-iot':
+            topic_path = topic_parts[2]  # Third part is the path (e.g., 'heartbeat', 'info', 'ota')
+            
+            if topic_path == 'heartbeat':
+                handle_heartbeat(client, payload, msg.topic)
+            elif topic_path == 'info':
+                handle_device_info(client, payload, msg.topic)
+            elif topic_path == 'ota' and len(topic_parts) >= 4:
+                ota_action = topic_parts[3]
+                if ota_action == 'start':
+                    handle_ota_start(client, payload, msg.topic)
+                elif ota_action == 'progress':
+                    handle_ota_progress(client, payload, msg.topic)
+                elif ota_action == 'complete':
+                    handle_ota_complete(client, payload, msg.topic)
+            elif topic_path == 'display':
+                handle_display_snapshot(client, payload, msg.topic)
+            elif topic_path == 'event':
+                handle_event(client, payload, msg.topic)
     
     except json.JSONDecodeError as e:
         print(f"✗ Failed to parse MQTT message: {e}")
@@ -843,25 +943,42 @@ def on_disconnect(client, userdata, rc, properties=None):
     else:
         print("✓ Disconnected from MQTT broker")
 
-def publish_command(device_id: str, command: str, **kwargs) -> bool:
+def publish_command(device_id: str, command: str, environment: str = None, **kwargs) -> bool:
     """
     Publish a command to a specific device via MQTT.
     
     Args:
         device_id: Target device ID
         command: Command type (e.g., 'rollback', 'restart', 'update')
+        environment: Optional target environment ('dev' or 'prod'). If not provided,
+                     looks up the device's environment from database.
         **kwargs: Additional command parameters
     
     Returns:
         True if published successfully, False otherwise
     """
-    global _mqtt_client, _subscriber_id
+    global _mqtt_client, _subscriber_id, _app_context
     
     if not _mqtt_client or not _mqtt_client.is_connected():
         print(f"✗ Cannot publish command: MQTT client not connected")
         return False
     
-    topic = f"{MQTT_TOPIC_COMMAND}/{device_id}"
+    # Look up device environment if not provided
+    if environment is None and _app_context:
+        try:
+            from models import Device
+            with _app_context.app_context():
+                device = Device.query.filter_by(device_id=device_id).first()
+                if device:
+                    environment = device.environment
+        except Exception as e:
+            print(f"⚠ Could not look up device environment: {e}")
+    
+    # Default to prod if still unknown
+    if environment is None:
+        environment = 'prod'
+    
+    topic = f"{MQTT_TOPIC_PREFIX}/{environment}/command/{device_id}"
     payload = {
         'command': command,
         'timestamp': datetime.now(timezone.utc).isoformat(),
@@ -872,7 +989,7 @@ def publish_command(device_id: str, command: str, **kwargs) -> bool:
     try:
         result = _mqtt_client.publish(topic, json.dumps(payload), qos=1)
         if result.rc == mqtt.MQTT_ERR_SUCCESS:
-            print(f"✓ Published command '{command}' to {device_id} [subscriber: {_subscriber_id}]")
+            print(f"✓ Published command '{command}' to {device_id} (env={environment}) [subscriber: {_subscriber_id}]")
             return True
         else:
             print(f"✗ Failed to publish command to {device_id}: error code {result.rc}")
@@ -881,24 +998,41 @@ def publish_command(device_id: str, command: str, **kwargs) -> bool:
         print(f"✗ Error publishing command: {e}")
         return False
 
-def publish_config(device_id: str, **config_values) -> bool:
+def publish_config(device_id: str, environment: str = None, **config_values) -> bool:
     """
     Publish configuration values to a specific device via MQTT.
     
     Args:
         device_id: Target device ID
-        **config_values: Configuration key-value pairs (e.g., temp_offset=-2.0)
+        environment: Optional target environment ('dev' or 'prod'). If not provided,
+                     looks up the device's environment from database.
+        **config_values: Configuration key-value pairs (e.g., temp_offset=-2.0, environment='prod')
     
     Returns:
         True if published successfully, False otherwise
     """
-    global _mqtt_client, _subscriber_id
+    global _mqtt_client, _subscriber_id, _app_context
     
     if not _mqtt_client or not _mqtt_client.is_connected():
         print(f"✗ Cannot publish config: MQTT client not connected")
         return False
     
-    topic = f"{MQTT_TOPIC_CONFIG}/{device_id}"
+    # Look up device environment if not provided
+    if environment is None and _app_context:
+        try:
+            from models import Device
+            with _app_context.app_context():
+                device = Device.query.filter_by(device_id=device_id).first()
+                if device:
+                    environment = device.environment
+        except Exception as e:
+            print(f"⚠ Could not look up device environment: {e}")
+    
+    # Default to prod if still unknown
+    if environment is None:
+        environment = 'prod'
+    
+    topic = f"{MQTT_TOPIC_PREFIX}/{environment}/config/{device_id}"
     payload = {
         'timestamp': datetime.now(timezone.utc).isoformat(),
         'subscriber_id': _subscriber_id,
@@ -908,7 +1042,7 @@ def publish_config(device_id: str, **config_values) -> bool:
     try:
         result = _mqtt_client.publish(topic, json.dumps(payload), qos=1)
         if result.rc == mqtt.MQTT_ERR_SUCCESS:
-            print(f"✓ Published config to {device_id}: {config_values} [subscriber: {_subscriber_id}]")
+            print(f"✓ Published config to {device_id} (env={environment}): {config_values} [subscriber: {_subscriber_id}]")
             return True
         else:
             print(f"✗ Failed to publish config to {device_id}: error code {result.rc}")
