@@ -37,13 +37,14 @@ static const unsigned long DEBOUNCE_MS = 50;  // Debounce threshold in milliseco
 // ============================================================================
 // Direct register access for minimal ISR latency
 // These are single bitwise operations - essentially instant
+// Note: Button pin must be GPIO 0-31 on ESP32, 0-15 on ESP8266 (satisfied by GPIO0)
 
 #if defined(ESP32)
-  // ESP32: Read from GPIO.in register (handles GPIO 0-31)
-  // For GPIO 32-39, would need GPIO.in1.val instead
+  // ESP32: Read from GPIO.in register (GPIO 0-31 only)
+  // GPIO 32-39 would need GPIO.in1.val but button is on GPIO0
   #define FAST_PIN_READ(pin) ((GPIO.in >> (pin)) & 1)
 #elif defined(ESP8266)
-  // ESP8266: Read from GPI register (GPIO input register)
+  // ESP8266: Read from GPI register (GPIO 0-15)
   #define FAST_PIN_READ(pin) ((GPI >> (pin)) & 1)
 #else
   // Fallback for other platforms
@@ -151,15 +152,25 @@ void updateButton() {
     return;
   }
   
+  // Atomically read ISR state to avoid tearing
+  noInterrupts();
+  bool inProgress = pressInProgress;
+  bool handled = pressHandled;
+  unsigned long startTime = pressStartTime;
+  interrupts();
+  
   // Check if a press is in progress and debounce time has passed
   // The ISR already set pressInProgress=true on falling edge and will clear it on rising
   // We only need to check if enough time has passed while still held
-  if (pressInProgress && !pressHandled) {
-    unsigned long elapsed = millis() - pressStartTime;
+  if (inProgress && !handled) {
+    unsigned long elapsed = millis() - startTime;
     
     if (elapsed >= DEBOUNCE_MS) {
       // Debounce threshold reached while button still held - valid press!
-      pressHandled = true;  // Prevent re-trigger while button still held
+      // Atomically set handled flag to prevent re-trigger
+      noInterrupts();
+      pressHandled = true;
+      interrupts();
       
       DEBUG_PRINTLN("Button pressed (debounced)");
       logEvent("button_press", nullptr);
