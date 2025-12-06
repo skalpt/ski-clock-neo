@@ -1,0 +1,66 @@
+Run arduino-cli compile --fqbn esp32:esp32:esp32 \
+  arduino-cli compile --fqbn esp32:esp32:esp32 \
+    --export-binaries \
+    --build-property "build.partitions=min_spiffs" \
+    --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"***\" -DDOWNLOAD_API_KEY=\"***\" -DFIRMWARE_VERSION=\"2025.12.6.116\" -DMQTT_HOST=\"***\" -DMQTT_USERNAME=\"***\" -DMQTT_PASSWORD=\"***\" -DBOARD_ESP32 -DENV_SCOPE=\\\"dev\\\"" \
+    --output-dir build/esp32 \
+    firmware/***
+  cp build/esp32/***.ino.bin build/***-esp32.bin
+  cp build/esp32/***.ino.bootloader.bin build/***-esp32.bootloader.bin || echo "Warning: Bootloader not found for ESP32"
+  cp build/esp32/***.ino.partitions.bin build/***-esp32.partitions.bin || echo "Warning: Partitions not found for ESP32"
+  shell: /usr/bin/bash -e {0}
+<command-line>: error: stray '\' in program
+/home/runner/work/***/***/firmware/***/src/core/device_config.cpp:48:29: note: in expansion of macro 'ENV_SCOPE'
+   strncpy(environmentScope, ENV_SCOPE, sizeof(environmentScope) - 1);
+                             ^~~~~~~~~
+<command-line>: error: missing terminating " character
+/home/runner/work/***/***/firmware/***/src/core/device_config.cpp:48:29: note: in expansion of macro 'ENV_SCOPE'
+   strncpy(environmentScope, ENV_SCOPE, sizeof(environmentScope) - 1);
+                             ^~~~~~~~~
+<command-line>: error: stray '\' in program
+/home/runner/work/***/***/firmware/***/src/core/device_config.cpp:67:59: note: in expansion of macro 'ENV_SCOPE'
+     String storedEnv = preferences.getString("env_scope", ENV_SCOPE);
+                                                           ^~~~~~~~~
+<command-line>: error: missing terminating " character
+/home/runner/work/***/***/firmware/***/src/core/device_config.cpp:67:59: note: in expansion of macro 'ENV_SCOPE'
+     String storedEnv = preferences.getString("env_scope", ENV_SCOPE);
+                                                           ^~~~~~~~~
+/home/runner/work/***/***/firmware/***/src/core/device_config.cpp: In function 'void initDeviceConfig()':
+/home/runner/work/***/***/firmware/***/src/core/device_config.cpp:48:38: error: expected primary-expression before ',' token
+   strncpy(environmentScope, ENV_SCOPE, sizeof(environmentScope) - 1);
+                                      ^
+/home/runner/work/***/***/firmware/***/src/core/device_config.cpp:67:68: error: expected primary-expression before ')' token
+     String storedEnv = preferences.getString("env_scope", ENV_SCOPE);
+                                                                    ^
+
+Error during build: exit status 1
+
+Used library      Version Path                                                                                   
+Ticker            2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Ticker          
+WiFi              2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFi            
+WebServer         2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WebServer       
+AutoConnect       1.4.2   /home/runner/Arduino/libraries/AutoConnect                                             
+DNSServer         2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/DNSServer       
+EEPROM            2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/EEPROM          
+PageBuilder       1.5.6   /home/runner/Arduino/libraries/PageBuilder                                             
+FS                2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/FS              
+SPIFFS            2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPIFFS          
+SD                2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SD              
+SPI               2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPI             
+Preferences       2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Preferences     
+WiFiClientSecure  2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFiClientSecure
+PubSubClient      2.8     /home/runner/Arduino/libraries/PubSubClient                                            
+HTTPClient        2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPClient      
+Update            2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Update          
+OneWire           2.3.8   /home/runner/Arduino/libraries/OneWire                                                 
+DallasTemperature 4.0.5   /home/runner/Arduino/libraries/DallasTemperature                                       
+Wire              2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Wire            
+RTClib            2.1.4   /home/runner/Arduino/libraries/RTClib                                                  
+Adafruit BusIO    1.17.4  /home/runner/Arduino/libraries/Adafruit_BusIO                                          
+FastLED           3.10.3  /home/runner/Arduino/libraries/FastLED                                                 
+ArduinoJson       7.4.2   /home/runner/Arduino/libraries/ArduinoJson                                             
+HTTPUpdate        2.0.0   /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPUpdate      
+
+Used platform Version Path                                                        
+esp32:esp32   2.0.14  /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14
+Error: Process completed with exit code 1.
