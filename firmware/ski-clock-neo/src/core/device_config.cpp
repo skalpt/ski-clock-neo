@@ -34,7 +34,7 @@
 // ============================================================================
 
 static float temperatureOffset = TEMPERATURE_OFFSET;
-static char environmentScope[8] = "prod";  // "dev" or "prod"
+static char environmentScope[8] = "";  // Initialized from ENV_SCOPE in initDeviceConfig()
 static bool configInitialized = false;
 
 // ============================================================================

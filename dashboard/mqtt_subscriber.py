@@ -145,10 +145,10 @@ def handle_heartbeat(client, payload, topic):
     environment = topic_parts[1]  # 'dev' or 'prod'
     device_id = topic_parts[3]
     
-    # Validate environment
+    # Validate environment - reject invalid values rather than defaulting
     if environment not in ('dev', 'prod'):
-        print(f"⚠ Invalid environment in topic: {environment}")
-        environment = 'prod'  # Default to prod for safety
+        print(f"⚠ Rejecting heartbeat with invalid environment in topic: {environment}")
+        return
     
     # Legacy format: product, board, version in heartbeat payload
     # New format: these fields come from info topic instead
@@ -393,10 +393,10 @@ def handle_device_info(client, payload, topic):
     environment = topic_parts[1]  # 'dev' or 'prod' - authoritative source from topic
     device_id = topic_parts[3]
     
-    # Validate environment
+    # Validate environment - reject invalid values rather than defaulting
     if environment not in ('dev', 'prod'):
-        print(f"⚠ Invalid environment in topic: {environment}")
-        environment = 'prod'  # Default to prod for safety
+        print(f"⚠ Rejecting device info with invalid environment in topic: {environment}")
+        return
     
     product = payload.get('product')
     board_type = payload.get('board')
@@ -855,6 +855,12 @@ def handle_event(client, payload, topic):
     
     environment = topic_parts[1]  # 'dev' or 'prod'
     device_id = topic_parts[3]
+    
+    # Validate environment - reject invalid values rather than defaulting
+    if environment not in ('dev', 'prod'):
+        print(f"⚠ Rejecting event with invalid environment in topic: {environment}")
+        return
+    
     event_type = payload.get('type')
     event_data = payload.get('data')
     offset_ms = payload.get('offset_ms', 0)
@@ -884,10 +890,11 @@ def handle_event(client, payload, topic):
                     device_id=device_id,
                     product=product,
                     board_type=board_type or 'Unknown',
-                    firmware_version='Unknown'
+                    firmware_version='Unknown',
+                    environment=environment
                 )
                 db.session.add(device)
-                print(f"✨ New device registered via event: {device_id} ({product})")
+                print(f"✨ New device registered via event: {device_id} ({product}, env={environment})")
             
             # Store the event
             event_log = EventLog(
@@ -974,9 +981,10 @@ def publish_command(device_id: str, command: str, environment: str = None, **kwa
         except Exception as e:
             print(f"⚠ Could not look up device environment: {e}")
     
-    # Default to prod if still unknown
+    # Fail if environment is still unknown - do not default to prod
     if environment is None:
-        environment = 'prod'
+        print(f"✗ Cannot publish command: device {device_id} has no environment set")
+        return False
     
     topic = f"{MQTT_TOPIC_PREFIX}/{environment}/command/{device_id}"
     payload = {
@@ -1028,9 +1036,10 @@ def publish_config(device_id: str, environment: str = None, **config_values) -> 
         except Exception as e:
             print(f"⚠ Could not look up device environment: {e}")
     
-    # Default to prod if still unknown
+    # Fail if environment is still unknown - do not default to prod
     if environment is None:
-        environment = 'prod'
+        print(f"✗ Cannot publish config: device {device_id} has no environment set")
+        return False
     
     topic = f"{MQTT_TOPIC_PREFIX}/{environment}/config/{device_id}"
     payload = {

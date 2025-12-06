@@ -21,12 +21,12 @@
 // #define FIRMWARE_VERSION  "2025.01.01.1"
 
 // Environment scope for MQTT topics (dev or prod)
-// This is set via build flags in GitHub Actions:
+// This MUST be set via build flags in GitHub Actions:
 // - deploy-dev.yml sets ENV_SCOPE=dev
 // - deploy-prod.yml sets ENV_SCOPE=prod
-// Default to "prod" for safety if not specified
+// NO DEFAULT - build will fail if not specified to prevent accidental deployments
 #ifndef ENV_SCOPE
-  #define ENV_SCOPE "prod"
+  #error "ENV_SCOPE must be defined! Use -DENV_SCOPE=\\\"dev\\\" or -DENV_SCOPE=\\\"prod\\\" in build flags."
 #endif
 
 // Board type - uncomment ONE of these to match your hardware:
