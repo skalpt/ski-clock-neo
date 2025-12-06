@@ -444,6 +444,38 @@ class EventLog(db.Model):
         }
 
 
+class DevEnvironment(db.Model):
+    """Stores registered development environment URL for GitHub Actions proxy"""
+    __tablename__ = 'dev_environments'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(64), unique=True, nullable=False, default='default')
+    base_url = db.Column(db.String(256), nullable=False)  # e.g., https://xxx.replit.dev
+    auth_token = db.Column(db.String(128), nullable=False)  # Token for authenticating proxy requests
+    registered_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    last_heartbeat = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
+    
+    def __repr__(self):
+        return f'<DevEnvironment {self.name}: {self.base_url}>'
+    
+    def to_dict(self):
+        """Convert dev environment to dictionary"""
+        now = datetime.now(timezone.utc)
+        minutes_since_heartbeat = (now - self.last_heartbeat).total_seconds() / 60
+        
+        return {
+            'id': self.id,
+            'name': self.name,
+            'base_url': self.base_url,
+            'registered_at': self.registered_at.isoformat(),
+            'last_heartbeat': self.last_heartbeat.isoformat(),
+            'is_active': self.is_active,
+            'minutes_since_heartbeat': round(minutes_since_heartbeat, 1),
+            'is_healthy': minutes_since_heartbeat < 10  # Healthy if heartbeat within 10 minutes
+        }
+
+
 class CommandLog(db.Model):
     __tablename__ = 'command_logs'
     

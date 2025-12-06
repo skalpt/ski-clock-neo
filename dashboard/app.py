@@ -12,7 +12,7 @@ from typing import Dict, Optional, Any
 from functools import wraps
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from object_storage import ObjectStorageService, ObjectNotFoundError, ObjectStorageError
-from models import db, Device, FirmwareVersion, User, Role, PlatformPermission, DownloadLog
+from models import db, Device, FirmwareVersion, User, Role, PlatformPermission, DownloadLog, DevEnvironment
 
 # Map device board types (as reported by firmware) to platform identifiers
 # This must stay in sync with BOARD_TYPE_TO_PLATFORM in mqtt_subscriber.py
@@ -499,6 +499,91 @@ def start_production_sync_thread():
     thread.start()
     print("✓ Started production sync thread (every 5 minutes)")
 
+
+def register_with_production():
+    """Register this dev environment with production for GitHub Actions proxy (dev only)
+    
+    Called on startup in dev environments to register the current URL with production.
+    Production stores this URL and uses it to proxy firmware uploads from GitHub Actions.
+    """
+    # Only register in dev environment
+    if is_production_environment():
+        return
+    
+    production_url = os.getenv('PRODUCTION_API_URL')
+    if not production_url:
+        print("⚠ PRODUCTION_API_URL not set, skipping dev registration with production")
+        return
+    
+    # Get current dev URL from Replit environment
+    dev_domain = os.getenv('REPLIT_DEV_DOMAIN')
+    if not dev_domain:
+        print("⚠ REPLIT_DEV_DOMAIN not set, skipping dev registration")
+        return
+    
+    dev_url = f"https://{dev_domain}"
+    
+    try:
+        response = requests.post(
+            f"{production_url}/api/dev/register",
+            headers={
+                'X-API-Key': UPLOAD_API_KEY,
+                'Content-Type': 'application/json'
+            },
+            json={
+                'base_url': dev_url,
+                'auth_token': UPLOAD_API_KEY,
+                'name': 'default'
+            },
+            timeout=30
+        )
+        
+        if response.ok:
+            print(f"✓ Registered with production: {dev_url}")
+        else:
+            print(f"⚠ Failed to register with production: {response.status_code} - {response.text}")
+    except requests.exceptions.RequestException as e:
+        print(f"⚠ Failed to reach production for registration: {e}")
+    except Exception as e:
+        print(f"⚠ Error registering with production: {e}")
+
+
+def start_dev_heartbeat_thread():
+    """Start background thread that sends periodic heartbeats to production (dev only)"""
+    if is_production_environment():
+        return
+    
+    production_url = os.getenv('PRODUCTION_API_URL')
+    if not production_url:
+        return
+    
+    def heartbeat_loop():
+        while True:
+            try:
+                time.sleep(60)  # Send heartbeat every minute
+                
+                response = requests.post(
+                    f"{production_url}/api/dev/heartbeat",
+                    headers={
+                        'X-API-Key': UPLOAD_API_KEY,
+                        'Content-Type': 'application/json'
+                    },
+                    json={'name': 'default'},
+                    timeout=10
+                )
+                
+                if not response.ok:
+                    # Re-register if heartbeat fails
+                    register_with_production()
+            except Exception as e:
+                print(f"⚠ Dev heartbeat failed: {e}")
+                time.sleep(30)
+    
+    thread = threading.Thread(target=heartbeat_loop, daemon=True)
+    thread.start()
+    print("✓ Started dev heartbeat thread (every 60 seconds)")
+
+
 def generate_user_download_token(user_id, platform, product, max_age=3600, version=None):
     """Generate a user-scoped signed token for firmware downloads (default 1-hour expiration)
     
@@ -592,6 +677,10 @@ mqtt_client = start_mqtt_subscriber()
 
 # Start production sync thread (dev environment only)
 start_production_sync_thread()
+
+# Register dev environment with production and start heartbeat thread (dev only)
+register_with_production()
+start_dev_heartbeat_thread()
 
 # Register cleanup handler to stop MQTT subscriber on app shutdown
 atexit.register(stop_mqtt_subscriber)
@@ -1452,6 +1541,213 @@ def update_config():
     except Exception as e:
         return jsonify({'error': f'Failed to update config: {str(e)}'}), 500
 
+
+# ============================================================================
+# DEV ENVIRONMENT PROXY ENDPOINTS
+# These endpoints allow production to proxy firmware uploads to dev environments
+# ============================================================================
+
+@app.route('/api/dev/register', methods=['POST'])
+def register_dev_environment():
+    """Register a development environment's URL with production
+    
+    Called by dev environment on startup to register its current URL.
+    Production uses this to proxy GitHub Actions uploads to dev.
+    """
+    api_key = request.headers.get('X-API-Key')
+    
+    if api_key != UPLOAD_API_KEY:
+        return jsonify({'error': 'Invalid API key'}), 401
+    
+    try:
+        data = request.get_json()
+        
+        if not data or 'base_url' not in data:
+            return jsonify({'error': 'Missing base_url'}), 400
+        
+        base_url = data['base_url'].rstrip('/')
+        auth_token = data.get('auth_token', UPLOAD_API_KEY)  # Default to same API key
+        name = data.get('name', 'default')
+        
+        # Upsert dev environment
+        dev_env = DevEnvironment.query.filter_by(name=name).first()
+        if dev_env:
+            dev_env.base_url = base_url
+            dev_env.auth_token = auth_token
+            dev_env.registered_at = datetime.now(timezone.utc)
+            dev_env.last_heartbeat = datetime.now(timezone.utc)
+            dev_env.is_active = True
+            print(f"🔄 Updated dev environment '{name}': {base_url}")
+        else:
+            dev_env = DevEnvironment(
+                name=name,
+                base_url=base_url,
+                auth_token=auth_token
+            )
+            db.session.add(dev_env)
+            print(f"✨ Registered new dev environment '{name}': {base_url}")
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Dev environment registered: {base_url}',
+            'dev_environment': dev_env.to_dict()
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Failed to register dev environment: {str(e)}'}), 500
+
+
+@app.route('/api/dev/heartbeat', methods=['POST'])
+def dev_environment_heartbeat():
+    """Update dev environment heartbeat to keep registration active"""
+    api_key = request.headers.get('X-API-Key')
+    
+    if api_key != UPLOAD_API_KEY:
+        return jsonify({'error': 'Invalid API key'}), 401
+    
+    try:
+        data = request.get_json() or {}
+        name = data.get('name', 'default')
+        
+        dev_env = DevEnvironment.query.filter_by(name=name).first()
+        if not dev_env:
+            return jsonify({'error': f'Dev environment not registered: {name}'}), 404
+        
+        dev_env.last_heartbeat = datetime.now(timezone.utc)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'dev_environment': dev_env.to_dict()
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Failed to update heartbeat: {str(e)}'}), 500
+
+
+@app.route('/api/dev/status')
+def dev_environment_status():
+    """Get status of registered dev environments (requires auth)"""
+    api_key = request.headers.get('X-API-Key')
+    
+    if api_key != UPLOAD_API_KEY:
+        return jsonify({'error': 'Invalid API key'}), 401
+    
+    dev_envs = DevEnvironment.query.filter_by(is_active=True).all()
+    
+    return jsonify({
+        'dev_environments': [env.to_dict() for env in dev_envs],
+        'count': len(dev_envs)
+    })
+
+
+@app.route('/api/dev/upload', methods=['POST'])
+def proxy_upload_to_dev():
+    """Proxy firmware upload to registered dev environment
+    
+    GitHub Actions calls this endpoint on production, which forwards
+    the upload to the registered dev environment's /api/upload endpoint.
+    """
+    api_key = request.headers.get('X-API-Key')
+    
+    if api_key != UPLOAD_API_KEY:
+        return jsonify({'error': 'Invalid API key'}), 401
+    
+    # Get the dev environment to proxy to
+    name = request.args.get('env', 'default')
+    dev_env = DevEnvironment.query.filter_by(name=name, is_active=True).first()
+    
+    if not dev_env:
+        return jsonify({'error': f'No active dev environment registered: {name}'}), 404
+    
+    # Check if dev environment is healthy (heartbeat within 10 minutes)
+    minutes_since_heartbeat = (datetime.now(timezone.utc) - dev_env.last_heartbeat).total_seconds() / 60
+    if minutes_since_heartbeat > 10:
+        return jsonify({
+            'error': f'Dev environment is stale (last heartbeat {minutes_since_heartbeat:.1f} minutes ago)',
+            'suggestion': 'Start the dev environment and wait for it to re-register'
+        }), 503
+    
+    try:
+        # Forward the multipart form data to the dev environment
+        target_url = f"{dev_env.base_url}/api/upload"
+        
+        # Rebuild the files and form data from the incoming request
+        files = {}
+        for key in request.files:
+            file = request.files[key]
+            files[key] = (file.filename, file.read(), file.content_type)
+        
+        form_data = {}
+        for key in request.form:
+            form_data[key] = request.form[key]
+        
+        # Forward to dev environment
+        print(f"📤 Proxying upload to dev: {target_url}")
+        response = requests.post(
+            target_url,
+            headers={'X-API-Key': dev_env.auth_token},
+            files=files,
+            data=form_data,
+            timeout=60
+        )
+        
+        # Return the dev environment's response
+        print(f"📥 Dev response: {response.status_code}")
+        return Response(
+            response.content,
+            status=response.status_code,
+            content_type=response.headers.get('Content-Type', 'application/json')
+        )
+    except requests.exceptions.Timeout:
+        return jsonify({'error': 'Dev environment timed out'}), 504
+    except requests.exceptions.ConnectionError as e:
+        return jsonify({
+            'error': f'Cannot reach dev environment: {str(e)}',
+            'dev_url': dev_env.base_url
+        }), 502
+    except Exception as e:
+        return jsonify({'error': f'Proxy error: {str(e)}'}), 500
+
+
+@app.route('/api/dev/config', methods=['POST'])
+def proxy_config_to_dev():
+    """Proxy config upload to registered dev environment"""
+    api_key = request.headers.get('X-API-Key')
+    
+    if api_key != UPLOAD_API_KEY:
+        return jsonify({'error': 'Invalid API key'}), 401
+    
+    name = request.args.get('env', 'default')
+    dev_env = DevEnvironment.query.filter_by(name=name, is_active=True).first()
+    
+    if not dev_env:
+        return jsonify({'error': f'No active dev environment registered: {name}'}), 404
+    
+    try:
+        target_url = f"{dev_env.base_url}/api/config"
+        
+        response = requests.post(
+            target_url,
+            headers={
+                'X-API-Key': dev_env.auth_token,
+                'Content-Type': 'application/json'
+            },
+            json=request.get_json(),
+            timeout=30
+        )
+        
+        return Response(
+            response.content,
+            status=response.status_code,
+            content_type=response.headers.get('Content-Type', 'application/json')
+        )
+    except Exception as e:
+        return jsonify({'error': f'Proxy error: {str(e)}'}), 500
+
+
 @app.route('/api/firmware-metadata')
 def firmware_metadata():
     """Public API endpoint for firmware metadata (used by dev environments for sync)"""
@@ -1515,6 +1811,22 @@ def status():
         },
         'config_source': 'file' if CONFIG_FILE.exists() else 'environment'
     })
+
+
+@app.route('/api/environment')
+@login_required
+def get_environment():
+    """Get current environment information (dev vs production)"""
+    is_prod = is_production_environment()
+    dev_domain = os.getenv('REPLIT_DEV_DOMAIN', '')
+    
+    return jsonify({
+        'environment': 'production' if is_prod else 'development',
+        'is_production': is_prod,
+        'dev_domain': dev_domain if not is_prod else None,
+        'repl_deployment_type': os.getenv('REPL_DEPLOYMENT_TYPE', 'unknown')
+    })
+
 
 @app.route('/api/devices')
 @login_required

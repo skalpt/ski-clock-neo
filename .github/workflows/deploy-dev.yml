@@ -1,0 +1,209 @@
+name: Deploy Firmware to Dev
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'firmware/**'
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy-dev:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Arduino CLI
+        uses: arduino/setup-arduino-cli@v1
+
+      - name: Install ESP32 + ESP8266 platforms
+        run: |
+          retry() {
+            local n=1
+            local max=5
+            local delay=5
+            while true; do
+              "$@" && break || {
+                if [[ $n -lt $max ]]; then
+                  ((n++))
+                  echo "Command failed. Attempt $n/$max:"
+                  sleep $delay
+                else
+                  echo "The command has failed after $n attempts."
+                  return 1
+                fi
+              }
+            done
+          }
+          
+          retry arduino-cli core update-index
+          retry arduino-cli core install esp32:esp32@2.0.14
+          retry arduino-cli core update-index --additional-urls http://arduino.esp8266.com/stable/package_esp8266com_index.json
+          retry arduino-cli core install esp8266:esp8266 --additional-urls http://arduino.esp8266.com/stable/package_esp8266com_index.json
+
+      - name: Install required libraries
+        run: |
+          retry() {
+            local n=1
+            local max=5
+            local delay=5
+            while true; do
+              "$@" && break || {
+                if [[ $n -lt $max ]]; then
+                  ((n++))
+                  echo "Command failed. Attempt $n/$max:"
+                  sleep $delay
+                else
+                  echo "The command has failed after $n attempts."
+                  return 1
+                fi
+              }
+            done
+          }
+          
+          retry arduino-cli lib install "FastLED"
+          retry arduino-cli lib install "AutoConnect"
+          retry arduino-cli lib install "PubSubClient"
+          retry arduino-cli lib install "OneWire"
+          retry arduino-cli lib install "DallasTemperature"
+          retry arduino-cli lib install "TickTwo"
+          retry arduino-cli lib install "RTClib"
+
+      - name: Generate timestamp version
+        id: get_version
+        run: |
+          VERSION=$(date -u +'%Y.%-m.%-d').${{ github.run_number }}
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Generated version: $VERSION"
+
+      - name: Upload config to dev (via production proxy)
+        run: |
+          cat > config.json << EOF
+          {
+            "UPDATE_SERVER_URL": "${{ secrets.UPDATE_SERVER_URL }}",
+            "UPLOAD_API_KEY": "${{ secrets.UPLOAD_API_KEY }}",
+            "DOWNLOAD_API_KEY": "${{ secrets.DOWNLOAD_API_KEY }}",
+            "MQTT_HOST": "${{ secrets.MQTT_HOST }}",
+            "MQTT_USERNAME": "${{ secrets.MQTT_USERNAME }}",
+            "MQTT_PASSWORD": "${{ secrets.MQTT_PASSWORD }}"
+          }
+          EOF
+          echo "Uploading configuration to dev via production proxy..."
+          curl --fail --show-error -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/dev/config" \
+            -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d @config.json \
+            -w "\n"
+          echo "✓ Configuration uploaded to dev successfully"
+          rm config.json
+
+      - name: Build for ESP32 (original)
+        run: |
+          arduino-cli compile --fqbn esp32:esp32:esp32 \
+            --export-binaries \
+            --build-property "build.partitions=min_spiffs" \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_ESP32" \
+            --output-dir build/esp32 \
+            firmware/ski-clock-neo
+          cp build/esp32/ski-clock-neo.ino.bin build/ski-clock-neo-esp32.bin
+          cp build/esp32/ski-clock-neo.ino.bootloader.bin build/ski-clock-neo-esp32.bootloader.bin || echo "Warning: Bootloader not found for ESP32"
+          cp build/esp32/ski-clock-neo.ino.partitions.bin build/ski-clock-neo-esp32.partitions.bin || echo "Warning: Partitions not found for ESP32"
+
+      - name: Build for ESP32-C3
+        run: |
+          arduino-cli compile --fqbn esp32:esp32:esp32c3:CDCOnBoot=cdc \
+            --export-binaries \
+            --build-property "build.partitions=min_spiffs" \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_ESP32C3" \
+            --output-dir build/esp32c3 \
+            firmware/ski-clock-neo
+          cp build/esp32c3/ski-clock-neo.ino.bin build/ski-clock-neo-esp32c3.bin
+          cp build/esp32c3/ski-clock-neo.ino.bootloader.bin build/ski-clock-neo-esp32c3.bootloader.bin || echo "Warning: Bootloader not found for ESP32-C3"
+          cp build/esp32c3/ski-clock-neo.ino.partitions.bin build/ski-clock-neo-esp32c3.partitions.bin || echo "Warning: Partitions not found for ESP32-C3"
+
+      - name: Build for ESP32-S3
+        run: |
+          arduino-cli compile --fqbn esp32:esp32:esp32s3:CDCOnBoot=cdc \
+            --export-binaries \
+            --build-property "build.partitions=min_spiffs" \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_ESP32S3" \
+            --output-dir build/esp32s3 \
+            firmware/ski-clock-neo
+          cp build/esp32s3/ski-clock-neo.ino.bin build/ski-clock-neo-esp32s3.bin
+          cp build/esp32s3/ski-clock-neo.ino.bootloader.bin build/ski-clock-neo-esp32s3.bootloader.bin || echo "Warning: Bootloader not found for ESP32-S3"
+          cp build/esp32s3/ski-clock-neo.ino.partitions.bin build/ski-clock-neo-esp32s3.partitions.bin || echo "Warning: Partitions not found for ESP32-S3"
+
+      - name: Build for ESP-12F
+        run: |
+          arduino-cli compile --fqbn esp8266:esp8266:generic:eesz=4M1M \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_ESP12F" \
+            --output-dir build/esp12f \
+            firmware/ski-clock-neo
+          cp build/esp12f/ski-clock-neo.ino.bin build/ski-clock-neo-esp12f.bin
+
+      - name: Build for ESP-01 (1M)
+        run: |
+          arduino-cli compile --fqbn esp8266:esp8266:generic:eesz=1M \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_ESP01" \
+            --output-dir build/esp01 \
+            firmware/ski-clock-neo
+          cp build/esp01/ski-clock-neo.ino.bin build/ski-clock-neo-esp01.bin
+
+      - name: Build for Wemos D1 Mini
+        run: |
+          arduino-cli compile --fqbn esp8266:esp8266:d1_mini:eesz=4M1M \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_WEMOS_D1MINI" \
+            --output-dir build/d1mini \
+            firmware/ski-clock-neo
+          cp build/d1mini/ski-clock-neo.ino.bin build/ski-clock-neo-d1mini.bin
+
+      - name: Upload firmware to dev (via production proxy)
+        if: success()
+        run: |
+          for file in build/ski-clock-neo-*.bin; do
+            if [[ "$file" == *".bootloader.bin" ]] || [[ "$file" == *".partitions.bin" ]]; then
+              continue
+            fi
+
+            PLATFORM=$(basename "$file" .bin | sed 's/ski-clock-neo-//')
+            echo "Uploading $file to dev (platform=$PLATFORM version=${{ steps.get_version.outputs.VERSION }})..."
+
+            BOOTLOADER="build/ski-clock-neo-${PLATFORM}.bootloader.bin"
+            PARTITIONS="build/ski-clock-neo-${PLATFORM}.partitions.bin"
+
+            if [ -f "$BOOTLOADER" ] && [ -f "$PARTITIONS" ]; then
+              echo "  → Full flash mode: uploading firmware, bootloader, and partitions to dev"
+              curl --fail --show-error \
+                -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/dev/upload" \
+                -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
+                -F "file=@$file" \
+                -F "bootloader=@$BOOTLOADER" \
+                -F "partitions=@$PARTITIONS" \
+                -F "version=${{ steps.get_version.outputs.VERSION }}" \
+                -F "platform=$PLATFORM" \
+                -F "product=ski-clock-neo" \
+                -w "\n"
+            else
+              echo "  → Quick flash mode: uploading firmware only to dev"
+              curl --fail --show-error \
+                -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/dev/upload" \
+                -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
+                -F "file=@$file" \
+                -F "version=${{ steps.get_version.outputs.VERSION }}" \
+                -F "platform=$PLATFORM" \
+                -F "product=ski-clock-neo" \
+                -w "\n"
+            fi
+
+            echo "✓ Upload for platform '$PLATFORM' to dev succeeded"
+          done
+
+      - name: Upload build artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-binaries-dev-${{ steps.get_version.outputs.VERSION }}
+          path: build/*.bin

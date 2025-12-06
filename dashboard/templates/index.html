@@ -13,7 +13,10 @@
             <h1><img src="{{ url_for('static', filename='norrtek-logo.png') }}" alt="Norrtek" class="brand-logo"> Norrtek IoT</h1>
             <p class="subtitle">Device Fleet Management</p>
         </div>
-        <a href="/logout" class="logout-btn">Logout</a>
+        <div class="header-actions">
+            <span id="env-badge" class="env-badge env-loading">...</span>
+            <a href="/logout" class="logout-btn">Logout</a>
+        </div>
     </div>
 
     <div class="card">
@@ -136,6 +139,30 @@
 
 {% block extra_scripts %}
 <script>
+    // Load and display environment badge
+    async function loadEnvironment() {
+        try {
+            const response = await fetch('/api/environment');
+            const data = await response.json();
+            const badge = document.getElementById('env-badge');
+            
+            if (data.is_production) {
+                badge.textContent = 'PROD';
+                badge.className = 'env-badge env-prod';
+                badge.title = 'Production Environment';
+            } else {
+                badge.textContent = 'DEV';
+                badge.className = 'env-badge env-dev';
+                badge.title = 'Development Environment';
+            }
+        } catch (error) {
+            console.error('Failed to load environment:', error);
+            const badge = document.getElementById('env-badge');
+            badge.textContent = '?';
+            badge.className = 'env-badge env-loading';
+        }
+    }
+
     // HTML escape function to prevent XSS attacks
     function escapeHtml(text) {
         if (!text) return '';
@@ -1664,6 +1691,7 @@
     });
 
     // Initial load
+    loadEnvironment();
     checkWebSerialSupport();
     loadOTAStats();
     loadDevices();
