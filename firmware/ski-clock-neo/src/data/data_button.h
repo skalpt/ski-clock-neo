@@ -8,11 +8,12 @@ typedef void (*ButtonCallback)();
 
 // Initialize button using BUTTON_PIN from config with pull-up resistor
 // Button should connect pin to GND when pressed (active LOW)
-// Uses debounce of 50ms
+// Uses hardware debouncing: FALLING edge sets flag, RISING edge clears it
+// Press only triggers if button held LOW for >= 50ms (filters mains noise)
 void initButton();
 
 // Set callback for button press events
-// Callback will be called from ISR context - keep it short!
+// Callback is called from main loop context (not ISR), safe for longer operations
 void setButtonPressCallback(ButtonCallback callback);
 
 // Clear any pending button press flag (call during lockout to discard bounces)

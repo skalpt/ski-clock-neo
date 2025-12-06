@@ -1,9 +1,10 @@
 // ============================================================================
-// data_button.cpp - Button input handling with FALLING edge detection
+// data_button.cpp - Button input handling with hardware debouncing
 // ============================================================================
 // This library manages button input with:
-// - Hardware interrupt on FALLING edge (button press)
-// - Simple flag-based detection (no debouncing)
+// - Hardware interrupt on FALLING edge (button press start)
+// - Hardware interrupt on RISING edge (button release / noise filter)
+// - 50ms debounce threshold to filter mains interference
 // - Press callback only
 // ============================================================================
 
@@ -17,6 +18,12 @@
 #include "../core/debug.h"           // For debug logging
 
 // ============================================================================
+// CONSTANTS
+// ============================================================================
+
+static const unsigned long DEBOUNCE_MS = 50;  // Debounce threshold in milliseconds
+
+// ============================================================================
 // STATE VARIABLES
 // ============================================================================
 
@@ -26,16 +33,22 @@ static bool initialized = false;            // True after init
 // Callbacks
 static ButtonCallback pressCallback = nullptr;
 
-// ISR flag (set by interrupt, cleared by updateButton)
-static volatile bool buttonPressed = false;
+// Debounce state (managed by updateButton polling)
+static volatile bool edgeDetected = false;         // ISR sets this on any edge
+static bool pressInProgress = false;               // True while button held down
+static unsigned long pressStartTime = 0;           // When LOW state first detected
+static bool pressHandled = false;                  // True after callback fired (prevent re-trigger)
+static bool lastPinWasHigh = true;                 // Track last state to require release before re-arm
 
 // ============================================================================
 // INTERRUPT SERVICE ROUTINE
 // ============================================================================
 
 // IRAM_ATTR: Place ISR in IRAM for faster execution (ESP32/ESP8266)
-void IRAM_ATTR buttonISR() {
-  buttonPressed = true;
+// Minimal ISR - just sets flag, all logic happens in updateButton()
+// This avoids calling digitalRead/millis which aren't IRAM-safe on ESP8266
+void IRAM_ATTR buttonChangeISR() {
+  edgeDetected = true;
 }
 
 // ============================================================================
@@ -49,15 +62,12 @@ void initButton() {
   // Configure pin as input with pull-up (active LOW button)
   pinMode(buttonPin, INPUT_PULLUP);
   
-  // Attach interrupt on FALLING edge only (button press)
-  #if defined(ESP32)
-    attachInterrupt(digitalPinToInterrupt(buttonPin), buttonISR, FALLING);
-  #elif defined(ESP8266)
-    attachInterrupt(digitalPinToInterrupt(buttonPin), buttonISR, FALLING);
-  #endif
+  // Attach interrupt on CHANGE to detect both edges
+  // ISR checks pin state to determine if falling (press) or rising (release)
+  attachInterrupt(digitalPinToInterrupt(buttonPin), buttonChangeISR, CHANGE);
   
   initialized = true;
-  DEBUG_PRINTLN("Button initialized (FALLING edge)");
+  DEBUG_PRINTLN("Button initialized with debouncing (50ms threshold)");
 }
 
 // ============================================================================
@@ -69,9 +79,13 @@ void setButtonPressCallback(ButtonCallback callback) {
   pressCallback = callback;
 }
 
-// Clear any pending button press flag (call during lockout to discard bounces)
+// Clear any pending button press state (call during lockout to discard bounces)
+// This suppresses the current press and requires a full release before next press
 void clearButtonPressed() {
-  buttonPressed = false;
+  edgeDetected = false;
+  pressInProgress = false;
+  pressHandled = true;
+  lastPinWasHigh = false;  // Require a HIGH transition before re-arming
 }
 
 
@@ -89,21 +103,46 @@ uint32_t getButtonHoldTime() {
 // UPDATE (call from timer or main loop)
 // ============================================================================
 
-// Process button press events
+// Process button press events with debouncing
+// This handles all the logic that can't safely run in the ISR
 void updateButton() {
   if (!initialized) {
     return;
   }
   
-  // Check if button was pressed (flag set by ISR)
-  if (buttonPressed) {
-    buttonPressed = false;
-    
-    DEBUG_PRINTLN("Button pressed");
-    logEvent("button_press", nullptr);
-    
-    if (pressCallback != nullptr) {
-      pressCallback();
+  // Read current pin state (safe to do in main loop)
+  bool buttonIsLow = (digitalRead(buttonPin) == LOW);
+  
+  // Handle state transitions based on current pin state
+  if (buttonIsLow) {
+    // Button is currently pressed (LOW)
+    // Only start a new press cycle if we saw a HIGH state first (prevents re-trigger)
+    if (!pressInProgress && lastPinWasHigh) {
+      // Just transitioned from HIGH to LOW - start debounce timer
+      pressInProgress = true;
+      pressStartTime = millis();
+      pressHandled = false;
     }
+    // Check if debounce time has passed and we haven't triggered yet
+    else if (pressInProgress && !pressHandled && (millis() - pressStartTime >= DEBOUNCE_MS)) {
+      pressHandled = true;  // Prevent re-trigger while button still held
+      
+      DEBUG_PRINTLN("Button pressed (debounced)");
+      logEvent("button_press", nullptr);
+      
+      if (pressCallback != nullptr) {
+        pressCallback();
+      }
+    }
+    lastPinWasHigh = false;
+  } else {
+    // Button is released (HIGH) - reset state
+    // This clears pressInProgress so noise spikes that release quickly
+    // never reach the 50ms threshold
+    pressInProgress = false;
+    lastPinWasHigh = true;  // Allow next press to be detected
   }
+  
+  // Clear edge flag (we've processed it)
+  edgeDetected = false;
 }
