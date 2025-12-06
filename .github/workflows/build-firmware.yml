@@ -1,89 +1,25 @@
-name: Promote to Production
+name: Build and Release Firmware
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main  # Automatically build on every push to main
+  workflow_dispatch:  # Allows manual triggering from GitHub UI
 
 jobs:
-  fetch-version:
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.get_dev_version.outputs.VERSION }}
-      git_sha: ${{ steps.get_dev_version.outputs.GIT_SHA }}
-      dev_run_id: ${{ steps.get_dev_version.outputs.DEV_RUN_ID }}
-    
-    steps:
-      - name: Fetch latest successful dev build version
-        id: get_dev_version
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          echo "🔍 Fetching latest successful dev build..."
-          
-          # Get the latest successful run of build-firmware.yml (the dev build workflow)
-          # Note: status=completed filters completed runs, conclusion=success filters successful ones
-          LATEST_RUN=$(gh api \
-            -H "Accept: application/vnd.github+json" \
-            "/repos/${{ github.repository }}/actions/workflows/build-firmware.yml/runs?status=completed&per_page=10" \
-            --jq '[.workflow_runs[] | select(.conclusion == "success")] | .[0]')
-          
-          if [ -z "$LATEST_RUN" ] || [ "$LATEST_RUN" == "null" ]; then
-            echo "❌ No successful dev builds found!"
-            exit 1
-          fi
-          
-          RUN_ID=$(echo "$LATEST_RUN" | jq -r '.id')
-          GIT_SHA=$(echo "$LATEST_RUN" | jq -r '.head_sha')
-          
-          echo "📦 Found dev run ID: $RUN_ID"
-          echo "📦 Git SHA: $GIT_SHA"
-          
-          # Download the promotion manifest artifact
-          echo "📥 Downloading promotion manifest..."
-          gh run download "$RUN_ID" -n promotion-manifest -D /tmp/manifest
-          
-          if [ ! -f /tmp/manifest/promotion-manifest.json ]; then
-            echo "❌ Promotion manifest not found in dev build artifacts!"
-            exit 1
-          fi
-          
-          VERSION=$(jq -r '.version' /tmp/manifest/promotion-manifest.json)
-          
-          echo "✅ Dev version to promote: $VERSION"
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "GIT_SHA=$GIT_SHA" >> $GITHUB_OUTPUT
-          echo "DEV_RUN_ID=$RUN_ID" >> $GITHUB_OUTPUT
-
-      - name: Display promotion info
-        run: |
-          echo "## 🚀 Promoting Dev Build to Production" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| **Version** | \`${{ steps.get_dev_version.outputs.VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Git SHA** | \`${{ steps.get_dev_version.outputs.GIT_SHA }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Dev Run ID** | \`${{ steps.get_dev_version.outputs.DEV_RUN_ID }}\` |" >> $GITHUB_STEP_SUMMARY
-
-  build-and-deploy-prod:
-    needs: fetch-version
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code at dev build commit
+      - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.fetch-version.outputs.git_sha }}
-
-      - name: Display build info
-        run: |
-          echo "🔨 Building production firmware"
-          echo "   Version: ${{ needs.fetch-version.outputs.version }}"
-          echo "   Git SHA: ${{ needs.fetch-version.outputs.git_sha }}"
 
       - name: Setup Arduino CLI
         uses: arduino/setup-arduino-cli@v1
 
       - name: Install ESP32 + ESP8266 platforms
         run: |
+          # Retry function for handling transient network failures
           retry() {
             local n=1
             local max=5
@@ -109,6 +45,7 @@ jobs:
 
       - name: Install required libraries
         run: |
+          # Retry function for handling transient network failures
           retry() {
             local n=1
             local max=5
@@ -135,7 +72,14 @@ jobs:
           retry arduino-cli lib install "TickTwo"
           retry arduino-cli lib install "RTClib"
 
-      - name: Upload config to production
+      - name: Generate timestamp version
+        id: get_version
+        run: |
+          VERSION=$(date -u +'%Y.%-m.%-d').${{ github.run_number }}
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Generated version: $VERSION"
+
+      - name: Create and upload config to dashboard
         run: |
           cat > config.json << EOF
           {
@@ -147,21 +91,25 @@ jobs:
             "MQTT_PASSWORD": "${{ secrets.MQTT_PASSWORD }}"
           }
           EOF
-          echo "🚀 Uploading configuration to PRODUCTION..."
+          echo "Uploading configuration to dashboard server..."
           curl --fail --show-error -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/config" \
             -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
             -H "Content-Type: application/json" \
             -d @config.json \
             -w "\n"
-          echo "✓ Configuration uploaded to production successfully"
+          echo "✓ Configuration uploaded successfully"
           rm config.json
+
+      # -------------------------------------------------------
+      # ESP32 FAMILY BUILDS
+      # -------------------------------------------------------
 
       - name: Build for ESP32 (original)
         run: |
           arduino-cli compile --fqbn esp32:esp32:esp32 \
             --export-binaries \
             --build-property "build.partitions=min_spiffs" \
-            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ needs.fetch-version.outputs.version }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_ESP32 -DENV_SCOPE=\\\"prod\\\"" \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_ESP32 -DENV_SCOPE=\\\"dev\\\"" \
             --output-dir build/esp32 \
             firmware/ski-clock-neo
           cp build/esp32/ski-clock-neo.ino.bin build/ski-clock-neo-esp32.bin
@@ -173,7 +121,7 @@ jobs:
           arduino-cli compile --fqbn esp32:esp32:esp32c3:CDCOnBoot=cdc \
             --export-binaries \
             --build-property "build.partitions=min_spiffs" \
-            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ needs.fetch-version.outputs.version }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_ESP32C3 -DENV_SCOPE=\\\"prod\\\"" \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_ESP32C3 -DENV_SCOPE=\\\"dev\\\"" \
             --output-dir build/esp32c3 \
             firmware/ski-clock-neo
           cp build/esp32c3/ski-clock-neo.ino.bin build/ski-clock-neo-esp32c3.bin
@@ -185,17 +133,21 @@ jobs:
           arduino-cli compile --fqbn esp32:esp32:esp32s3:CDCOnBoot=cdc \
             --export-binaries \
             --build-property "build.partitions=min_spiffs" \
-            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ needs.fetch-version.outputs.version }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_ESP32S3 -DENV_SCOPE=\\\"prod\\\"" \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_ESP32S3 -DENV_SCOPE=\\\"dev\\\"" \
             --output-dir build/esp32s3 \
             firmware/ski-clock-neo
           cp build/esp32s3/ski-clock-neo.ino.bin build/ski-clock-neo-esp32s3.bin
           cp build/esp32s3/ski-clock-neo.ino.bootloader.bin build/ski-clock-neo-esp32s3.bootloader.bin || echo "Warning: Bootloader not found for ESP32-S3"
           cp build/esp32s3/ski-clock-neo.ino.partitions.bin build/ski-clock-neo-esp32s3.partitions.bin || echo "Warning: Partitions not found for ESP32-S3"
 
+      # -------------------------------------------------------
+      # ESP8266 FAMILY BUILDS
+      # -------------------------------------------------------
+
       - name: Build for ESP-12F
         run: |
           arduino-cli compile --fqbn esp8266:esp8266:generic:eesz=4M1M \
-            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ needs.fetch-version.outputs.version }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_ESP12F -DENV_SCOPE=\\\"prod\\\"" \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_ESP12F -DENV_SCOPE=\\\"dev\\\"" \
             --output-dir build/esp12f \
             firmware/ski-clock-neo
           cp build/esp12f/ski-clock-neo.ino.bin build/ski-clock-neo-esp12f.bin
@@ -203,7 +155,7 @@ jobs:
       - name: Build for ESP-01 (1M)
         run: |
           arduino-cli compile --fqbn esp8266:esp8266:generic:eesz=1M \
-            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ needs.fetch-version.outputs.version }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_ESP01 -DENV_SCOPE=\\\"prod\\\"" \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_ESP01 -DENV_SCOPE=\\\"dev\\\"" \
             --output-dir build/esp01 \
             firmware/ski-clock-neo
           cp build/esp01/ski-clock-neo.ino.bin build/ski-clock-neo-esp01.bin
@@ -211,27 +163,34 @@ jobs:
       - name: Build for Wemos D1 Mini
         run: |
           arduino-cli compile --fqbn esp8266:esp8266:d1_mini:eesz=4M1M \
-            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ needs.fetch-version.outputs.version }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_WEMOS_D1MINI -DENV_SCOPE=\\\"prod\\\"" \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ steps.get_version.outputs.VERSION }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_WEMOS_D1MINI -DENV_SCOPE=\\\"dev\\\"" \
             --output-dir build/d1mini \
             firmware/ski-clock-neo
           cp build/d1mini/ski-clock-neo.ino.bin build/ski-clock-neo-d1mini.bin
 
-      - name: Upload firmware to PRODUCTION
-        if: success()
+      # -------------------------------------------------------
+      # Upload Firmware to Server
+      # -------------------------------------------------------
+
+      - name: Upload all firmware binaries
+        if: success()  # Only upload to server if all builds succeeded
         run: |
-          echo "🚀 DEPLOYING TO PRODUCTION"
+          # Upload main firmware binaries (exclude bootloader/partitions files)
           for file in build/ski-clock-neo-*.bin; do
+            # Skip bootloader and partitions files
             if [[ "$file" == *".bootloader.bin" ]] || [[ "$file" == *".partitions.bin" ]]; then
               continue
             fi
 
             PLATFORM=$(basename "$file" .bin | sed 's/ski-clock-neo-//')
-            echo "Uploading $file to PRODUCTION (platform=$PLATFORM version=${{ needs.fetch-version.outputs.version }})..."
+            echo "Uploading $file (platform=$PLATFORM version=${{ steps.get_version.outputs.VERSION }})..."
 
+            # Check if this is an ESP32 family platform (has bootloader/partitions)
             BOOTLOADER="build/ski-clock-neo-${PLATFORM}.bootloader.bin"
             PARTITIONS="build/ski-clock-neo-${PLATFORM}.partitions.bin"
 
             if [ -f "$BOOTLOADER" ] && [ -f "$PARTITIONS" ]; then
+              # ESP32 family: upload firmware + bootloader + partitions
               echo "  → Full flash mode: uploading firmware, bootloader, and partitions"
               curl --fail --show-error \
                 -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/upload" \
@@ -239,43 +198,69 @@ jobs:
                 -F "file=@$file" \
                 -F "bootloader=@$BOOTLOADER" \
                 -F "partitions=@$PARTITIONS" \
-                -F "version=${{ needs.fetch-version.outputs.version }}" \
+                -F "version=${{ steps.get_version.outputs.VERSION }}" \
                 -F "platform=$PLATFORM" \
                 -F "product=ski-clock-neo" \
                 -w "\n"
             else
+              # ESP8266: upload firmware only
               echo "  → Quick flash mode: uploading firmware only"
               curl --fail --show-error \
                 -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/upload" \
                 -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
                 -F "file=@$file" \
-                -F "version=${{ needs.fetch-version.outputs.version }}" \
+                -F "version=${{ steps.get_version.outputs.VERSION }}" \
                 -F "platform=$PLATFORM" \
                 -F "product=ski-clock-neo" \
                 -w "\n"
             fi
 
-            echo "✓ Upload for platform '$PLATFORM' to production succeeded"
+            echo "✓ Upload for platform '$PLATFORM' succeeded"
           done
+
+      # -------------------------------------------------------
+      # Save promotion manifest and upload artifacts
+      # -------------------------------------------------------
+
+      - name: Save version manifest for promotion
+        if: success()
+        run: |
+          cat > build/promotion-manifest.json << EOF
+          {
+            "version": "${{ steps.get_version.outputs.VERSION }}",
+            "git_sha": "${{ github.sha }}",
+            "run_id": "${{ github.run_id }}",
+            "run_number": "${{ github.run_number }}",
+            "timestamp": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          }
+          EOF
+          echo "✓ Saved promotion manifest"
+          cat build/promotion-manifest.json
+
+      - name: Upload version manifest
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: promotion-manifest
+          path: build/promotion-manifest.json
+          retention-days: 90
 
       - name: Upload build artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: firmware-binaries-prod-${{ needs.fetch-version.outputs.version }}
+          name: firmware-binaries-dev-${{ steps.get_version.outputs.VERSION }}
           path: build/*.bin
 
       - name: Job Summary
         if: success()
         run: |
+          echo "## 🚀 Dev Build Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## ✅ Production Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** \`${{ steps.get_version.outputs.VERSION }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** \`dev\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Git SHA:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Run ID:** \`${{ github.run_id }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| **Version** | \`${{ needs.fetch-version.outputs.version }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Environment** | \`prod\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Source Git SHA** | \`${{ needs.fetch-version.outputs.git_sha }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Dev Run ID** | \`${{ needs.fetch-version.outputs.dev_run_id }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "🎉 All 6 board variants deployed to production with version \`${{ needs.fetch-version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "### Promote to Production" >> $GITHUB_STEP_SUMMARY
+          echo "To promote this build to production, run the **Promote to Production** workflow." >> $GITHUB_STEP_SUMMARY
