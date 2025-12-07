@@ -19,13 +19,32 @@ MQTT_USERNAME = os.getenv('MQTT_USERNAME', '')
 MQTT_PASSWORD = os.getenv('MQTT_PASSWORD', '')
 
 def get_environment_scope() -> str:
-    """Get the current environment scope based on PRODUCTION_API_URL presence.
-    Production environments don't have this set (they ARE production).
-    Dev environments have it set to sync with production.
+    """Get the current environment scope using the same logic as app.py.
+    
+    Uses REPLIT_DEPLOYMENT detection (not PRODUCTION_API_URL) to match
+    the rest of the dashboard's environment detection logic.
+    
+    Returns 'prod' for production deployments, 'dev' for development.
     """
-    production_url = os.getenv('PRODUCTION_API_URL')
-    if production_url:
+    # Emergency bypass for troubleshooting
+    if os.getenv('SAFE_CONFIG_BYPASS', '').lower() == 'true':
         return 'dev'
+    
+    # Explicit development mode
+    if os.getenv('DEV_MODE', '').lower() == 'true':
+        return 'dev'
+    
+    # Replit workspace (not a deployment) - REPL_ID exists but no REPLIT_DEPLOYMENT
+    if os.getenv('REPL_ID') and not os.getenv('REPLIT_DEPLOYMENT'):
+        return 'dev'
+    
+    # Known non-production deployment types
+    deployment_type = os.getenv('REPLIT_DEPLOYMENT', '').lower()
+    if deployment_type in {'staging', 'qa', 'dev'}:
+        return 'dev'
+    
+    # Default to production (fail closed) for all other environments
+    # This includes REPLIT_DEPLOYMENT="1" (published apps)
     return 'prod'
 
 def build_topic(base_path: str) -> str:
