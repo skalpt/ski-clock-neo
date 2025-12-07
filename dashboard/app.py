@@ -2186,6 +2186,47 @@ def get_firmware_history():
         'total_versions': len(all_versions)
     }), 200
 
+@app.route('/api/firmware/<int:firmware_id>/description', methods=['PUT'])
+@login_required
+def update_firmware_description(firmware_id):
+    """Update the description/changelog for a firmware version
+    
+    Body: {"description": "New description text"}
+    """
+    firmware = FirmwareVersion.query.get(firmware_id)
+    
+    if not firmware:
+        return jsonify({'error': 'Firmware version not found'}), 404
+    
+    data = request.get_json()
+    if data is None:
+        return jsonify({'error': 'Request body required'}), 400
+    
+    description = data.get('description', '').strip()
+    
+    if len(description) > 500:
+        return jsonify({'error': 'Description must be 500 characters or less'}), 400
+    
+    old_description = firmware.description
+    firmware.description = description if description else None
+    db.session.commit()
+    
+    print(f"✏️ Updated firmware description: {firmware.product}/{firmware.platform} v{firmware.version}")
+    if old_description:
+        print(f"   Old: {old_description[:50]}...")
+    if description:
+        print(f"   New: {description[:50]}...")
+    
+    return jsonify({
+        'success': True,
+        'firmware_id': firmware_id,
+        'product': firmware.product,
+        'platform': firmware.platform,
+        'version': firmware.version,
+        'description': firmware.description,
+        'message': f'Description updated for {firmware.product}/{firmware.platform} v{firmware.version}'
+    }), 200
+
 @app.route('/api/devices/<device_id>/pin-version', methods=['POST', 'DELETE'])
 @login_required
 def pin_device_version(device_id):

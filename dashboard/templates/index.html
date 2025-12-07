@@ -122,6 +122,27 @@
             </div>
         </div>
     </div>
+    
+    <div id="description-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="description-modal-title">Edit Version Description</h3>
+                <button class="modal-close" onclick="closeDescriptionModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="description-version-info" id="description-version-info"></p>
+                <div class="form-group">
+                    <label for="description-input">Description / Changelog:</label>
+                    <textarea id="description-input" class="description-textarea" rows="4" maxlength="500" placeholder="Enter a description for this version (e.g., bug fixes, new features, changes)..."></textarea>
+                    <small class="character-count"><span id="description-char-count">0</span>/500 characters</small>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn-secondary" onclick="closeDescriptionModal()">Cancel</button>
+                    <button class="btn-primary" onclick="saveDescription()">Save Description</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="card">
         <div class="flex-between mb-15">
@@ -1562,6 +1583,8 @@
             const supportsFullFlash = fw.supports_full_flash || false;
             const description = fw.description ? `<div class="version-description">${escapeHtml(fw.description)}</div>` : '';
             
+            const escapedDescription = fw.description ? escapeHtml(fw.description).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '\\r') : '';
+            
             return `
                 <tr>
                     <td>
@@ -1572,6 +1595,9 @@
                     <td>${sizeMB} MB</td>
                     <td>${uploadDate}</td>
                     <td class="version-actions">
+                        <button class="btn-icon btn-small" onclick="showDescriptionModal(${fw.id}, '${escapeHtml(product)}', '${platform}', '${escapeHtml(fw.version)}', '${escapedDescription}')" title="Edit description">
+                            ✏️
+                        </button>
                         <button class="btn-primary btn-small" onclick="showPushModal('${platform}', '${escapeHtml(fw.version)}', '${escapeHtml(product)}')">
                             📤 OTA Push
                         </button>
@@ -1725,6 +1751,73 @@
         currentFlashSession = null;
         // Resume all refresh intervals after flashing completes
         resumeAllRefresh();
+    }
+    
+    // Description modal state
+    let currentDescriptionFirmwareId = null;
+    
+    function showDescriptionModal(firmwareId, product, platform, version, currentDescription) {
+        currentDescriptionFirmwareId = firmwareId;
+        
+        const modal = document.getElementById('description-modal');
+        const versionInfo = document.getElementById('description-version-info');
+        const input = document.getElementById('description-input');
+        const charCount = document.getElementById('description-char-count');
+        
+        versionInfo.textContent = `${product} / ${platform.toUpperCase()} v${version}`;
+        input.value = currentDescription || '';
+        charCount.textContent = input.value.length;
+        
+        // Add character count listener
+        input.oninput = function() {
+            charCount.textContent = this.value.length;
+        };
+        
+        modal.classList.remove('hidden');
+        input.focus();
+    }
+    
+    function closeDescriptionModal() {
+        document.getElementById('description-modal').classList.add('hidden');
+        currentDescriptionFirmwareId = null;
+    }
+    
+    async function saveDescription() {
+        if (!currentDescriptionFirmwareId) return;
+        
+        const input = document.getElementById('description-input');
+        const description = input.value.trim();
+        
+        try {
+            const response = await fetch(`/api/firmware/${currentDescriptionFirmwareId}/description`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ description: description })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                // Invalidate cache so version history reloads with new description
+                firmwareHistoryCache = null;
+                closeDescriptionModal();
+                // Refresh the current version modal if open
+                const versionModal = document.getElementById('version-modal');
+                if (!versionModal.classList.contains('hidden')) {
+                    // Re-trigger loading of version history
+                    const title = document.getElementById('version-modal-title').textContent;
+                    const match = title.match(/Version History - (.+) \((.+)\)/);
+                    if (match) {
+                        showVersionHistory(match[2].toLowerCase(), match[1]);
+                    }
+                }
+            } else {
+                alert(data.error || 'Failed to update description');
+            }
+        } catch (error) {
+            console.error('Failed to save description:', error);
+            alert('Failed to save description. Please try again.');
+        }
     }
     
     async function pinDeviceVersion(deviceId, version) {
