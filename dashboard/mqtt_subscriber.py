@@ -1177,11 +1177,11 @@ def start_mqtt_subscriber():
     random_suffix = str(uuid.uuid4())[:4]
     _subscriber_id = f"mqtt-{timestamp}-{random_suffix}"
     
-    # Generate unique client ID for each instance (prevents collision between dev/prod)
-    # Format: SkiClockDashboard-<environment>-<unique_id>
-    env = os.getenv('REPL_DEPLOYMENT_TYPE', 'dev')  # 'dev' or 'production'
-    unique_suffix = str(uuid.uuid4())[:8]
-    client_id = f"SkiClockDashboard-{env}-{unique_suffix}"
+    # Use FIXED client ID for persistent sessions (allows message queuing while offline)
+    # The broker will queue QoS 1/2 messages for this client while disconnected
+    # Format: NorrtekDashboard-<environment> (no random suffix!)
+    env = 'prod' if os.getenv('REPLIT_DEPLOYMENT') else 'dev'
+    client_id = f"NorrtekDashboard-{env}"
     
     # Create shutdown event for graceful termination
     _shutdown_event = threading.Event()
@@ -1192,7 +1192,9 @@ def start_mqtt_subscriber():
     print(f"  Client ID: {client_id}")
     print(f"  Subscriber ID: {_subscriber_id}")
     
-    client = mqtt.Client(client_id=client_id, protocol=mqtt.MQTTv311, clean_session=True)
+    # Use persistent session (clean_session=False) so broker queues messages while we're offline
+    # Combined with QoS 1 publishing, this ensures commands aren't lost during restarts
+    client = mqtt.Client(client_id=client_id, protocol=mqtt.MQTTv311, clean_session=False)
     client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
     
     client.tls_set(cert_reqs=ssl.CERT_REQUIRED, tls_version=ssl.PROTOCOL_TLS)
