@@ -1992,6 +1992,17 @@ body.no-web-serial .flash-column {
     color: var(--success-text);
 }
 
+.version-description {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    font-style: italic;
+    margin-top: 0.25rem;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .badge-warning {
     background: var(--warning-bg);
     color: var(--warning-text);

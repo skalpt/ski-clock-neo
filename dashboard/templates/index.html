@@ -1497,12 +1497,14 @@
             const latestBadge = fw.is_latest ? '<span class="badge badge-success">Latest</span>' : '';
             const sizeMB = (fw.size / 1024 / 1024).toFixed(2);
             const supportsFullFlash = fw.supports_full_flash || false;
+            const description = fw.description ? `<div class="version-description">${escapeHtml(fw.description)}</div>` : '';
             
             return `
                 <tr>
                     <td>
                         ${escapeHtml(fw.version)}
                         ${latestBadge}
+                        ${description}
                     </td>
                     <td>${sizeMB} MB</td>
                     <td>${uploadDate}</td>
