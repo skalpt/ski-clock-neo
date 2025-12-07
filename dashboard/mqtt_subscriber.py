@@ -1006,14 +1006,19 @@ def publish_command(device_id: str, command: str, environment: str = None, **kwa
         print(f"✗ Error publishing command: {e}")
         return False
 
-def publish_config(device_id: str, environment: str = None, **config_values) -> bool:
+def publish_config(device_id: str, topic_environment: str = None, **config_values) -> bool:
     """
     Publish configuration values to a specific device via MQTT.
     
+    IMPORTANT: Uses the device's CURRENT environment from database for the
+    MQTT topic, ensuring the message reaches the device. Config values (including
+    environment changes) are sent in the payload.
+    
     Args:
         device_id: Target device ID
-        environment: Optional target environment ('dev' or 'prod'). If not provided,
-                     looks up the device's environment from database.
+        topic_environment: Optional explicit topic environment override. If not provided,
+                          looks up device's current environment from database. Use this
+                          when you know the device's current environment but DB may be stale.
         **config_values: Configuration key-value pairs (e.g., temp_offset=-2.0, environment='prod')
     
     Returns:
@@ -1025,23 +1030,25 @@ def publish_config(device_id: str, environment: str = None, **config_values) -> 
         print(f"✗ Cannot publish config: MQTT client not connected")
         return False
     
-    # Look up device environment if not provided
-    if environment is None and _app_context:
+    # Use explicit topic_environment if provided, otherwise look up from database
+    current_environment = topic_environment
+    if current_environment is None and _app_context:
         try:
             from models import Device
             with _app_context.app_context():
                 device = Device.query.filter_by(device_id=device_id).first()
                 if device:
-                    environment = device.environment
+                    current_environment = device.environment
         except Exception as e:
             print(f"⚠ Could not look up device environment: {e}")
     
-    # Fail if environment is still unknown - do not default to prod
-    if environment is None:
-        print(f"✗ Cannot publish config: device {device_id} has no environment set")
+    # Fail if environment is unknown - do not default to prod
+    if current_environment is None:
+        print(f"✗ Cannot publish config: device {device_id} has no environment set (not in database and no explicit topic_environment)")
         return False
     
-    topic = f"{MQTT_TOPIC_PREFIX}/{environment}/config/{device_id}"
+    # Use device's CURRENT environment for the topic so the message reaches it
+    topic = f"{MQTT_TOPIC_PREFIX}/{current_environment}/config/{device_id}"
     payload = {
         'timestamp': datetime.now(timezone.utc).isoformat(),
         'subscriber_id': _subscriber_id,
@@ -1051,7 +1058,11 @@ def publish_config(device_id: str, environment: str = None, **config_values) -> 
     try:
         result = _mqtt_client.publish(topic, json.dumps(payload), qos=1)
         if result.rc == mqtt.MQTT_ERR_SUCCESS:
-            print(f"✓ Published config to {device_id} (env={environment}): {config_values} [subscriber: {_subscriber_id}]")
+            # Log environment change details if promoting/demoting
+            if 'environment' in config_values:
+                print(f"✓ Published config to {device_id} (current_env={current_environment}, target_env={config_values['environment']}): {config_values} [subscriber: {_subscriber_id}]")
+            else:
+                print(f"✓ Published config to {device_id} (env={current_environment}): {config_values} [subscriber: {_subscriber_id}]")
             return True
         else:
             print(f"✗ Failed to publish config to {device_id}: error code {result.rc}")

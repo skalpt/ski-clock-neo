@@ -1991,6 +1991,13 @@ def set_device_config(device_id):
             'error': 'Device not found'
         }), 404
     
+    # Check if device has an environment set (required to know which MQTT topic to publish to)
+    if not device.environment:
+        return jsonify({
+            'success': False,
+            'error': 'Device has no environment set. Wait for the device to send a heartbeat first.'
+        }), 400
+    
     data = request.get_json(silent=True) or {}
     
     if not data:
@@ -2031,8 +2038,11 @@ def set_device_config(device_id):
             'error': 'No valid configuration values provided'
         }), 400
     
+    # Pass device's current environment for the MQTT topic
+    # This ensures the message reaches the device on its current subscription
     success = publish_config(
         device_id=device_id,
+        topic_environment=device.environment,
         **config_values
     )
     
