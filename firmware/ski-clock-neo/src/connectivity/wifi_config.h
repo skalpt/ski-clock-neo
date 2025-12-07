@@ -50,6 +50,15 @@ body {
 }
 )";
 
+// Forward declarations for WiFi event handlers (defined at end of file)
+#if defined(ESP32)
+  void onWiFiConnected(WiFiEvent_t event, WiFiEventInfo_t info);
+  void onWiFiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info);
+#elif defined(ESP8266)
+  void onWiFiConnected(const WiFiEventStationModeGotIP& event);
+  void onWiFiDisconnected(const WiFiEventStationModeDisconnected& event);
+#endif
+
 // Initialize AutoConnect with configuration
 void initWiFi() {
   // Register WiFi event handlers
