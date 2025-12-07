@@ -2123,10 +2123,11 @@ def get_all_snapshots():
     limit = request.args.get('limit', type=int, default=50)
     offset = request.args.get('offset', type=int, default=0)
     
-    query = DisplaySnapshot.query
+    # Join with Device to filter out snapshots for soft-deleted devices
+    query = DisplaySnapshot.query.join(Device).filter(Device.deleted_at.is_(None))
     
     if device_id:
-        query = query.filter_by(device_id=device_id)
+        query = query.filter(DisplaySnapshot.device_id == device_id)
     
     if start_date:
         try:
@@ -2549,17 +2550,26 @@ def ota_progress():
 @app.route('/api/ota-stats')
 @login_required
 def ota_stats():
-    """Get OTA update statistics"""
+    """Get OTA update statistics
+    
+    Note: Excludes updates for soft-deleted devices
+    """
     from models import OTAUpdateLog
-    from sqlalchemy import func
+    from sqlalchemy import func, or_
+    
+    # Base query: join with Device to filter out soft-deleted devices
+    # Use outerjoin to include USB flash logs (device_id is NULL)
+    base_query = OTAUpdateLog.query.outerjoin(Device).filter(
+        or_(OTAUpdateLog.device_id.is_(None), Device.deleted_at.is_(None))
+    )
     
     # Total updates
-    total_updates = OTAUpdateLog.query.count()
+    total_updates = base_query.count()
     
     # Success/failure counts
-    success_count = OTAUpdateLog.query.filter_by(status='success').count()
-    failed_count = OTAUpdateLog.query.filter_by(status='failed').count()
-    in_progress_count = OTAUpdateLog.query.filter(
+    success_count = base_query.filter(OTAUpdateLog.status == 'success').count()
+    failed_count = base_query.filter(OTAUpdateLog.status == 'failed').count()
+    in_progress_count = base_query.filter(
         OTAUpdateLog.status.in_(['started', 'downloading'])
     ).count()
     
@@ -2567,7 +2577,7 @@ def ota_stats():
     success_rate = (success_count / total_updates * 100) if total_updates > 0 else 0
     
     # Average update duration (only for completed updates)
-    completed_logs = OTAUpdateLog.query.filter(
+    completed_logs = base_query.filter(
         OTAUpdateLog.completed_at.isnot(None)
     ).all()
     
@@ -2583,13 +2593,15 @@ def ota_stats():
     # Recent updates (last 7 days)
     from datetime import timedelta
     seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
-    recent_updates = OTAUpdateLog.query.filter(
+    recent_updates = base_query.filter(
         OTAUpdateLog.started_at >= seven_days_ago
     ).count()
     
     # Failed devices (unique devices with failed updates in last 24 hours)
+    # Only count non-deleted devices
     one_day_ago = datetime.now(timezone.utc) - timedelta(days=1)
-    failed_devices = OTAUpdateLog.query.filter(
+    failed_devices = OTAUpdateLog.query.join(Device).filter(
+        Device.deleted_at.is_(None),
         OTAUpdateLog.status == 'failed',
         OTAUpdateLog.started_at >= one_day_ago
     ).with_entities(OTAUpdateLog.device_id).distinct().count()
