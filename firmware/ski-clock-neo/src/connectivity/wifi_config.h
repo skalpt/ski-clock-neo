@@ -1,10 +1,6 @@
 #ifndef WIFI_CONFIG_H
 #define WIFI_CONFIG_H
 
-// MQTT client must be included FIRST to ensure function declarations are visible
-// before they are used in inline function implementations below
-#include "mqtt_client.h"
-
 #if defined(ESP32)
   #include <WiFi.h>
   #include <WebServer.h>
@@ -19,6 +15,7 @@
 #include <AutoConnectCredential.h> // For credential management
 #include "../core/device_info.h"   // For getDeviceID()
 #include "../core/led_indicator.h" // For LED status patterns when WiFi connection state changes
+#include "mqtt_client.h"           // For MQTT connection management when WiFi connection state changes
 #include "../core/event_log.h"     // For logging WiFi events
 #include "../core/debug.h"         // For debug logging
 
