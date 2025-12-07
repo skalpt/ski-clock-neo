@@ -1,0 +1,192 @@
+Time
+Deployment
+Source
+Log
+2025-12-07 13:28:27.76
+b07f6ef9
+User
+[2025-12-07 12:28:27 +0000] [57] [INFO] Using worker: sync
+2025-12-07 13:29:44.28
+b07f6ef9
+User
+^^^^^^^^^^^^^^^^^^^
+2025-12-07 13:29:44.28
+b07f6ef9
+User
+return self.load_wsgiapp()
+2025-12-07 13:29:44.28
+b07f6ef9
+User
+[2025-12-07 12:29:44 +0000] [32] [ERROR] Exception in worker process
+2025-12-07 13:29:44.28
+b07f6ef9
+User
+Traceback (most recent call last):
+2025-12-07 13:29:47.11
+b07f6ef9
+User
+[2025-12-07 12:29:47 +0000] [38] [INFO] Starting gunicorn 23.0.0
+2025-12-07 13:29:47.11
+b07f6ef9
+User
+[2025-12-07 12:29:47 +0000] [38] [INFO] Using worker: sync
+2025-12-07 13:29:47.11
+b07f6ef9
+User
+[2025-12-07 12:29:47 +0000] [38] [INFO] Listening at: http://0.0.0.0:5000 (38)
+2025-12-07 13:29:47.12
+b07f6ef9
+User
+[2025-12-07 12:29:47 +0000] [42] [INFO] Booting worker with pid: 42
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/gunicorn/app/base.py", line 66, in wsgi
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+validate_production_config()
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/gunicorn/workers/base.py", line 135, in init_process
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+File "", line 690, in _load_unlocked
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+self.wsgi = self.app.wsgi()
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+- FLASK_SECRET_KEY is using insecure default
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+return self.load_wsgiapp()
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+self.load_wsgi()
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+Traceback (most recent call last):
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+[2025-12-07 12:29:48 +0000] [42] [INFO] Worker exiting (pid: 42)
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+^^^^^^^^^^^^^^^^^^^
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+File "", line 1204, in _gcd_import
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/gunicorn/app/wsgiapp.py", line 47, in load_wsgiapp
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+^^^^^^^^^^^^^^^
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+worker.init_process()
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+File "/home/runner/workspace/dashboard/app.py", line 140, in validate_production_config
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+File "", line 1147, in _find_and_load_unlocked
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+File "/nix/store/7d088dip86hlzri9sk0h78b63yfmx0a0-python3-3.11.13/lib/python3.11/importlib/__init__.py", line 126, in import_module
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+^^^^^^^^^^^
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+return util.import_app(self.app_uri)
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+File "", line 940, in exec_module
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/gunicorn/util.py", line 370, in import_app
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+File "", line 241, in _call_with_frames_removed
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+File "/home/runner/workspace/dashboard/app.py", line 149, in
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/gunicorn/workers/base.py", line 147, in load_wsgi
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+return _bootstrap._gcd_import(name[level:], package, level)
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+File "", line 1176, in _find_and_load
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+[2025-12-07 12:29:48 +0000] [42] [ERROR] Exception in worker process
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/gunicorn/app/wsgiapp.py", line 57, in load
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+Set proper values via Secrets or environment variables.
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+mod = importlib.import_module(module)
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+raise RuntimeError(error_msg + "\n\nSet proper values via Secrets or environment variables.")
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+RuntimeError: PRODUCTION CONFIGURATION ERROR:
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/gunicorn/arbiter.py", line 608, in spawn_worker
+2025-12-07 13:29:48.30
+b07f6ef9
+User
+self.callable = self.load()
