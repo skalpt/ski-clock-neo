@@ -51,7 +51,7 @@ const unsigned long DISPLAY_SNAPSHOT_INTERVAL = 3600000;  // 1 hour
 // ============================================================================
 
 WiFiClientSecure wifiSecureClient;
-PubSubClient mqttClient(wifiSecureClient);
+MQTTClient mqttClient(2048);  // Buffer size for display snapshots
 Ticker heartbeatTicker;
 Ticker displaySnapshotTicker;
 bool mqttIsConnected = false;
@@ -63,30 +63,24 @@ static const char BASE64_CHARS[] PROGMEM = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij
 // FORWARD DECLARATIONS
 // ============================================================================
 
-void mqttCallback(char* topic, byte* payload, unsigned int length);
+void mqttMessageHandler(String &topic, String &payload);
 String base64Encode(const uint8_t* data, uint16_t length);
 
 // ============================================================================
 // MQTT MESSAGE CALLBACK
 // ============================================================================
 
-// Handle incoming MQTT messages
-void mqttCallback(char* topic, byte* payload, unsigned int length) {
+// Handle incoming MQTT messages (arduino-mqtt callback signature)
+void mqttMessageHandler(String &topic, String &message) {
   DEBUG_PRINT("MQTT message received on topic: ");
   DEBUG_PRINTLN(topic);
-  
-  // Convert payload to string
-  String message = "";
-  for (unsigned int i = 0; i < length; i++) {
-    message += (char)payload[i];
-  }
   
   DEBUG_PRINT("Message: ");
   DEBUG_PRINTLN(message);
   
   // Handle device-specific version responses
   String versionResponseTopic = buildDeviceTopic(MQTT_TOPIC_VERSION_RESPONSE);
-  if (strcmp(topic, versionResponseTopic.c_str()) == 0) {
+  if (topic == versionResponseTopic) {
     DEBUG_PRINTLN("Version response received!");
     
     // Simple JSON parsing to extract update_available, latest_version, and pinned flag
@@ -108,10 +102,10 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
           int pinnedIndex = message.indexOf("\"pinned\"");
           if (pinnedIndex > 0) {
             // Find the value after the colon
-            int colonIndex = message.indexOf(":", pinnedIndex);
-            if (colonIndex > pinnedIndex) {
+            int pinnedColonIndex = message.indexOf(":", pinnedIndex);
+            if (pinnedColonIndex > pinnedIndex) {
               // Check for "true" after the colon (case-insensitive, handles whitespace)
-              String valueSection = message.substring(colonIndex + 1, colonIndex + 10);
+              String valueSection = message.substring(pinnedColonIndex + 1, pinnedColonIndex + 10);
               valueSection.toLowerCase();
               valueSection.trim();
               isPinned = valueSection.startsWith("true");
@@ -132,7 +126,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   
   // Handle device-specific command messages
   String commandTopic = buildDeviceTopic(MQTT_TOPIC_COMMAND);
-  if (strcmp(topic, commandTopic.c_str()) == 0) {
+  if (topic == commandTopic) {
     DEBUG_PRINTLN("Command received!");
     
     // Parse command - support both JSON format and simple string commands
@@ -155,7 +149,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   
   // Handle device-specific config messages
   String configTopic = buildDeviceTopic(MQTT_TOPIC_CONFIG);
-  if (strcmp(topic, configTopic.c_str()) == 0) {
+  if (topic == configTopic) {
     DEBUG_PRINTLN("Config message received!");
     handleConfigMessage(message);
   }
@@ -171,10 +165,12 @@ void initMQTT() {
   // Configure TLS without certificate validation
   wifiSecureClient.setInsecure();
   
-  // Configure MQTT client
-  mqttClient.setServer(MQTT_HOST, MQTT_PORT);
-  mqttClient.setCallback(mqttCallback);
-  mqttClient.setBufferSize(2048);  // Increased for display snapshots
+  // Configure MQTT client (arduino-mqtt)
+  mqttClient.begin(MQTT_HOST, MQTT_PORT, wifiSecureClient);
+  mqttClient.onMessage(mqttMessageHandler);
+  
+  // Set keepAlive=60s, cleanSession=false for persistent sessions, timeout=10s
+  mqttClient.setOptions(60, false, 10000);
   
   DEBUG_PRINT("MQTT broker: ");
   DEBUG_PRINT(MQTT_HOST);
@@ -209,15 +205,9 @@ bool connectMQTT() {
   // Generate unique client ID (fixed ID required for persistent sessions)
   String clientId = "NorrtekDevice-" + getDeviceID();
   
-  // Attempt connection with persistent session (cleanSession=false)
-  // This allows broker to queue QoS 1/2 messages while device is offline
-  // Using full connect() signature: (id, user, pass, willTopic, willQos, willRetain, willMessage, cleanSession)
-  if (mqttClient.connect(clientId.c_str(), MQTT_USERNAME, MQTT_PASSWORD,
-                         NULL,    // No LWT topic
-                         0,       // LWT QoS (unused)
-                         false,   // LWT retain (unused)
-                         NULL,    // No LWT message
-                         false))  // cleanSession = false for persistent session
+  // Attempt connection (cleanSession is set via setOptions in initMQTT)
+  // arduino-mqtt connect signature: (clientId, username, password)
+  if (mqttClient.connect(clientId.c_str(), MQTT_USERNAME, MQTT_PASSWORD))
   {
     DEBUG_PRINTLN("MQTT broker connected!");
     setConnectivityState(true, true);
@@ -263,8 +253,9 @@ bool connectMQTT() {
         
     return true;
   } else {
-    DEBUG_PRINT("MQTT broker connection failed, rc=");
-    DEBUG_PRINTLN(mqttClient.state());
+    DEBUG_PRINTLN("MQTT broker connection failed");
+    DEBUG_PRINT("Last error: ");
+    DEBUG_PRINTLN(mqttClient.lastError());
     setConnectivityState(true, false);
     mqttIsConnected = false;
     return false;
@@ -341,15 +332,20 @@ String buildBaseTopic(const char* basePath) {
   return topic;
 }
 
-// Publish payload to topic with connection check and logging (char* overloads)
-bool publishMqttPayload(const char* topic, const char* payload) {
+// Publish payload to topic with connection check, QoS support, and logging
+// QoS 0 = fire-and-forget (for heartbeats)
+// QoS 1 = guaranteed delivery (default for everything else)
+bool publishMqttPayload(const char* topic, const char* payload, int qos) {
   if (!mqttClient.connected()) {
     DEBUG_PRINTLN("MQTT not connected, cannot publish");
     return false;
   }
   
-  if (mqttClient.publish(topic, payload)) {
-    DEBUG_PRINT("Published to ");
+  // arduino-mqtt publish signature: (topic, payload, retained, qos)
+  if (mqttClient.publish(topic, payload, false, qos)) {
+    DEBUG_PRINT("Published (QoS ");
+    DEBUG_PRINT(qos);
+    DEBUG_PRINT(") to ");
     DEBUG_PRINT(topic);
     DEBUG_PRINT(": ");
     DEBUG_PRINTLN(payload);
@@ -361,12 +357,12 @@ bool publishMqttPayload(const char* topic, const char* payload) {
   }
 }
 
-bool publishMqttPayload(const String& topic, const char* payload) {
-  return publishMqttPayload(topic.c_str(), payload);
+bool publishMqttPayload(const String& topic, const char* payload, int qos) {
+  return publishMqttPayload(topic.c_str(), payload, qos);
 }
 
-bool publishMqttPayload(const String& topic, const String& payload) {
-  return publishMqttPayload(topic.c_str(), payload.c_str());
+bool publishMqttPayload(const String& topic, const String& payload, int qos) {
+  return publishMqttPayload(topic.c_str(), payload.c_str(), qos);
 }
 
 // ============================================================================
@@ -416,7 +412,8 @@ void publishHeartbeat() {
     WiFi.localIP().toString().c_str()
   );
   
-  publishMqttPayload(buildDeviceTopic(MQTT_TOPIC_HEARTBEAT), payload);
+  // Heartbeats use QoS 0 (fire-and-forget) - frequent, only latest matters
+  publishMqttPayload(buildDeviceTopic(MQTT_TOPIC_HEARTBEAT), payload, 0);
 }
 
 // ============================================================================

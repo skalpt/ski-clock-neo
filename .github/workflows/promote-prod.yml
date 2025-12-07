@@ -182,7 +182,7 @@ jobs:
           
           retry arduino-cli lib install "FastLED"
           retry arduino-cli lib install "AutoConnect"
-          retry arduino-cli lib install "PubSubClient"
+          retry arduino-cli lib install "MQTT"
           retry arduino-cli lib install "OneWire"
           retry arduino-cli lib install "DallasTemperature"
           retry arduino-cli lib install "TickTwo"

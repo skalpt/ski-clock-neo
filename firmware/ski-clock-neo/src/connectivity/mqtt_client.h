@@ -14,7 +14,7 @@
   #error "This code requires ESP32 or ESP8266"
 #endif
 
-#include <PubSubClient.h>
+#include <MQTT.h>
 #include <Ticker.h>
 #include "../core/debug.h"
 #include "../core/device_info.h"
@@ -48,7 +48,7 @@ extern const char MQTT_TOPIC_EVENTS[];
 
 // MQTT client objects
 extern WiFiClientSecure wifiSecureClient;
-extern PubSubClient mqttClient;
+extern MQTTClient mqttClient;
 
 // Heartbeat timing
 extern const unsigned long HEARTBEAT_INTERVAL;
@@ -73,10 +73,11 @@ void handleRestartCommand();
 String base64Encode(const uint8_t* data, uint16_t length);
 
 // MQTT publishing helpers (reduces code duplication across modules)
+// QoS 0 = fire-and-forget (for heartbeats), QoS 1 = guaranteed delivery (default)
 String buildDeviceTopic(const char* baseTopic);
-bool publishMqttPayload(const char* topic, const char* payload);
-bool publishMqttPayload(const String& topic, const char* payload);
-bool publishMqttPayload(const String& topic, const String& payload);
+bool publishMqttPayload(const char* topic, const char* payload, int qos = 1);
+bool publishMqttPayload(const String& topic, const char* payload, int qos = 1);
+bool publishMqttPayload(const String& topic, const String& payload, int qos = 1);
 
 // WiFi event handlers
 #if defined(ESP32)
