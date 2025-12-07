@@ -5,6 +5,11 @@ on:
     branches:
       - main  # Automatically build on every push to main
   workflow_dispatch:  # Allows manual triggering from GitHub UI
+    inputs:
+      description:
+        description: 'Build description (optional, e.g. "Fixed temperature offset bug")'
+        required: false
+        type: string
 
 jobs:
   build:
@@ -175,6 +180,9 @@ jobs:
       - name: Upload all firmware binaries
         if: success()  # Only upload to server if all builds succeeded
         run: |
+          # Build description (optional)
+          DESCRIPTION="${{ inputs.description || '' }}"
+          
           # Upload main firmware binaries (exclude bootloader/partitions files)
           for file in build/ski-clock-neo-*.bin; do
             # Skip bootloader and partitions files
@@ -189,6 +197,12 @@ jobs:
             BOOTLOADER="build/ski-clock-neo-${PLATFORM}.bootloader.bin"
             PARTITIONS="build/ski-clock-neo-${PLATFORM}.partitions.bin"
 
+            # Build common form fields
+            COMMON_FIELDS="-F version=${{ steps.get_version.outputs.VERSION }} -F platform=$PLATFORM -F product=ski-clock-neo"
+            if [ -n "$DESCRIPTION" ]; then
+              COMMON_FIELDS="$COMMON_FIELDS -F description=$DESCRIPTION"
+            fi
+
             if [ -f "$BOOTLOADER" ] && [ -f "$PARTITIONS" ]; then
               # ESP32 family: upload firmware + bootloader + partitions
               echo "  → Full flash mode: uploading firmware, bootloader, and partitions"
@@ -198,9 +212,7 @@ jobs:
                 -F "file=@$file" \
                 -F "bootloader=@$BOOTLOADER" \
                 -F "partitions=@$PARTITIONS" \
-                -F "version=${{ steps.get_version.outputs.VERSION }}" \
-                -F "platform=$PLATFORM" \
-                -F "product=ski-clock-neo" \
+                $COMMON_FIELDS \
                 -w "\n"
             else
               # ESP8266: upload firmware only
@@ -209,9 +221,7 @@ jobs:
                 -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/upload" \
                 -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
                 -F "file=@$file" \
-                -F "version=${{ steps.get_version.outputs.VERSION }}" \
-                -F "platform=$PLATFORM" \
-                -F "product=ski-clock-neo" \
+                $COMMON_FIELDS \
                 -w "\n"
             fi
 
@@ -231,7 +241,8 @@ jobs:
             "git_sha": "${{ github.sha }}",
             "run_id": "${{ github.run_id }}",
             "run_number": "${{ github.run_number }}",
-            "timestamp": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            "timestamp": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')",
+            "description": "${{ inputs.description || '' }}"
           }
           EOF
           echo "✓ Saved promotion manifest"

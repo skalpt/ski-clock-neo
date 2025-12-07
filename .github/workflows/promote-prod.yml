@@ -2,6 +2,11 @@ name: Promote to Production
 
 on:
   workflow_dispatch:
+    inputs:
+      description:
+        description: 'Build description override (optional, uses dev build description if empty)'
+        required: false
+        type: string
 
 jobs:
   fetch-version:
@@ -10,6 +15,7 @@ jobs:
       version: ${{ steps.get_dev_version.outputs.VERSION }}
       git_sha: ${{ steps.get_dev_version.outputs.GIT_SHA }}
       dev_run_id: ${{ steps.get_dev_version.outputs.DEV_RUN_ID }}
+      description: ${{ steps.get_dev_version.outputs.DESCRIPTION }}
     
     steps:
       - name: Fetch latest successful dev build version
@@ -47,11 +53,22 @@ jobs:
           fi
           
           VERSION=$(jq -r '.version' /tmp/manifest/promotion-manifest.json)
+          DEV_DESCRIPTION=$(jq -r '.description // ""' /tmp/manifest/promotion-manifest.json)
+          
+          # Use input description if provided, otherwise use dev build description
+          FINAL_DESCRIPTION="${{ inputs.description }}"
+          if [ -z "$FINAL_DESCRIPTION" ]; then
+            FINAL_DESCRIPTION="$DEV_DESCRIPTION"
+          fi
           
           echo "✅ Dev version to promote: $VERSION"
+          if [ -n "$FINAL_DESCRIPTION" ]; then
+            echo "📝 Description: $FINAL_DESCRIPTION"
+          fi
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "GIT_SHA=$GIT_SHA" >> $GITHUB_OUTPUT
           echo "DEV_RUN_ID=$RUN_ID" >> $GITHUB_OUTPUT
+          echo "DESCRIPTION=$FINAL_DESCRIPTION" >> $GITHUB_OUTPUT
 
       - name: Display promotion info
         run: |
@@ -220,6 +237,10 @@ jobs:
         if: success()
         run: |
           echo "🚀 DEPLOYING TO PRODUCTION"
+          
+          # Build description (from dev build or override)
+          DESCRIPTION="${{ needs.fetch-version.outputs.description }}"
+          
           for file in build/ski-clock-neo-*.bin; do
             if [[ "$file" == *".bootloader.bin" ]] || [[ "$file" == *".partitions.bin" ]]; then
               continue
@@ -231,6 +252,12 @@ jobs:
             BOOTLOADER="build/ski-clock-neo-${PLATFORM}.bootloader.bin"
             PARTITIONS="build/ski-clock-neo-${PLATFORM}.partitions.bin"
 
+            # Build common form fields
+            COMMON_FIELDS="-F version=${{ needs.fetch-version.outputs.version }} -F platform=$PLATFORM -F product=ski-clock-neo"
+            if [ -n "$DESCRIPTION" ]; then
+              COMMON_FIELDS="$COMMON_FIELDS -F description=$DESCRIPTION"
+            fi
+
             if [ -f "$BOOTLOADER" ] && [ -f "$PARTITIONS" ]; then
               echo "  → Full flash mode: uploading firmware, bootloader, and partitions"
               curl --fail --show-error \
@@ -239,9 +266,7 @@ jobs:
                 -F "file=@$file" \
                 -F "bootloader=@$BOOTLOADER" \
                 -F "partitions=@$PARTITIONS" \
-                -F "version=${{ needs.fetch-version.outputs.version }}" \
-                -F "platform=$PLATFORM" \
-                -F "product=ski-clock-neo" \
+                $COMMON_FIELDS \
                 -w "\n"
             else
               echo "  → Quick flash mode: uploading firmware only"
@@ -249,9 +274,7 @@ jobs:
                 -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/upload" \
                 -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
                 -F "file=@$file" \
-                -F "version=${{ needs.fetch-version.outputs.version }}" \
-                -F "platform=$PLATFORM" \
-                -F "product=ski-clock-neo" \
+                $COMMON_FIELDS \
                 -w "\n"
             fi
 
