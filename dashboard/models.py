@@ -127,6 +127,7 @@ class FirmwareVersion(db.Model):
     object_path = db.Column(db.String(256))
     object_name = db.Column(db.String(128))
     local_path = db.Column(db.String(256))
+    description = db.Column(db.String(256))  # Optional build description/notes
     
     # Bootloader files (optional, for full flash support)
     bootloader_filename = db.Column(db.String(128))
@@ -160,7 +161,8 @@ class FirmwareVersion(db.Model):
             'storage': self.storage,
             'has_bootloader': bool(self.bootloader_filename),
             'has_partitions': bool(self.partitions_filename),
-            'supports_full_flash': bool(self.bootloader_filename and self.partitions_filename)
+            'supports_full_flash': bool(self.bootloader_filename and self.partitions_filename),
+            'description': self.description
         }
         
         # Firmware file paths

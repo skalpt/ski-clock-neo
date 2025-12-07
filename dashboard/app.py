@@ -340,6 +340,10 @@ def save_version_to_db(platform: str, version_info: dict, product: str, is_sync:
         fw.partitions_object_path = version_info.get('partitions_object_path')
         fw.partitions_object_name = version_info.get('partitions_object_name')
         fw.partitions_local_path = version_info.get('partitions_local_path')
+        
+        # Update description if provided
+        if version_info.get('description'):
+            fw.description = version_info.get('description')
         print(f"✓ Updated existing {product}/{platform} v{version} in database")
     else:
         # Parse uploaded_at from version_info if provided (from production sync)
@@ -379,7 +383,10 @@ def save_version_to_db(platform: str, version_info: dict, product: str, is_sync:
             partitions_sha256=version_info.get('partitions_sha256'),
             partitions_object_path=version_info.get('partitions_object_path'),
             partitions_object_name=version_info.get('partitions_object_name'),
-            partitions_local_path=version_info.get('partitions_local_path')
+            partitions_local_path=version_info.get('partitions_local_path'),
+            
+            # Build description (optional)
+            description=version_info.get('description')
         )
         # Set uploaded_at if parsed from production, otherwise use model default
         if uploaded_at:
@@ -419,7 +426,9 @@ def _sync_single_firmware(product: str, platform: str, fw_data: dict) -> int:
         
         'partitions_filename': fw_data.get('partitions', {}).get('filename') if fw_data.get('partitions') else None,
         'partitions_size': fw_data.get('partitions', {}).get('size') if fw_data.get('partitions') else None,
-        'partitions_sha256': fw_data.get('partitions', {}).get('sha256') if fw_data.get('partitions') else None
+        'partitions_sha256': fw_data.get('partitions', {}).get('sha256') if fw_data.get('partitions') else None,
+        
+        'description': fw_data.get('description')
     }
     save_version_to_db(platform, version_info, product, is_sync=True)
     return 1
@@ -1300,6 +1309,7 @@ def upload_firmware():
     version = request.form.get('version')
     platform = request.form.get('platform', '').lower()
     product = request.form.get('product')
+    description = request.form.get('description', '').strip() or None  # Optional build description
     
     if not version or not platform or not product:
         return jsonify({'error': 'Missing required fields: version, platform, and product are required'}), 400
@@ -1393,7 +1403,8 @@ def upload_firmware():
         'sha256': file_hash,
         'uploaded_at': datetime.utcnow().isoformat(),
         'download_url': f'/api/firmware/{platform}?product={product}',
-        'storage': storage_location
+        'storage': storage_location,
+        'description': description
     }
     
     # Store full object path for Object Storage downloads (includes bucket)
