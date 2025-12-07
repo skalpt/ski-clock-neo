@@ -103,7 +103,25 @@ def validate_ip_address(ip: str) -> Optional[str]:
 def on_connect(client, userdata, flags, rc, properties=None):
     if rc == 0:
         env = get_environment_scope()
+        other_env = 'prod' if env == 'dev' else 'dev'
         print(f"✓ Connected to MQTT broker: {MQTT_HOST} (dashboard env: {env})")
+        
+        # CRITICAL: Unsubscribe from the OTHER environment's topics first
+        # This clears any stale persistent session subscriptions from previous runs
+        # where the dashboard may have subscribed to different environment topics
+        print(f"🧹 Clearing stale subscriptions from {other_env} environment...")
+        client.unsubscribe(f"{MQTT_TOPIC_PREFIX}/{other_env}/heartbeat/+")
+        client.unsubscribe(f"{MQTT_TOPIC_PREFIX}/{other_env}/info/+")
+        client.unsubscribe(f"{MQTT_TOPIC_PREFIX}/{other_env}/ota/start/+")
+        client.unsubscribe(f"{MQTT_TOPIC_PREFIX}/{other_env}/ota/progress/+")
+        client.unsubscribe(f"{MQTT_TOPIC_PREFIX}/{other_env}/ota/complete/+")
+        client.unsubscribe(f"{MQTT_TOPIC_PREFIX}/{other_env}/display/snapshot/#")
+        client.unsubscribe(f"{MQTT_TOPIC_PREFIX}/{other_env}/event/#")
+        # Also unsubscribe from legacy wildcard patterns that may have been used
+        client.unsubscribe(f"{MQTT_TOPIC_PREFIX}/#")
+        client.unsubscribe(f"{MQTT_TOPIC_PREFIX}/+/heartbeat/+")
+        client.unsubscribe(f"{MQTT_TOPIC_PREFIX}/+/info/+")
+        print(f"✓ Cleared stale {other_env} subscriptions")
         
         # Subscribe ONLY to this dashboard's environment topics
         # Dev dashboard sees only dev devices, prod dashboard sees only prod devices
@@ -357,7 +375,7 @@ def handle_heartbeat(client, payload, topic):
                     # Log when platform exists in mapping but no firmware in cache
                     print(f"⚠ No firmware found for {effective_product}/{platform} (board type: '{effective_board}')")
         
-        print(f"📡 Heartbeat from {device_id} ({effective_product}/{effective_board}): v{effective_version}, uptime={payload.get('uptime')}s, RSSI={payload.get('rssi')}dBm")
+        print(f"📡 Heartbeat from {topic}: v{effective_version}, uptime={payload.get('uptime')}s, RSSI={payload.get('rssi')}dBm")
 
 def handle_device_info(client, payload, topic):
     """Handle device info messages - updates static device data and capabilities
