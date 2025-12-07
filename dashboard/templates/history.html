@@ -222,7 +222,8 @@
                 allDevices.forEach(device => {
                     const option = document.createElement('option');
                     option.value = device.device_id;
-                    option.textContent = `${device.product || 'Unknown Product'} (${device.device_id})`;
+                    const deviceLabel = device.display_name || device.device_id;
+                    option.textContent = `${deviceLabel} (${device.product || 'Unknown Product'})`;
                     select.appendChild(option);
                 });
                 
@@ -262,7 +263,8 @@
             return;
         }
         
-        deviceInfo.innerHTML = `<strong>${device.product || 'Unknown'}</strong> (${device.device_id}) - ${device.board || device.board_type || 'Unknown board'} v${device.version || 'Unknown'}`;
+        const deviceLabel = device.display_name || device.device_id;
+        deviceInfo.innerHTML = `<strong>${deviceLabel}</strong> (${device.product || 'Unknown'}) - ${device.board || device.board_type || 'Unknown board'} v${device.version || 'Unknown'}`;
         commandForms.style.display = 'flex';
         
         const supportedCommands = device.supported_commands || [];
@@ -328,7 +330,8 @@
         
         if (deviceId) {
             const device = allDevices.find(d => d.device_id === deviceId);
-            const deviceName = device ? `${device.product} (${deviceId})` : deviceId;
+            const deviceLabel = device ? (device.display_name || deviceId) : deviceId;
+            const deviceName = device ? `${deviceLabel} (${device.product})` : deviceId;
             deviceInfo.innerHTML = `Sending commands to: <strong>${deviceName}</strong>`;
             formsContainer.style.display = 'flex';
         } else {
@@ -433,11 +436,15 @@
         });
         rowTextHtml += '</ul>';
         
+        const snapshotDevice = allDevices.find(d => d.device_id === snapshot.device_id) || {};
+        const snapshotDeviceLabel = snapshotDevice.display_name || snapshot.device_id;
+        const snapshotProduct = snapshotDevice.product || 'Unknown';
+        
         return `
             <div class="snapshot-card">
                 <div class="snapshot-card-header">
                     <div>
-                        <h3>📸 ${escapeHtml(snapshot.device_id)}</h3>
+                        <h3>📸 ${escapeHtml(snapshotDeviceLabel)} (${escapeHtml(snapshotProduct)})</h3>
                         <span class="snapshot-timestamp">${timestamp}</span>
                     </div>
                 </div>
@@ -719,7 +726,7 @@
                         <thead>
                             <tr>
                                 <th>Timestamp</th>
-                                <th>Device ID</th>
+                                <th>Device</th>
                                 <th>Platform</th>
                                 <th>Old Version</th>
                                 <th>New Version</th>
@@ -745,10 +752,15 @@
                                     logContent = `<span class="error-text" title="${escapeHtml(log.error_message)}">${escapeHtml(log.error_message)}</span>`;
                                 }
                                 
+                                const logDevice = allDevices.find(d => d.device_id === log.device_id) || {};
+                                const logDeviceLabel = log.device_id ? (logDevice.display_name || log.device_id) : '-';
+                                const logProduct = logDevice.product || log.product || '';
+                                const logDeviceDisplay = log.device_id ? `${escapeHtml(logDeviceLabel)}${logProduct ? ` (${escapeHtml(logProduct)})` : ''}` : '-';
+                                
                                 return `
                                     <tr>
                                         <td>${new Date(log.started_at).toLocaleString()}</td>
-                                        <td>${escapeHtml(log.device_id || '-')}</td>
+                                        <td>${logDeviceDisplay}</td>
                                         <td>${escapeHtml(log.platform || '-')}</td>
                                         <td>${escapeHtml(log.old_version || '-')}</td>
                                         <td>${escapeHtml(log.new_version || '-')}</td>
@@ -828,11 +840,14 @@
                                     'info': 'ℹ️'
                                 };
                                 const icon = commandIcons[cmd.command_type] || '⚙️';
+                                const cmdDevice = allDevices.find(d => d.device_id === cmd.device_id) || {};
+                                const cmdDeviceLabel = cmdDevice.display_name || cmd.device_id;
+                                const cmdProduct = cmdDevice.product || '';
                                 
                                 return `
                                     <tr>
                                         <td>${new Date(cmd.sent_at).toLocaleString()}</td>
-                                        <td>${escapeHtml(cmd.device_id)}</td>
+                                        <td>${escapeHtml(cmdDeviceLabel)}${cmdProduct ? ` (${escapeHtml(cmdProduct)})` : ''}</td>
                                         <td>${icon} ${escapeHtml(cmd.command_type)}</td>
                                         <td>${cmd.parameters ? escapeHtml(JSON.stringify(cmd.parameters)) : '-'}</td>
                                         <td><span class="status-badge ${statusClass}">${cmd.status}</span></td>
@@ -949,7 +964,7 @@
                         <thead>
                             <tr>
                                 <th>Timestamp</th>
-                                <th>Device ID</th>
+                                <th>Device</th>
                                 <th>Event Type</th>
                                 <th>Details</th>
                             </tr>
@@ -961,11 +976,14 @@
                                 const fullTimestamp = new Date(event.timestamp).toISOString();
                                 const rawJson = event.event_data ? JSON.stringify(event.event_data, null, 2) : '';
                                 const rowId = `event-row-${currentPage}-${index}`;
+                                const deviceInfo = allDevices.find(d => d.device_id === event.device_id) || {};
+                                const deviceLabel = deviceInfo.display_name || event.device_id;
+                                const productName = deviceInfo.product || event.product || 'Unknown';
                                 
                                 return `
                                     <tr class="event-row event-${event.event_type}" data-row-id="${rowId}" onclick="toggleEventRow('${rowId}')">
                                         <td title="${escapeHtml(fullTimestamp)}">${new Date(event.timestamp).toLocaleString()}</td>
-                                        <td>${escapeHtml(event.product || 'Unknown')} (${escapeHtml(event.device_id)})</td>
+                                        <td>${escapeHtml(deviceLabel)} (${escapeHtml(productName)})</td>
                                         <td><span class="event-badge ${event.event_type}">${eventIcon} ${formatEventType(event.event_type)}</span></td>
                                         <td>${eventDetails}</td>
                                     </tr>

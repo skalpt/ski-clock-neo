@@ -232,6 +232,9 @@
     let firmwareInterval = null;
     let eventsInterval = null;
     
+    // Device lookup map for display names
+    let deviceLookup = {};
+    
     async function loadDevices() {
         try {
             const [devicesResponse, progressResponse] = await Promise.all([
@@ -244,6 +247,16 @@
             
             // Check if any OTA updates are in progress
             const hasActiveOTA = Object.keys(otaProgress).length > 0;
+            
+            // Update device lookup map for events display
+            if (data.devices) {
+                data.devices.forEach(d => {
+                    deviceLookup[d.device_id] = {
+                        display_name: d.display_name,
+                        product: d.product
+                    };
+                });
+            }
             
             const container = document.getElementById('devices-container');
             const statsContainer = document.getElementById('stats-container');
@@ -1341,11 +1354,14 @@
                             ${data.events.map(event => {
                                 const eventIcon = getEventIcon(event.event_type);
                                 const eventDetails = formatEventData(event.event_type, event.event_data);
+                                const deviceInfo = deviceLookup[event.device_id] || {};
+                                const deviceLabel = deviceInfo.display_name || event.device_id;
+                                const productName = deviceInfo.product || event.product || 'Unknown';
                                 
                                 return `
                                     <tr>
                                         <td>${new Date(event.timestamp).toLocaleTimeString()}</td>
-                                        <td>${escapeHtml(event.product || 'Unknown')} (${escapeHtml(event.device_id)})</td>
+                                        <td>${escapeHtml(deviceLabel)} (${escapeHtml(productName)})</td>
                                         <td><span class="event-badge ${event.event_type}">${eventIcon} ${formatEventType(event.event_type)}</span></td>
                                         <td>${eventDetails}</td>
                                     </tr>
@@ -1634,11 +1650,12 @@
                 const pinnedBadge = d.pinned_firmware_version ? 
                     `<span class="badge badge-warning">Pinned: ${escapeHtml(d.pinned_firmware_version)}</span>` : '';
                 const currentVersion = d.version || 'Unknown';
+                const deviceLabel = d.display_name || d.device_id;
                 
                 return `
                     <div class="device-select-item ${statusClass}" onclick="pinDeviceVersion('${d.device_id}', '${selectedPushVersion}')">
                         <div class="device-select-info">
-                            <strong>${statusIcon} ${escapeHtml(d.product || 'Unknown Product')} (${escapeHtml(d.device_id)})</strong>
+                            <strong>${statusIcon} ${escapeHtml(deviceLabel)} (${escapeHtml(d.product || 'Unknown Product')})</strong>
                             <span class="muted-text">v${escapeHtml(currentVersion)}</span>
                             ${pinnedBadge}
                         </div>
