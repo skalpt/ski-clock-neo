@@ -21,13 +21,10 @@
 // #define FIRMWARE_VERSION  "2025.01.01.1"
 
 // Environment scope for MQTT topics (dev or prod)
-// This MUST be set via build flags in GitHub Actions:
-// - deploy-dev.yml sets ENV_SCOPE=dev
-// - deploy-prod.yml sets ENV_SCOPE=prod
-// NO DEFAULT - build will fail if not specified to prevent accidental deployments
-#ifndef ENV_SCOPE
-  #error "ENV_SCOPE must be defined! Use -DENV_SCOPE=\\\"dev\\\" or -DENV_SCOPE=\\\"prod\\\" in build flags."
-#endif
+// Default is "dev" - devices must be explicitly promoted to "prod" via MQTT config
+// The environment is stored as a single-byte enum in EEPROM/NVS:
+//   0 = default (dev), 1 = dev, 2 = prod
+// To change: send {"environment": "prod"} to norrtek-iot/{env}/config/{device_id}
 
 // Board type - uncomment ONE of these to match your hardware:
 // #define BOARD_ESP32        // Generic ESP32

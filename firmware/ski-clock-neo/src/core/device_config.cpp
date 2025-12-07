@@ -21,21 +21,51 @@
   static Preferences preferences;
 #elif defined(ESP8266)
   #include <EEPROM.h>
-  #define EEPROM_SIZE 64
-  #define EEPROM_MAGIC 0xAB
+  #define EEPROM_SIZE 16
+  #define EEPROM_MAGIC 0xAC
   #define EEPROM_MAGIC_ADDR 0
   #define EEPROM_TEMP_OFFSET_ADDR 1
-  #define EEPROM_ENV_SCOPE_ADDR 5  // After float (4 bytes) + magic (1 byte)
-  #define EEPROM_ENV_SCOPE_LEN 8   // "dev" or "prod" + null terminator
+  #define EEPROM_ENV_SCOPE_ADDR 5
 #endif
+
+// ============================================================================
+// ENVIRONMENT SCOPE ENUM
+// ============================================================================
+// Stored as single byte to save EEPROM space:
+//   0 = ENV_SCOPE_DEFAULT (not explicitly set, uses "dev")
+//   1 = ENV_SCOPE_DEV
+//   2 = ENV_SCOPE_PROD
+
+#define ENV_SCOPE_DEFAULT 0
+#define ENV_SCOPE_DEV     1
+#define ENV_SCOPE_PROD    2
 
 // ============================================================================
 // STATE VARIABLES
 // ============================================================================
 
 static float temperatureOffset = TEMPERATURE_OFFSET;
-static char environmentScope[8] = "";  // Initialized from ENV_SCOPE in initDeviceConfig()
+static uint8_t environmentScopeEnum = ENV_SCOPE_DEFAULT;
 static bool configInitialized = false;
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+static const char* envEnumToString(uint8_t envEnum) {
+  switch (envEnum) {
+    case ENV_SCOPE_PROD: return "prod";
+    case ENV_SCOPE_DEV:
+    case ENV_SCOPE_DEFAULT:
+    default: return "dev";
+  }
+}
+
+static uint8_t envStringToEnum(const char* envString) {
+  if (strcmp(envString, "prod") == 0) return ENV_SCOPE_PROD;
+  if (strcmp(envString, "dev") == 0) return ENV_SCOPE_DEV;
+  return ENV_SCOPE_DEFAULT;
+}
 
 // ============================================================================
 // INITIALIZATION
@@ -44,14 +74,13 @@ static bool configInitialized = false;
 void initDeviceConfig() {
   DEBUG_PRINTLN("Initializing device configuration...");
   
-  // Set compile-time default for environment scope
-  strncpy(environmentScope, ENV_SCOPE, sizeof(environmentScope) - 1);
-  environmentScope[sizeof(environmentScope) - 1] = '\0';
+  // Default environment is "dev" (ENV_SCOPE_DEFAULT behaves as dev)
+  environmentScopeEnum = ENV_SCOPE_DEFAULT;
   
 #if defined(ESP32)
   preferences.begin("norrtek", false);
   
-  // Load temperature offset
+  // Load temperature offset (only if explicitly set)
   if (preferences.isKey("temp_offset")) {
     temperatureOffset = preferences.getFloat("temp_offset", TEMPERATURE_OFFSET);
     DEBUG_PRINT("Loaded temperature offset from NVS: ");
@@ -62,18 +91,16 @@ void initDeviceConfig() {
     DEBUG_PRINTLN(temperatureOffset);
   }
   
-  // Load environment scope (overrides compile-time default if set)
+  // Load environment scope (only if explicitly set)
   if (preferences.isKey("env_scope")) {
-    String storedEnv = preferences.getString("env_scope", ENV_SCOPE);
-    if (storedEnv == "dev" || storedEnv == "prod") {
-      strncpy(environmentScope, storedEnv.c_str(), sizeof(environmentScope) - 1);
-      environmentScope[sizeof(environmentScope) - 1] = '\0';
+    uint8_t storedEnv = preferences.getUChar("env_scope", ENV_SCOPE_DEFAULT);
+    if (storedEnv == ENV_SCOPE_DEV || storedEnv == ENV_SCOPE_PROD) {
+      environmentScopeEnum = storedEnv;
       DEBUG_PRINT("Loaded environment scope from NVS: ");
-      DEBUG_PRINTLN(environmentScope);
+      DEBUG_PRINTLN(envEnumToString(environmentScopeEnum));
     }
   } else {
-    DEBUG_PRINT("Using compile-time environment scope: ");
-    DEBUG_PRINTLN(environmentScope);
+    DEBUG_PRINTLN("Using default environment scope: dev");
   }
   
 #elif defined(ESP8266)
@@ -94,28 +121,24 @@ void initDeviceConfig() {
       DEBUG_PRINTLN(temperatureOffset);
     }
     
-    // Load environment scope
-    char storedEnv[EEPROM_ENV_SCOPE_LEN];
-    for (int i = 0; i < EEPROM_ENV_SCOPE_LEN; i++) {
-      storedEnv[i] = EEPROM.read(EEPROM_ENV_SCOPE_ADDR + i);
-    }
-    storedEnv[EEPROM_ENV_SCOPE_LEN - 1] = '\0';
-    if (strcmp(storedEnv, "dev") == 0 || strcmp(storedEnv, "prod") == 0) {
-      strncpy(environmentScope, storedEnv, sizeof(environmentScope) - 1);
-      environmentScope[sizeof(environmentScope) - 1] = '\0';
+    // Load environment scope (single byte enum)
+    uint8_t storedEnv = EEPROM.read(EEPROM_ENV_SCOPE_ADDR);
+    if (storedEnv == ENV_SCOPE_DEV || storedEnv == ENV_SCOPE_PROD) {
+      environmentScopeEnum = storedEnv;
       DEBUG_PRINT("Loaded environment scope from EEPROM: ");
-      DEBUG_PRINTLN(environmentScope);
+      DEBUG_PRINTLN(envEnumToString(environmentScopeEnum));
+    } else {
+      DEBUG_PRINTLN("Using default environment scope: dev");
     }
   } else {
     temperatureOffset = TEMPERATURE_OFFSET;
-    DEBUG_PRINT("No stored config, using defaults");
-    DEBUG_PRINTLN("");
+    DEBUG_PRINTLN("No stored config, using defaults (env: dev)");
   }
 #endif
   
   configInitialized = true;
   DEBUG_PRINT("Device configuration initialized (env: ");
-  DEBUG_PRINT(environmentScope);
+  DEBUG_PRINT(envEnumToString(environmentScopeEnum));
   DEBUG_PRINTLN(")");
 }
 
@@ -161,7 +184,7 @@ void setTemperatureOffset(float offset) {
 // ============================================================================
 
 const char* getEnvironmentScope() {
-  return environmentScope;
+  return envEnumToString(environmentScopeEnum);
 }
 
 void setEnvironmentScope(const char* scope) {
@@ -175,33 +198,29 @@ void setEnvironmentScope(const char* scope) {
     return;
   }
   
-  // Check if scope is actually changing
-  if (strcmp(environmentScope, scope) == 0) {
+  uint8_t newEnvEnum = envStringToEnum(scope);
+  
+  // Check if scope is actually changing (compare effective values)
+  const char* currentScope = envEnumToString(environmentScopeEnum);
+  if (strcmp(currentScope, scope) == 0) {
     DEBUG_PRINT("Environment scope unchanged: ");
     DEBUG_PRINTLN(scope);
     logEvent("config_noop", "{\"key\":\"environment\"}");
     return;
   }
   
-  strncpy(environmentScope, scope, sizeof(environmentScope) - 1);
-  environmentScope[sizeof(environmentScope) - 1] = '\0';
+  environmentScopeEnum = newEnvEnum;
   DEBUG_PRINT("Environment scope set to: ");
   DEBUG_PRINTLN(scope);
   
 #if defined(ESP32)
-  preferences.putString("env_scope", scope);
-  DEBUG_PRINTLN("Saved to NVS");
+  preferences.putUChar("env_scope", newEnvEnum);
+  DEBUG_PRINTLN("Saved to NVS (1 byte)");
 #elif defined(ESP8266)
   EEPROM.write(EEPROM_MAGIC_ADDR, EEPROM_MAGIC);
-  for (int i = 0; i < EEPROM_ENV_SCOPE_LEN; i++) {
-    if (i < (int)strlen(scope)) {
-      EEPROM.write(EEPROM_ENV_SCOPE_ADDR + i, scope[i]);
-    } else {
-      EEPROM.write(EEPROM_ENV_SCOPE_ADDR + i, '\0');
-    }
-  }
+  EEPROM.write(EEPROM_ENV_SCOPE_ADDR, newEnvEnum);
   EEPROM.commit();
-  DEBUG_PRINTLN("Saved to EEPROM");
+  DEBUG_PRINTLN("Saved to EEPROM (1 byte)");
 #endif
   
   static char eventData[48];
