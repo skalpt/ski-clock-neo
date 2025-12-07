@@ -14,13 +14,10 @@
   #error "This code requires ESP32 or ESP8266"
 #endif
 
+#include <MQTT.h>
 #include <Ticker.h>
 #include "../core/debug.h"
 #include "../core/device_info.h"
-
-// Forward declaration for MQTTClient (full include in mqtt_client.cpp)
-// This allows Arduino CLI library discovery to work from main .ino
-class MQTTClient;
 
 // MQTT broker configuration (injected at build time)
 #ifndef MQTT_HOST

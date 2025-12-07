@@ -14,8 +14,7 @@
 // INCLUDES
 // ============================================================================
 
-#include <MQTT.h>                      // Arduino MQTT library (must be before mqtt_client.h)
-#include "mqtt_client.h"               // This file's header
+#include "mqtt_client.h"               // This file's header (includes MQTT.h)
 #include "../../ski-clock-neo_config.h" // For importing main configuration (credentials, etc.)
 #include "../core/led_indicator.h"     // For LED status patterns when MQTT connection state changes
 #include "../core/device_config.h"     // For device configuration handling

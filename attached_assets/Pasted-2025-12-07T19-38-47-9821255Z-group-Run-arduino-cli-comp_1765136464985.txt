@@ -1,0 +1,69 @@
+2025-12-07T19:38:47.9821255Z ##[group]Run arduino-cli compile --fqbn esp32:esp32:esp32 \
+2025-12-07T19:38:47.9821748Z [36;1marduino-cli compile --fqbn esp32:esp32:esp32 \[0m
+2025-12-07T19:38:47.9822094Z [36;1m  --export-binaries \[0m
+2025-12-07T19:38:47.9822416Z [36;1m  --build-property "build.partitions=min_spiffs" \[0m
+2025-12-07T19:38:47.9823851Z [36;1m  --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"***\" -DDOWNLOAD_API_KEY=\"***\" -DFIRMWARE_VERSION=\"2025.12.7.125\" -DMQTT_HOST=\"***\" -DMQTT_USERNAME=\"***\" -DMQTT_PASSWORD=\"***\" -DBOARD_ESP32" \[0m
+2025-12-07T19:38:47.9824598Z [36;1m  --output-dir build/esp32 \[0m
+2025-12-07T19:38:47.9824883Z [36;1m  firmware/***[0m
+2025-12-07T19:38:47.9825244Z [36;1mcp build/esp32/***.ino.bin build/***-esp32.bin[0m
+2025-12-07T19:38:47.9825905Z [36;1mcp build/esp32/***.ino.bootloader.bin build/***-esp32.bootloader.bin || echo "Warning: Bootloader not found for ESP32"[0m
+2025-12-07T19:38:47.9826989Z [36;1mcp build/esp32/***.ino.partitions.bin build/***-esp32.partitions.bin || echo "Warning: Partitions not found for ESP32"[0m
+2025-12-07T19:38:47.9859722Z shell: /usr/bin/bash -e {0}
+2025-12-07T19:38:47.9859973Z ##[endgroup]
+2025-12-07T19:39:39.7877835Z In file included from /home/runner/work/***/***/firmware/***/***.ino:15:
+2025-12-07T19:39:39.7879422Z /home/runner/work/***/***/firmware/***/src/connectivity/wifi_config.h: In function 'void onWiFiConnected(arduino_event_id_t, arduino_event_info_t)':
+2025-12-07T19:39:39.7881482Z /home/runner/work/***/***/firmware/***/src/connectivity/wifi_config.h:179:5: error: 'connectMQTT' was not declared in this scope
+2025-12-07T19:39:39.7882557Z      connectMQTT();
+2025-12-07T19:39:39.7882943Z      ^~~~~~~~~~~
+2025-12-07T19:39:39.7883821Z /home/runner/work/***/***/firmware/***/src/connectivity/wifi_config.h: In function 'void onWiFiDisconnected(arduino_event_id_t, arduino_event_info_t)':
+2025-12-07T19:39:39.7884929Z /home/runner/work/***/***/firmware/***/src/connectivity/wifi_config.h:185:5: error: 'disconnectMQTT' was not declared in this scope
+2025-12-07T19:39:39.7885514Z      disconnectMQTT();
+2025-12-07T19:39:39.7885741Z      ^~~~~~~~~~~~~~
+2025-12-07T19:39:39.7886258Z /home/runner/work/***/***/firmware/***/***.ino: In function 'void setup()':
+2025-12-07T19:39:39.7887236Z /home/runner/work/***/***/firmware/***/***.ino:43:3: error: 'initMQTT' was not declared in this scope
+2025-12-07T19:39:39.7887686Z    initMQTT();
+2025-12-07T19:39:39.7887885Z    ^~~~~~~~
+2025-12-07T19:39:39.7888442Z /home/runner/work/***/***/firmware/***/***.ino:43:3: note: suggested alternative: 'initWiFi'
+2025-12-07T19:39:39.7888872Z    initMQTT();
+2025-12-07T19:39:39.7889074Z    ^~~~~~~~
+2025-12-07T19:39:39.7889261Z    initWiFi
+2025-12-07T19:39:39.7889773Z /home/runner/work/***/***/firmware/***/***.ino: In function 'void loop()':
+2025-12-07T19:39:39.7890529Z /home/runner/work/***/***/firmware/***/***.ino:55:3: error: 'updateMQTT' was not declared in this scope
+2025-12-07T19:39:39.7890976Z    updateMQTT();
+2025-12-07T19:39:39.7891192Z    ^~~~~~~~~~
+2025-12-07T19:39:39.7891761Z /home/runner/work/***/***/firmware/***/***.ino:55:3: note: suggested alternative: 'updateWiFi'
+2025-12-07T19:39:39.7892180Z    updateMQTT();
+2025-12-07T19:39:39.7892382Z    ^~~~~~~~~~
+2025-12-07T19:39:39.7892576Z    updateWiFi
+2025-12-07T19:39:39.7892694Z 
+2025-12-07T19:39:39.9140400Z Error during build: exit status 1
+2025-12-07T19:39:39.9140717Z 
+2025-12-07T19:39:39.9141418Z [92mUsed library[0m      [92mVersion[0m [90mPath[0m                                                                                   
+2025-12-07T19:39:39.9142269Z [93mTicker[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Ticker[0m          
+2025-12-07T19:39:39.9143130Z [93mMQTT[0m              2.5.2   [90m/home/runner/Arduino/libraries/MQTT[0m                                                    
+2025-12-07T19:39:39.9143961Z [93mWiFi[0m              2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFi[0m            
+2025-12-07T19:39:39.9145162Z [93mWebServer[0m         2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WebServer[0m       
+2025-12-07T19:39:39.9146085Z [93mAutoConnect[0m       1.4.2   [90m/home/runner/Arduino/libraries/AutoConnect[0m                                             
+2025-12-07T19:39:39.9147305Z [93mDNSServer[0m         2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/DNSServer[0m       
+2025-12-07T19:39:39.9148241Z [93mEEPROM[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/EEPROM[0m          
+2025-12-07T19:39:39.9149147Z [93mPageBuilder[0m       1.5.6   [90m/home/runner/Arduino/libraries/PageBuilder[0m                                             
+2025-12-07T19:39:39.9150022Z [93mFS[0m                2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/FS[0m              
+2025-12-07T19:39:39.9150878Z [93mSPIFFS[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPIFFS[0m          
+2025-12-07T19:39:39.9151743Z [93mSD[0m                2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SD[0m              
+2025-12-07T19:39:39.9152585Z [93mSPI[0m               2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPI[0m             
+2025-12-07T19:39:39.9153649Z [93mPreferences[0m       2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Preferences[0m     
+2025-12-07T19:39:39.9154576Z [93mHTTPClient[0m        2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPClient[0m      
+2025-12-07T19:39:39.9155524Z [93mWiFiClientSecure[0m  2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFiClientSecure[0m
+2025-12-07T19:39:39.9156450Z [93mUpdate[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Update[0m          
+2025-12-07T19:39:39.9157463Z [93mOneWire[0m           2.3.8   [90m/home/runner/Arduino/libraries/OneWire[0m                                                 
+2025-12-07T19:39:39.9158286Z [93mDallasTemperature[0m 4.0.5   [90m/home/runner/Arduino/libraries/DallasTemperature[0m                                       
+2025-12-07T19:39:39.9159136Z [93mWire[0m              2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Wire[0m            
+2025-12-07T19:39:39.9159876Z [93mRTClib[0m            2.1.4   [90m/home/runner/Arduino/libraries/RTClib[0m                                                  
+2025-12-07T19:39:39.9160647Z [93mAdafruit BusIO[0m    1.17.4  [90m/home/runner/Arduino/libraries/Adafruit_BusIO[0m                                          
+2025-12-07T19:39:39.9161415Z [93mFastLED[0m           3.10.3  [90m/home/runner/Arduino/libraries/FastLED[0m                                                 
+2025-12-07T19:39:39.9162177Z [93mArduinoJson[0m       7.4.2   [90m/home/runner/Arduino/libraries/ArduinoJson[0m                                             
+2025-12-07T19:39:39.9162977Z [93mHTTPUpdate[0m        2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPUpdate[0m      
+2025-12-07T19:39:39.9163391Z 
+2025-12-07T19:39:39.9163686Z [92mUsed platform[0m [92mVersion[0m [90mPath[0m                                                        
+2025-12-07T19:39:39.9164298Z [93mesp32:esp32[0m   2.0.14  [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14[0m
+2025-12-07T19:39:39.9188674Z ##[error]Process completed with exit code 1.
