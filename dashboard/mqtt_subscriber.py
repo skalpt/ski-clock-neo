@@ -882,7 +882,7 @@ def handle_display_snapshot(client, payload, topic):
                 except Exception as e:
                     print(f"✗ Failed to store display snapshot: {e}")
 
-def handle_event(client, payload, topic):
+def handle_event(client, payload, topic, raw_payload=None):
     """Handle device event messages for analytics
     
     Events are queued on device when offline and flushed when MQTT connects.
@@ -905,6 +905,12 @@ def handle_event(client, payload, topic):
         "data": {"value": 5.2},
         "offset_ms": 45000
     }
+    
+    Args:
+        client: MQTT client
+        payload: Parsed JSON payload dict
+        topic: MQTT topic string
+        raw_payload: Optional raw payload string for debugging storage
     """
     # Extract environment and device_id from topic (format: norrtek-iot/{env}/event/{device_id})
     topic_parts = topic.split('/')
@@ -967,12 +973,14 @@ def handle_event(client, payload, topic):
                 db.session.add(device)
                 print(f"✨ New device registered via event: {device_id} ({product})")
             
-            # Store the event
+            # Store the event with raw MQTT data for debugging
             event_log = EventLog(
                 device_id=device_id,
                 event_type=event_type,
                 event_data=event_data,
-                timestamp=event_time
+                timestamp=event_time,
+                mqtt_topic=topic,
+                mqtt_payload=raw_payload
             )
             db.session.add(event_log)
             db.session.commit()
@@ -984,7 +992,8 @@ def handle_event(client, payload, topic):
 
 def on_message(client, userdata, msg):
     try:
-        payload = json.loads(msg.payload.decode())
+        raw_payload = msg.payload.decode()  # Store raw for debugging
+        payload = json.loads(raw_payload)
         
         # Route message to appropriate handler based on topic
         # Device-specific topics use pattern: norrtek-iot/{env}/{path}/{device_id}
@@ -1008,7 +1017,7 @@ def on_message(client, userdata, msg):
             elif topic_path == 'display':
                 handle_display_snapshot(client, payload, msg.topic)
             elif topic_path == 'event':
-                handle_event(client, payload, msg.topic)
+                handle_event(client, payload, msg.topic, raw_payload)
     
     except json.JSONDecodeError as e:
         print(f"✗ Failed to parse MQTT message: {e}")

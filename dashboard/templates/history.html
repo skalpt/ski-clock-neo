@@ -1003,9 +1003,20 @@
                                             <div class="expanded-content">
                                                 <div class="expanded-header">
                                                     <strong>Full Event Details</strong>
-                                                    <button class="copy-json-btn" onclick="event.stopPropagation(); copyJson(this, \`${escapeHtml(rawJson).replace(/`/g, '\\`')}\`)">📋 Copy JSON</button>
+                                                    <button class="copy-json-btn" onclick="event.stopPropagation(); copyJson(this, \`${escapeHtml(event.mqtt_payload || rawJson).replace(/`/g, '\\`')}\`)">📋 Copy JSON</button>
                                                 </div>
-                                                <pre class="expanded-json">${escapeHtml(rawJson) || 'No data'}</pre>
+                                                ${event.mqtt_topic ? `
+                                                <div class="mqtt-debug-section">
+                                                    <div class="mqtt-topic">
+                                                        <span class="mqtt-label">MQTT Topic:</span>
+                                                        <code class="mqtt-value">${escapeHtml(event.mqtt_topic)}</code>
+                                                    </div>
+                                                </div>
+                                                ` : ''}
+                                                <div class="mqtt-payload-section">
+                                                    <span class="mqtt-label">Payload:</span>
+                                                    <pre class="expanded-json">${escapeHtml(event.mqtt_payload || rawJson) || 'No data'}</pre>
+                                                </div>
                                             </div>
                                         </td>
                                     </tr>

@@ -1809,6 +1809,45 @@ body.no-web-serial .flash-column {
     overflow: auto;
 }
 
+/* MQTT Debug Section in Event Details */
+.mqtt-debug-section {
+    margin-bottom: var(--spacing-sm);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.mqtt-topic {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+}
+
+.mqtt-label {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.mqtt-value {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    background: var(--bg-primary);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    color: var(--accent-color);
+}
+
+.mqtt-payload-section {
+    margin-top: var(--spacing-sm);
+}
+
+.mqtt-payload-section .mqtt-label {
+    display: block;
+    margin-bottom: var(--spacing-xs);
+}
+
 /* ========================================
    Events Feed Container (Dashboard)
    ======================================== */

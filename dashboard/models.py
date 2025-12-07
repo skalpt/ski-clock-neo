@@ -424,6 +424,8 @@ class EventLog(db.Model):
     event_type = db.Column(db.String(32), nullable=False, index=True)
     event_data = db.Column(db.JSON)  # Flexible payload: {"value": 5.2}, {"rssi": -65}, {"reason": "power_on"}
     timestamp = db.Column(db.DateTime(timezone=True), nullable=False, index=True)
+    mqtt_topic = db.Column(db.String(256))  # Raw MQTT topic for debugging
+    mqtt_payload = db.Column(db.Text)  # Raw MQTT payload JSON string for debugging
     
     # Relationships
     device = db.relationship('Device', back_populates='event_logs')
@@ -445,7 +447,9 @@ class EventLog(db.Model):
             'product': self.device.product if self.device else None,
             'event_type': self.event_type,
             'event_data': self.event_data,
-            'timestamp': self.timestamp.isoformat()
+            'timestamp': self.timestamp.isoformat(),
+            'mqtt_topic': self.mqtt_topic,
+            'mqtt_payload': self.mqtt_payload
         }
 
 
