@@ -57,6 +57,7 @@
                     <option value="">All Types</option>
                     <optgroup label="System">
                         <option value="boot">Boot</option>
+                        <option value="device_info">Device Info</option>
                         <option value="heartbeat">Heartbeat</option>
                         <option value="low_heap_warning">Low Heap</option>
                     </optgroup>
@@ -66,6 +67,11 @@
                         <option value="wifi_rssi_low">Weak WiFi</option>
                         <option value="mqtt_connect">MQTT Connect</option>
                         <option value="mqtt_disconnect">MQTT Disconnect</option>
+                    </optgroup>
+                    <optgroup label="Configuration">
+                        <option value="config_updated">Config Updated</option>
+                        <option value="config_error">Config Error</option>
+                        <option value="config_noop">Config Unchanged</option>
                     </optgroup>
                     <optgroup label="Temperature">
                         <option value="temperature_read">Temperature Read</option>
@@ -87,9 +93,13 @@
                     </optgroup>
                     <optgroup label="User Input">
                         <option value="button_press">Button Press</option>
+                        <option value="button_release">Button Release</option>
                     </optgroup>
                     <optgroup label="Display">
                         <option value="display_mode_change">Mode Change</option>
+                    </optgroup>
+                    <optgroup label="Other">
+                        <option value="__other__">Other</option>
                     </optgroup>
                 </select>
             </div>

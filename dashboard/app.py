@@ -2294,7 +2294,19 @@ def get_events():
     if device_id:
         query = query.filter_by(device_id=device_id)
     if event_type:
-        query = query.filter_by(event_type=event_type)
+        if event_type == '__other__':
+            known_event_types = [
+                'boot', 'device_info', 'heartbeat', 'low_heap_warning',
+                'wifi_connect', 'wifi_disconnect', 'wifi_rssi_low', 'mqtt_connect', 'mqtt_disconnect',
+                'config_updated', 'config_error', 'config_noop',
+                'temperature_read', 'temperature_error', 'temp_sensor_not_found', 'temp_read_invalid', 'temp_read_crc_error',
+                'rtc_initialized', 'rtc_not_found', 'rtc_lost_power', 'rtc_time_invalid', 'rtc_synced_from_ntp', 'rtc_sync_failed', 'rtc_drift_corrected', 'ntp_sync_success', 'ntp_sync_failed',
+                'button_press', 'button_release',
+                'display_mode_change'
+            ]
+            query = query.filter(~EventLog.event_type.in_(known_event_types))
+        else:
+            query = query.filter_by(event_type=event_type)
     
     if start_date:
         try:
