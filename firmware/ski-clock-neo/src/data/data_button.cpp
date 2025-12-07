@@ -42,8 +42,8 @@ static const unsigned long DEBOUNCE_MS = 50;  // Debounce threshold in milliseco
 #if defined(ESP32)
   // ESP32: Read from GPIO.in register (GPIO 0-31 only)
   // GPIO 32-39 would need GPIO.in1.val but button is on GPIO0
-  // Note: ESP32-C3/S3 (RISC-V) use GPIO.in.val, original ESP32 (Xtensa) uses GPIO.in directly
-  #if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S3) || defined(CONFIG_IDF_TARGET_ESP32S2)
+  // Note: Only ESP32-C3 (RISC-V) uses GPIO.in.val union; all Xtensa variants use GPIO.in directly
+  #if defined(CONFIG_IDF_TARGET_ESP32C3)
     #define FAST_PIN_READ(pin) ((GPIO.in.val >> (pin)) & 1)
   #else
     #define FAST_PIN_READ(pin) ((GPIO.in >> (pin)) & 1)

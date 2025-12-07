@@ -1,0 +1,58 @@
+2025-12-07T10:02:25.6262864Z ##[group]Run arduino-cli compile --fqbn esp32:esp32:esp32s3:CDCOnBoot=cdc \
+2025-12-07T10:02:25.6263398Z [36;1marduino-cli compile --fqbn esp32:esp32:esp32s3:CDCOnBoot=cdc \[0m
+2025-12-07T10:02:25.6263761Z [36;1m  --export-binaries \[0m
+2025-12-07T10:02:25.6264071Z [36;1m  --build-property "build.partitions=min_spiffs" \[0m
+2025-12-07T10:02:25.6265723Z [36;1m  --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"***\" -DDOWNLOAD_API_KEY=\"***\" -DFIRMWARE_VERSION=\"2025.12.7.119\" -DMQTT_HOST=\"***\" -DMQTT_USERNAME=\"***\" -DMQTT_PASSWORD=\"***\" -DBOARD_ESP32S3" \[0m
+2025-12-07T10:02:25.6266492Z [36;1m  --output-dir build/esp32s3 \[0m
+2025-12-07T10:02:25.6266776Z [36;1m  firmware/***[0m
+2025-12-07T10:02:25.6267140Z [36;1mcp build/esp32s3/***.ino.bin build/***-esp32s3.bin[0m
+2025-12-07T10:02:25.6267838Z [36;1mcp build/esp32s3/***.ino.bootloader.bin build/***-esp32s3.bootloader.bin || echo "Warning: Bootloader not found for ESP32-S3"[0m
+2025-12-07T10:02:25.6268712Z [36;1mcp build/esp32s3/***.ino.partitions.bin build/***-esp32s3.partitions.bin || echo "Warning: Partitions not found for ESP32-S3"[0m
+2025-12-07T10:02:25.6300662Z shell: /usr/bin/bash -e {0}
+2025-12-07T10:02:25.6300914Z ##[endgroup]
+2025-12-07T10:03:30.5536640Z /home/runner/work/***/***/firmware/***/src/data/data_button.cpp: In function 'void buttonChangeISR()':
+2025-12-07T10:03:30.5545821Z /home/runner/work/***/***/firmware/***/src/data/data_button.cpp:47:42: error: request for member 'val' in 'GPIO.gpio_dev_s::in', which is of non-class type 'volatile uint32_t' {aka 'volatile unsigned int'}
+2025-12-07T10:03:30.5550518Z      #define FAST_PIN_READ(pin) ((GPIO.in.val >> (pin)) & 1)
+2025-12-07T10:03:30.5551068Z                                           ^~~
+2025-12-07T10:03:30.5552402Z /home/runner/work/***/***/firmware/***/src/data/data_button.cpp:83:20: note: in expansion of macro 'FAST_PIN_READ'
+2025-12-07T10:03:30.5555202Z    bool pinIsLow = !FAST_PIN_READ(buttonPin);
+2025-12-07T10:03:30.5559101Z                     ^~~~~~~~~~~~~
+2025-12-07T10:03:30.5560837Z /home/runner/work/***/***/firmware/***/src/data/data_button.cpp: In function 'bool isButtonPressed()':
+2025-12-07T10:03:30.5563017Z /home/runner/work/***/***/firmware/***/src/data/data_button.cpp:47:42: error: request for member 'val' in 'GPIO.gpio_dev_s::in', which is of non-class type 'volatile uint32_t' {aka 'volatile unsigned int'}
+2025-12-07T10:03:30.5565247Z      #define FAST_PIN_READ(pin) ((GPIO.in.val >> (pin)) & 1)
+2025-12-07T10:03:30.5567558Z                                           ^~~
+2025-12-07T10:03:30.5572254Z /home/runner/work/***/***/firmware/***/src/data/data_button.cpp:138:11: note: in expansion of macro 'FAST_PIN_READ'
+2025-12-07T10:03:30.5575335Z    return !FAST_PIN_READ(buttonPin);  // Active LOW, inverted
+2025-12-07T10:03:30.5575899Z            ^~~~~~~~~~~~~
+2025-12-07T10:03:31.8245124Z 
+2025-12-07T10:03:31.9645380Z Error during build: exit status 1
+2025-12-07T10:03:31.9645829Z 
+2025-12-07T10:03:31.9646765Z [92mUsed library[0m      [92mVersion[0m [90mPath[0m                                                                                   
+2025-12-07T10:03:31.9648418Z [93mTicker[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Ticker[0m          
+2025-12-07T10:03:31.9650167Z [93mWiFi[0m              2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFi[0m            
+2025-12-07T10:03:31.9651776Z [93mWebServer[0m         2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WebServer[0m       
+2025-12-07T10:03:31.9653165Z [93mAutoConnect[0m       1.4.2   [90m/home/runner/Arduino/libraries/AutoConnect[0m                                             
+2025-12-07T10:03:31.9654723Z [93mDNSServer[0m         2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/DNSServer[0m       
+2025-12-07T10:03:31.9655684Z [93mEEPROM[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/EEPROM[0m          
+2025-12-07T10:03:31.9656919Z [93mPageBuilder[0m       1.5.6   [90m/home/runner/Arduino/libraries/PageBuilder[0m                                             
+2025-12-07T10:03:31.9657782Z [93mFS[0m                2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/FS[0m              
+2025-12-07T10:03:31.9658619Z [93mSPIFFS[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPIFFS[0m          
+2025-12-07T10:03:31.9659444Z [93mSD[0m                2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SD[0m              
+2025-12-07T10:03:31.9660249Z [93mSPI[0m               2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPI[0m             
+2025-12-07T10:03:31.9661132Z [93mPreferences[0m       2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Preferences[0m     
+2025-12-07T10:03:31.9662092Z [93mWiFiClientSecure[0m  2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFiClientSecure[0m
+2025-12-07T10:03:31.9662922Z [93mPubSubClient[0m      2.8     [90m/home/runner/Arduino/libraries/PubSubClient[0m                                            
+2025-12-07T10:03:31.9663750Z [93mHTTPClient[0m        2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPClient[0m      
+2025-12-07T10:03:31.9664755Z [93mUpdate[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Update[0m          
+2025-12-07T10:03:31.9665580Z [93mOneWire[0m           2.3.8   [90m/home/runner/Arduino/libraries/OneWire[0m                                                 
+2025-12-07T10:03:31.9666376Z [93mDallasTemperature[0m 4.0.5   [90m/home/runner/Arduino/libraries/DallasTemperature[0m                                       
+2025-12-07T10:03:31.9667189Z [93mWire[0m              2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Wire[0m            
+2025-12-07T10:03:31.9667930Z [93mRTClib[0m            2.1.4   [90m/home/runner/Arduino/libraries/RTClib[0m                                                  
+2025-12-07T10:03:31.9668683Z [93mAdafruit BusIO[0m    1.17.4  [90m/home/runner/Arduino/libraries/Adafruit_BusIO[0m                                          
+2025-12-07T10:03:31.9669619Z [93mFastLED[0m           3.10.3  [90m/home/runner/Arduino/libraries/FastLED[0m                                                 
+2025-12-07T10:03:31.9670372Z [93mArduinoJson[0m       7.4.2   [90m/home/runner/Arduino/libraries/ArduinoJson[0m                                             
+2025-12-07T10:03:31.9671163Z [93mHTTPUpdate[0m        2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPUpdate[0m      
+2025-12-07T10:03:31.9671575Z 
+2025-12-07T10:03:31.9671868Z [92mUsed platform[0m [92mVersion[0m [90mPath[0m                                                        
+2025-12-07T10:03:31.9672479Z [93mesp32:esp32[0m   2.0.14  [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14[0m
+2025-12-07T10:03:31.9700546Z ##[error]Process completed with exit code 1.
