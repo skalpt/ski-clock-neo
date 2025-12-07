@@ -206,11 +206,19 @@ bool connectMQTT() {
   
   DEBUG_PRINTLN("Connecting to MQTT broker...");
   
-  // Generate unique client ID
-  String clientId = "SkiClock-" + getDeviceID();
+  // Generate unique client ID (fixed ID required for persistent sessions)
+  String clientId = "NorrtekDevice-" + getDeviceID();
   
-  // Attempt connection
-  if (mqttClient.connect(clientId.c_str(), MQTT_USERNAME, MQTT_PASSWORD)) {
+  // Attempt connection with persistent session (cleanSession=false)
+  // This allows broker to queue QoS 1/2 messages while device is offline
+  // Using full connect() signature: (id, user, pass, willTopic, willQos, willRetain, willMessage, cleanSession)
+  if (mqttClient.connect(clientId.c_str(), MQTT_USERNAME, MQTT_PASSWORD,
+                         NULL,    // No LWT topic
+                         0,       // LWT QoS (unused)
+                         false,   // LWT retain (unused)
+                         NULL,    // No LWT message
+                         false))  // cleanSession = false for persistent session
+  {
     DEBUG_PRINTLN("MQTT broker connected!");
     setConnectivityState(true, true);
     mqttIsConnected = true;
@@ -220,22 +228,23 @@ bool connectMQTT() {
     setEventLogReady(true);
     flushEventQueue();
 
-    // Subscribe to topics (using environment-scoped topics)
+    // Subscribe to topics with QoS 1 for message persistence
+    // QoS 1 ensures commands are queued by broker while device is offline
     String versionResponseTopic = buildDeviceTopic(MQTT_TOPIC_VERSION_RESPONSE);
-    if (mqttClient.subscribe(versionResponseTopic.c_str())) {
-      DEBUG_PRINT("Subscribed to topic: ");
+    if (mqttClient.subscribe(versionResponseTopic.c_str(), 1)) {  // QoS 1
+      DEBUG_PRINT("Subscribed (QoS 1): ");
       DEBUG_PRINTLN(versionResponseTopic);
     }
     
     String commandTopic = buildDeviceTopic(MQTT_TOPIC_COMMAND);
-    if (mqttClient.subscribe(commandTopic.c_str())) {
-      DEBUG_PRINT("Subscribed to topic: ");
+    if (mqttClient.subscribe(commandTopic.c_str(), 1)) {  // QoS 1
+      DEBUG_PRINT("Subscribed (QoS 1): ");
       DEBUG_PRINTLN(commandTopic);
     }
     
     String configTopic = buildDeviceTopic(MQTT_TOPIC_CONFIG);
-    if (mqttClient.subscribe(configTopic.c_str())) {
-      DEBUG_PRINT("Subscribed to topic: ");
+    if (mqttClient.subscribe(configTopic.c_str(), 1)) {  // QoS 1
+      DEBUG_PRINT("Subscribed (QoS 1): ");
       DEBUG_PRINTLN(configTopic);
     }
     
