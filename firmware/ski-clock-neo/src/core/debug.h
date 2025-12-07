@@ -1,8 +1,11 @@
 #ifndef DEBUG_H
 #define DEBUG_H
 
-// Debug logging enabled for development
-#define DEBUG_LOGGING
+// Debug logging control
+// Define RELEASE_BUILD to disable all debug output (used by promote-prod.yml)
+#ifndef RELEASE_BUILD
+  #define DEBUG_LOGGING
+#endif
 
 #ifdef DEBUG_LOGGING
   #define DEBUG_BEGIN(baud) Serial.begin(baud)
