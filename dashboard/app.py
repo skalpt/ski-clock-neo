@@ -12,7 +12,7 @@ from typing import Dict, Optional, Any
 from functools import wraps
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from object_storage import ObjectStorageService, ObjectNotFoundError, ObjectStorageError
-from models import db, Device, FirmwareVersion, User, Role, PlatformPermission, DownloadLog, DevEnvironment
+from models import db, Device, FirmwareVersion, User, Role, PlatformPermission, DownloadLog
 
 # Map device board types (as reported by firmware) to platform identifiers
 # This must stay in sync with BOARD_TYPE_TO_PLATFORM in mqtt_subscriber.py
@@ -1852,14 +1852,8 @@ def get_environment():
 @app.route('/api/devices')
 @login_required
 def devices():
-    """Get devices for this environment with online/offline status (15 minute threshold)
-    
-    Strict environment separation: dev dashboard only sees dev devices,
-    prod dashboard only sees prod devices.
-    """
-    # Filter devices by this dashboard's environment scope
-    current_env = get_dashboard_environment_scope()
-    all_devices = Device.query.filter_by(environment=current_env).all()
+    """Get all devices with online/offline status (15 minute threshold)"""
+    all_devices = Device.query.all()
     device_list = [device.to_dict(online_threshold_minutes=15) for device in all_devices]
     
     # Sort: online devices alphabetically by device_id, offline devices by last_seen (most recent first)
@@ -1875,18 +1869,14 @@ def devices():
         'online_count': online_count,
         'offline_count': len(device_list) - online_count,
         'mqtt_enabled': mqtt_client is not None,
-        'environment': current_env
+        'environment': get_dashboard_environment_scope()
     })
 
 @app.route('/api/devices/<device_id>', methods=['DELETE'])
 @login_required
 def delete_device(device_id):
-    """Delete a device from the database (for decommissioned devices)
-    
-    Only allows deleting devices that belong to this dashboard's environment.
-    """
-    current_env = get_dashboard_environment_scope()
-    device = Device.query.filter_by(device_id=device_id, environment=current_env).first()
+    """Delete a device from the database (for decommissioned devices)"""
+    device = Device.query.filter_by(device_id=device_id).first()
     
     if not device:
         return jsonify({'error': 'Device not found'}), 404
@@ -1904,14 +1894,10 @@ def delete_device(device_id):
 @app.route('/api/devices/<device_id>/rollback', methods=['POST'])
 @login_required
 def rollback_device(device_id):
-    """Send rollback command to a device via MQTT
-    
-    Only allows commanding devices in this dashboard's environment.
-    """
+    """Send rollback command to a device via MQTT"""
     from mqtt_subscriber import publish_command
     
-    current_env = get_dashboard_environment_scope()
-    device = Device.query.filter_by(device_id=device_id, environment=current_env).first()
+    device = Device.query.filter_by(device_id=device_id).first()
     if not device:
         return jsonify({
             'success': False,
@@ -1941,14 +1927,10 @@ def rollback_device(device_id):
 @app.route('/api/devices/<device_id>/restart', methods=['POST'])
 @login_required
 def restart_device(device_id):
-    """Send restart command to a device via MQTT
-    
-    Only allows commanding devices in this dashboard's environment.
-    """
+    """Send restart command to a device via MQTT"""
     from mqtt_subscriber import publish_command
     
-    current_env = get_dashboard_environment_scope()
-    device = Device.query.filter_by(device_id=device_id, environment=current_env).first()
+    device = Device.query.filter_by(device_id=device_id).first()
     if not device:
         return jsonify({
             'success': False,
@@ -1974,14 +1956,10 @@ def restart_device(device_id):
 @app.route('/api/devices/<device_id>/snapshot', methods=['POST'])
 @login_required
 def request_snapshot(device_id):
-    """Send snapshot command to a device via MQTT
-    
-    Only allows commanding devices in this dashboard's environment.
-    """
+    """Send snapshot command to a device via MQTT"""
     from mqtt_subscriber import publish_command
     
-    current_env = get_dashboard_environment_scope()
-    device = Device.query.filter_by(device_id=device_id, environment=current_env).first()
+    device = Device.query.filter_by(device_id=device_id).first()
     if not device:
         return jsonify({
             'success': False,
@@ -2011,26 +1989,15 @@ def set_device_config(device_id):
     
     JSON body can include:
     - temp_offset: Temperature calibration offset in degrees C (-20.0 to 20.0)
-    - environment: Environment scope ('dev' or 'prod') for promoting/demoting devices
-    
-    Only allows configuring devices in this dashboard's environment.
     """
     from mqtt_subscriber import publish_config
     
-    current_env = get_dashboard_environment_scope()
-    device = Device.query.filter_by(device_id=device_id, environment=current_env).first()
+    device = Device.query.filter_by(device_id=device_id).first()
     if not device:
         return jsonify({
             'success': False,
             'error': 'Device not found'
         }), 404
-    
-    # Check if device has an environment set (required to know which MQTT topic to publish to)
-    if not device.environment:
-        return jsonify({
-            'success': False,
-            'error': 'Device has no environment set. Wait for the device to send a heartbeat first.'
-        }), 400
     
     data = request.get_json(silent=True) or {}
     
@@ -2057,26 +2024,14 @@ def set_device_config(device_id):
                 'error': 'temp_offset must be a number'
             }), 400
     
-    if 'environment' in data:
-        env_value = data['environment']
-        if env_value not in ('dev', 'prod'):
-            return jsonify({
-                'success': False,
-                'error': "environment must be 'dev' or 'prod'"
-            }), 400
-        config_values['environment'] = env_value
-    
     if not config_values:
         return jsonify({
             'success': False,
             'error': 'No valid configuration values provided'
         }), 400
     
-    # Pass device's current environment for the MQTT topic
-    # This ensures the message reaches the device on its current subscription
     success = publish_config(
         device_id=device_id,
-        topic_environment=device.environment,
         **config_values
     )
     
@@ -2095,16 +2050,11 @@ def set_device_config(device_id):
 @app.route('/api/devices/<device_id>/snapshots')
 @login_required
 def get_snapshot_history(device_id):
-    """Get display snapshot history for a device
-    
-    Only allows accessing snapshots for devices in this dashboard's environment.
-    """
+    """Get display snapshot history for a device"""
     from models import DisplaySnapshot
     from sqlalchemy import desc
     
-    # Verify device belongs to this environment
-    current_env = get_dashboard_environment_scope()
-    device = Device.query.filter_by(device_id=device_id, environment=current_env).first()
+    device = Device.query.filter_by(device_id=device_id).first()
     if not device:
         return jsonify({'error': 'Device not found'}), 404
     
@@ -2138,8 +2088,6 @@ def get_all_snapshots():
     - end_date: ISO 8601 date (snapshots before this time)
     - limit: Number of snapshots to return (default: 50)
     - offset: Pagination offset (default: 0)
-    
-    Only returns snapshots from devices in this dashboard's environment.
     """
     from models import DisplaySnapshot
     from sqlalchemy import desc
@@ -2151,11 +2099,7 @@ def get_all_snapshots():
     limit = request.args.get('limit', type=int, default=50)
     offset = request.args.get('offset', type=int, default=0)
     
-    # Get device IDs that belong to this environment
-    current_env = get_dashboard_environment_scope()
-    env_device_ids = [d.device_id for d in Device.query.filter_by(environment=current_env).all()]
-    
-    query = DisplaySnapshot.query.filter(DisplaySnapshot.device_id.in_(env_device_ids))
+    query = DisplaySnapshot.query
     
     if device_id:
         query = query.filter_by(device_id=device_id)
@@ -2227,11 +2171,8 @@ def pin_device_version(device_id):
     - Body: {"version": "2025.11.26.80"} to pin, {"version": null} to unpin
     
     DELETE: Unpin device (follow latest)
-    
-    Only allows modifying devices in this dashboard's environment.
     """
-    current_env = get_dashboard_environment_scope()
-    device = Device.query.filter_by(device_id=device_id, environment=current_env).first()
+    device = Device.query.filter_by(device_id=device_id).first()
     
     if not device:
         return jsonify({'error': 'Device not found'}), 404
@@ -2296,11 +2237,8 @@ def rename_device(device_id):
     POST: Set or clear the display name
     - Body: {"display_name": "Hedvalla Ski Clock"} to set
     - Body: {"display_name": null} or {"display_name": ""} to clear
-    
-    Only allows renaming devices in this dashboard's environment.
     """
-    current_env = get_dashboard_environment_scope()
-    device = Device.query.filter_by(device_id=device_id, environment=current_env).first()
+    device = Device.query.filter_by(device_id=device_id).first()
     
     if not device:
         return jsonify({'error': 'Device not found'}), 404
@@ -2342,8 +2280,6 @@ def get_events():
     - end_date: ISO 8601 date (events before this time)
     - limit: Number of events to return (default: 100)
     - offset: Pagination offset (default: 0)
-    
-    Only returns events from devices in this dashboard's environment.
     """
     from models import EventLog
     from sqlalchemy import desc
@@ -2356,14 +2292,9 @@ def get_events():
     limit = request.args.get('limit', type=int, default=100)
     offset = request.args.get('offset', type=int, default=0)
     
-    # Get device IDs that belong to this environment
-    current_env = get_dashboard_environment_scope()
-    env_device_ids = [d.device_id for d in Device.query.filter_by(environment=current_env).all()]
-    
-    query = EventLog.query.filter(EventLog.device_id.in_(env_device_ids))
+    query = EventLog.query
     
     if device_id:
-        # Additional filter by specific device (must also be in env_device_ids)
         query = query.filter_by(device_id=device_id)
     if event_type:
         if event_type == '__other__':
@@ -2412,8 +2343,6 @@ def get_events_summary():
     Query parameters:
     - device_id: Filter by specific device
     - hours: Time range in hours (default: 24)
-    
-    Only returns events from devices in this dashboard's environment.
     """
     from models import EventLog
     from sqlalchemy import func
@@ -2424,14 +2353,7 @@ def get_events_summary():
     
     since = datetime.now(timezone.utc) - timedelta(hours=hours)
     
-    # Get device IDs that belong to this environment
-    current_env = get_dashboard_environment_scope()
-    env_device_ids = [d.device_id for d in Device.query.filter_by(environment=current_env).all()]
-    
-    query = EventLog.query.filter(
-        EventLog.timestamp >= since,
-        EventLog.device_id.in_(env_device_ids)
-    )
+    query = EventLog.query.filter(EventLog.timestamp >= since)
     
     if device_id:
         query = query.filter_by(device_id=device_id)
@@ -2450,10 +2372,7 @@ def get_events_summary():
 @app.route('/api/ota-logs')
 @login_required
 def ota_logs():
-    """Get OTA update logs with optional filters
-    
-    Only returns logs from devices in this dashboard's environment.
-    """
+    """Get OTA update logs with optional filters"""
     from models import OTAUpdateLog
     from sqlalchemy import desc, and_
     from datetime import datetime, timedelta
@@ -2467,12 +2386,7 @@ def ota_logs():
     limit = request.args.get('limit', type=int, default=50)
     offset = request.args.get('offset', type=int, default=0)
     
-    # Get device IDs that belong to this environment
-    current_env = get_dashboard_environment_scope()
-    env_device_ids = [d.device_id for d in Device.query.filter_by(environment=current_env).all()]
-    
-    # Build query - filter by environment
-    query = OTAUpdateLog.query.filter(OTAUpdateLog.device_id.in_(env_device_ids))
+    query = OTAUpdateLog.query
     
     # Apply filters
     if device_id:
@@ -2515,20 +2429,11 @@ def ota_logs():
 @app.route('/api/ota-logs/<int:log_id>/log')
 @login_required
 def ota_log_content(log_id):
-    """Get the log content for a specific OTA update log entry
-    
-    Only allows accessing logs for devices in this dashboard's environment.
-    """
+    """Get the log content for a specific OTA update log entry"""
     from models import OTAUpdateLog
     
     log = OTAUpdateLog.query.get(log_id)
     if not log:
-        return jsonify({'error': 'Log entry not found'}), 404
-    
-    # Verify device belongs to this environment
-    current_env = get_dashboard_environment_scope()
-    device = Device.query.filter_by(device_id=log.device_id, environment=current_env).first()
-    if not device:
         return jsonify({'error': 'Log entry not found'}), 404
     
     log_content = log.log_content or 'No log content available'
@@ -2541,20 +2446,12 @@ def ota_log_content(log_id):
 @app.route('/api/ota-progress')
 @login_required
 def ota_progress():
-    """Get in-progress OTA updates for all devices
-    
-    Only returns updates for devices in this dashboard's environment.
-    """
+    """Get in-progress OTA updates for all devices"""
     from models import OTAUpdateLog
     
-    # Get device IDs that belong to this environment
-    current_env = get_dashboard_environment_scope()
-    env_device_ids = [d.device_id for d in Device.query.filter_by(environment=current_env).all()]
-    
-    # Get all in-progress updates (started or downloading) for devices in this environment
+    # Get all in-progress updates (started or downloading)
     in_progress = OTAUpdateLog.query.filter(
-        OTAUpdateLog.status.in_(['started', 'downloading']),
-        OTAUpdateLog.device_id.in_(env_device_ids)
+        OTAUpdateLog.status.in_(['started', 'downloading'])
     ).all()
     
     # Create a map of device_id -> progress info
@@ -2575,27 +2472,17 @@ def ota_progress():
 @app.route('/api/ota-stats')
 @login_required
 def ota_stats():
-    """Get OTA update statistics
-    
-    Only returns statistics for devices in this dashboard's environment.
-    """
+    """Get OTA update statistics"""
     from models import OTAUpdateLog
     from sqlalchemy import func
     
-    # Get device IDs that belong to this environment
-    current_env = get_dashboard_environment_scope()
-    env_device_ids = [d.device_id for d in Device.query.filter_by(environment=current_env).all()]
-    
-    # Base query filtered by environment
-    base_query = OTAUpdateLog.query.filter(OTAUpdateLog.device_id.in_(env_device_ids))
-    
     # Total updates
-    total_updates = base_query.count()
+    total_updates = OTAUpdateLog.query.count()
     
     # Success/failure counts
-    success_count = base_query.filter(OTAUpdateLog.status == 'success').count()
-    failed_count = base_query.filter(OTAUpdateLog.status == 'failed').count()
-    in_progress_count = base_query.filter(
+    success_count = OTAUpdateLog.query.filter_by(status='success').count()
+    failed_count = OTAUpdateLog.query.filter_by(status='failed').count()
+    in_progress_count = OTAUpdateLog.query.filter(
         OTAUpdateLog.status.in_(['started', 'downloading'])
     ).count()
     
@@ -2603,7 +2490,7 @@ def ota_stats():
     success_rate = (success_count / total_updates * 100) if total_updates > 0 else 0
     
     # Average update duration (only for completed updates)
-    completed_logs = base_query.filter(
+    completed_logs = OTAUpdateLog.query.filter(
         OTAUpdateLog.completed_at.isnot(None)
     ).all()
     
@@ -2619,13 +2506,13 @@ def ota_stats():
     # Recent updates (last 7 days)
     from datetime import timedelta
     seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
-    recent_updates = base_query.filter(
+    recent_updates = OTAUpdateLog.query.filter(
         OTAUpdateLog.started_at >= seven_days_ago
     ).count()
     
     # Failed devices (unique devices with failed updates in last 24 hours)
     one_day_ago = datetime.now(timezone.utc) - timedelta(days=1)
-    failed_devices = base_query.filter(
+    failed_devices = OTAUpdateLog.query.filter(
         OTAUpdateLog.status == 'failed',
         OTAUpdateLog.started_at >= one_day_ago
     ).with_entities(OTAUpdateLog.device_id).distinct().count()
@@ -2647,10 +2534,7 @@ def ota_stats():
 @app.route('/api/commands', methods=['GET'])
 @login_required
 def get_commands():
-    """Get command history with optional filters
-    
-    Only returns commands from devices in this dashboard's environment.
-    """
+    """Get command history with optional filters"""
     from models import CommandLog
     from sqlalchemy import desc
     from datetime import datetime
@@ -2663,12 +2547,7 @@ def get_commands():
     limit = request.args.get('limit', type=int, default=50)
     offset = request.args.get('offset', type=int, default=0)
     
-    # Get device IDs that belong to this environment
-    current_env = get_dashboard_environment_scope()
-    env_device_ids = [d.device_id for d in Device.query.filter_by(environment=current_env).all()]
-    
-    # Build query - filter by environment
-    query = CommandLog.query.filter(CommandLog.device_id.in_(env_device_ids))
+    query = CommandLog.query
     
     # Apply filters
     if device_id:
@@ -2731,9 +2610,8 @@ def send_command():
     if command_type not in valid_commands:
         return jsonify({'error': f'Invalid command_type. Must be one of: {valid_commands}'}), 400
     
-    # Validate device exists and belongs to this environment
-    current_env = get_dashboard_environment_scope()
-    device = Device.query.filter_by(device_id=device_id, environment=current_env).first()
+    # Validate device exists
+    device = Device.query.filter_by(device_id=device_id).first()
     if not device:
         return jsonify({'error': f'Device {device_id} not found'}), 404
     
@@ -2749,7 +2627,7 @@ def send_command():
         except (ValueError, TypeError):
             return jsonify({'error': 'temp_offset must be a number'}), 400
     
-    # Send command via MQTT using device's environment-scoped topic
+    # Send command via MQTT using this dashboard's environment-scoped topic
     try:
         from mqtt_subscriber import get_mqtt_client
         mqtt_client = get_mqtt_client()
@@ -2757,25 +2635,25 @@ def send_command():
         if mqtt_client is None:
             raise Exception("MQTT client not connected")
         
-        # Use device's environment for topic (already verified above)
-        device_env = device.environment or 'dev'
+        # Use dashboard's environment for topic (database-level separation)
+        env_scope = get_dashboard_environment_scope()
         
         if command_type == 'temp_offset':
             # Send config command with temp_offset
-            topic = f"norrtek-iot/{device_env}/config/{device_id}"
+            topic = f"norrtek-iot/{env_scope}/config/{device_id}"
             payload = json.dumps({'temp_offset': parameters.get('temp_offset')})
             mqtt_client.publish(topic, payload, qos=1)
         elif command_type == 'rollback':
-            topic = f"norrtek-iot/{device_env}/command/{device_id}"
+            topic = f"norrtek-iot/{env_scope}/command/{device_id}"
             mqtt_client.publish(topic, 'rollback', qos=1)
         elif command_type == 'restart':
-            topic = f"norrtek-iot/{device_env}/command/{device_id}"
+            topic = f"norrtek-iot/{env_scope}/command/{device_id}"
             mqtt_client.publish(topic, 'restart', qos=1)
         elif command_type == 'snapshot':
-            topic = f"norrtek-iot/{device_env}/command/{device_id}"
+            topic = f"norrtek-iot/{env_scope}/command/{device_id}"
             mqtt_client.publish(topic, 'snapshot', qos=1)
         elif command_type == 'info':
-            topic = f"norrtek-iot/{device_env}/command/{device_id}"
+            topic = f"norrtek-iot/{env_scope}/command/{device_id}"
             mqtt_client.publish(topic, 'info', qos=1)
         
         status = 'sent'

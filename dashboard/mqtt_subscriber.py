@@ -170,9 +170,6 @@ def handle_heartbeat(client, payload, topic):
                 device.ssid = payload.get('ssid')
                 device.ip_address = validate_ip_address(payload.get('ip'))
                 
-                # Update environment from topic - authoritative source
-                device.environment = environment
-                
                 # Legacy format: update static fields if present in payload
                 if board_type:
                     device.board_type = board_type
@@ -189,7 +186,6 @@ def handle_heartbeat(client, payload, topic):
                         product=product,
                         board_type=board_type,
                         firmware_version=current_version or 'Unknown',
-                        environment=environment,
                         last_uptime=payload.get('uptime', 0),
                         last_rssi=payload.get('rssi', 0),
                         last_free_heap=payload.get('free_heap', 0),
@@ -425,7 +421,6 @@ def handle_device_info(client, payload, topic):
                 device.board_type = board_type
                 if version:
                     device.firmware_version = version
-                device.environment = environment
                 device.last_info_at = now
                 device.last_seen = now  # Also update last_seen
                 
@@ -435,7 +430,7 @@ def handle_device_info(client, payload, topic):
                 if config is not None:
                     device.last_config = config
                 
-                print(f"📋 Updated device info: {device_id} ({product}/{board_type} v{version}, env={environment})")
+                print(f"📋 Updated device info: {device_id} ({product}/{board_type} v{version})")
             else:
                 # Create new device
                 device = Device(
@@ -443,7 +438,6 @@ def handle_device_info(client, payload, topic):
                     product=product,
                     board_type=board_type,
                     firmware_version=version or 'Unknown',
-                    environment=environment,
                     last_info_at=now,
                     supported_commands=supported_commands,
                     last_config=config
@@ -720,11 +714,6 @@ def handle_display_snapshot(client, payload, topic):
             
             device = Device.query.filter_by(device_id=device_id).first()
             if device:
-                # Validate environment match - only store snapshots for matching environment
-                if device.environment != environment:
-                    print(f"⚠ Snapshot env mismatch: device {device_id} has env={device.environment} but received from topic env={environment}, skipping")
-                    return
-                
                 try:
                     # Check for new per-row format: {"rows": [{...}, {...}]}
                     rows_data = payload.get('rows')
@@ -889,11 +878,10 @@ def handle_event(client, payload, topic):
                     device_id=device_id,
                     product=product,
                     board_type=board_type or 'Unknown',
-                    firmware_version='Unknown',
-                    environment=environment
+                    firmware_version='Unknown'
                 )
                 db.session.add(device)
-                print(f"✨ New device registered via event: {device_id} ({product}, env={environment})")
+                print(f"✨ New device registered via event: {device_id} ({product})")
             
             # Store the event
             event_log = EventLog(
@@ -957,7 +945,7 @@ def publish_command(device_id: str, command: str, environment: str = None, **kwa
         device_id: Target device ID
         command: Command type (e.g., 'rollback', 'restart', 'update')
         environment: Optional target environment ('dev' or 'prod'). If not provided,
-                     looks up the device's environment from database.
+                     uses the dashboard's environment scope.
         **kwargs: Additional command parameters
     
     Returns:
@@ -969,21 +957,9 @@ def publish_command(device_id: str, command: str, environment: str = None, **kwa
         print(f"✗ Cannot publish command: MQTT client not connected")
         return False
     
-    # Look up device environment if not provided
-    if environment is None and _app_context:
-        try:
-            from models import Device
-            with _app_context.app_context():
-                device = Device.query.filter_by(device_id=device_id).first()
-                if device:
-                    environment = device.environment
-        except Exception as e:
-            print(f"⚠ Could not look up device environment: {e}")
-    
-    # Fail if environment is still unknown - do not default to prod
+    # Use dashboard's environment scope if not explicitly provided
     if environment is None:
-        print(f"✗ Cannot publish command: device {device_id} has no environment set")
-        return False
+        environment = get_environment_scope()
     
     topic = f"{MQTT_TOPIC_PREFIX}/{environment}/command/{device_id}"
     payload = {
@@ -1009,16 +985,13 @@ def publish_config(device_id: str, topic_environment: str = None, **config_value
     """
     Publish configuration values to a specific device via MQTT.
     
-    IMPORTANT: Uses the device's CURRENT environment from database for the
-    MQTT topic, ensuring the message reaches the device. Config values (including
-    environment changes) are sent in the payload.
+    Uses this dashboard's environment scope for the MQTT topic.
     
     Args:
         device_id: Target device ID
         topic_environment: Optional explicit topic environment override. If not provided,
-                          looks up device's current environment from database. Use this
-                          when you know the device's current environment but DB may be stale.
-        **config_values: Configuration key-value pairs (e.g., temp_offset=-2.0, environment='prod')
+                          uses the dashboard's environment scope.
+        **config_values: Configuration key-value pairs (e.g., temp_offset=-2.0)
     
     Returns:
         True if published successfully, False otherwise
@@ -1029,24 +1002,9 @@ def publish_config(device_id: str, topic_environment: str = None, **config_value
         print(f"✗ Cannot publish config: MQTT client not connected")
         return False
     
-    # Use explicit topic_environment if provided, otherwise look up from database
-    current_environment = topic_environment
-    if current_environment is None and _app_context:
-        try:
-            from models import Device
-            with _app_context.app_context():
-                device = Device.query.filter_by(device_id=device_id).first()
-                if device:
-                    current_environment = device.environment
-        except Exception as e:
-            print(f"⚠ Could not look up device environment: {e}")
+    # Use explicit topic_environment if provided, otherwise use dashboard's environment scope
+    current_environment = topic_environment if topic_environment else get_environment_scope()
     
-    # Fail if environment is unknown - do not default to prod
-    if current_environment is None:
-        print(f"✗ Cannot publish config: device {device_id} has no environment set (not in database and no explicit topic_environment)")
-        return False
-    
-    # Use device's CURRENT environment for the topic so the message reaches it
     topic = f"{MQTT_TOPIC_PREFIX}/{current_environment}/config/{device_id}"
     payload = {
         'timestamp': datetime.now(timezone.utc).isoformat(),
