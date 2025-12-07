@@ -2,12 +2,18 @@
 #define DEBUG_H
 
 // Debug logging control
-// Define RELEASE_BUILD to disable all debug output (used by promote-prod.yml)
-#ifndef RELEASE_BUILD
-  #define DEBUG_LOGGING
+// - Enabled by default for development builds
+// - Disabled when RELEASE_BUILD is defined (used by promote-prod.yml)
+// - Can be overridden with -DDEBUG_LOGGING=1 for troubleshooting release builds
+#ifndef DEBUG_LOGGING
+  #ifdef RELEASE_BUILD
+    #define DEBUG_LOGGING 0
+  #else
+    #define DEBUG_LOGGING 1
+  #endif
 #endif
 
-#ifdef DEBUG_LOGGING
+#if DEBUG_LOGGING
   #define DEBUG_BEGIN(baud) Serial.begin(baud)
   #define DEBUG_PRINT(x) Serial.print(x)
   #define DEBUG_PRINTLN(x) Serial.println(x)
