@@ -2226,6 +2226,45 @@ def pin_device_version(device_id):
         'pinned_firmware_version': version
     }), 200
 
+@app.route('/api/devices/<device_id>/rename', methods=['POST'])
+@login_required
+def rename_device(device_id):
+    """Update the display name for a device
+    
+    POST: Set or clear the display name
+    - Body: {"display_name": "Hedvalla Ski Clock"} to set
+    - Body: {"display_name": null} or {"display_name": ""} to clear
+    """
+    device = Device.query.filter_by(device_id=device_id).first()
+    
+    if not device:
+        return jsonify({'error': 'Device not found'}), 404
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Request body required'}), 400
+    
+    display_name = data.get('display_name', '').strip() if data.get('display_name') else None
+    
+    if display_name and len(display_name) > 64:
+        return jsonify({'error': 'Display name must be 64 characters or less'}), 400
+    
+    old_name = device.display_name
+    device.display_name = display_name if display_name else None
+    db.session.commit()
+    
+    if display_name:
+        print(f"✏️ Renamed device {device_id}: '{old_name}' -> '{display_name}'")
+    else:
+        print(f"✏️ Cleared display name for device {device_id}")
+    
+    return jsonify({
+        'success': True,
+        'device_id': device_id,
+        'display_name': device.display_name,
+        'message': f'Device renamed to "{display_name}"' if display_name else 'Device name cleared'
+    }), 200
+
 @app.route('/api/events')
 @login_required
 def get_events():
