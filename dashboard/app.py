@@ -41,7 +41,17 @@ db.init_app(app)
 token_serializer = URLSafeTimedSerializer(app.secret_key)
 
 # Object Storage paths (only for firmware binaries now)
-FIRMWARES_PREFIX = "firmwares/"
+FIRMWARES_PREFIX_BASE = "firmwares/"
+
+def get_firmwares_prefix():
+    """Get the environment-specific firmwares prefix for object storage.
+    
+    Returns:
+        'firmwares/dev/' for development environments
+        'firmwares/prod/' for production environments
+    """
+    env_scope = get_dashboard_environment_scope()
+    return f"{FIRMWARES_PREFIX_BASE}{env_scope}/"
 
 # Local paths
 FIRMWARES_DIR = Path(__file__).parent / 'firmwares'
@@ -953,7 +963,8 @@ def user_download_firmware_file(token):
             object_path = version_info.get('object_path')
             if not object_path:
                 bucket_name = storage.get_bucket_name()
-                object_path = f"/{bucket_name}/{version_info.get('object_name', FIRMWARES_PREFIX + version_info['filename'])}"
+                # Use stored object_name or reconstruct with current environment prefix
+                object_path = f"/{bucket_name}/{version_info.get('object_name', get_firmwares_prefix() + version_info['filename'])}"
             
             # Download as bytes and stream to client
             firmware_data = storage.download_as_bytes(object_path)
@@ -1228,7 +1239,7 @@ def download_firmware(platform):
             if not object_path:
                 # Fallback: reconstruct from object_name and current bucket
                 bucket_name = storage.get_bucket_name()
-                object_path = f"/{bucket_name}/{version_info.get('object_name', FIRMWARES_PREFIX + version_info['filename'])}"
+                object_path = f"/{bucket_name}/{version_info.get('object_name', get_firmwares_prefix() + version_info['filename'])}"
             
             # Download as bytes and stream to client
             firmware_data = storage.download_as_bytes(object_path)
@@ -1367,7 +1378,7 @@ def upload_firmware():
             pass
     
     filename = f"firmware-{product}-{platform}-{version}.bin"
-    object_name = f"{FIRMWARES_PREFIX}{filename}"
+    object_name = f"{get_firmwares_prefix()}{filename}"
     
     # Read file data
     file_data = file.read()
@@ -1428,7 +1439,7 @@ def upload_firmware():
             return jsonify({'error': 'Bootloader file must be a .bin file'}), 400
         
         bootloader_filename = f"bootloader-{product}-{platform}-{version}.bin"
-        bootloader_object_name = f"{FIRMWARES_PREFIX}{bootloader_filename}"
+        bootloader_object_name = f"{get_firmwares_prefix()}{bootloader_filename}"
         
         # Read bootloader data
         bootloader_data = bootloader_file.read()
@@ -1470,7 +1481,7 @@ def upload_firmware():
             return jsonify({'error': 'Partitions file must be a .bin file'}), 400
         
         partitions_filename = f"partitions-{product}-{platform}-{version}.bin"
-        partitions_object_name = f"{FIRMWARES_PREFIX}{partitions_filename}"
+        partitions_object_name = f"{get_firmwares_prefix()}{partitions_filename}"
         
         # Read partitions data
         partitions_data = partitions_file.read()
