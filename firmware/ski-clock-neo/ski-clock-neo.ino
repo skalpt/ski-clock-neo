@@ -10,7 +10,8 @@
 // Arduino library includes - must be in main .ino for Arduino CLI library discovery
 #include <MQTT.h>
 
-// Connectivity modules
+// Connectivity modules - mqtt_client.h must be included first for function declarations
+// wifi_config.h also includes mqtt_client.h internally, but include guards prevent duplication
 #include "src/connectivity/mqtt_client.h"
 #include "src/connectivity/wifi_config.h"
 

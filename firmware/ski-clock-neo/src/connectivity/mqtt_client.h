@@ -1,5 +1,5 @@
-#ifndef MQTT_CLIENT_H
-#define MQTT_CLIENT_H
+#ifndef NORRTEK_MQTT_CLIENT_H
+#define NORRTEK_MQTT_CLIENT_H
 
 // Include product config for local build credentials
 #include "../../ski-clock-neo_config.h"
@@ -88,4 +88,4 @@ bool publishMqttPayload(const String& topic, const String& payload, int qos = 1)
   void onWiFiDisconnected(const WiFiEventStationModeDisconnected& event);
 #endif
 
-#endif
+#endif // NORRTEK_MQTT_CLIENT_H
