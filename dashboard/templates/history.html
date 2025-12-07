@@ -223,7 +223,7 @@
                     const option = document.createElement('option');
                     option.value = device.device_id;
                     const deviceLabel = device.display_name || device.device_id;
-                    option.textContent = `${deviceLabel} (${device.product || 'Unknown Product'})`;
+                    option.textContent = `${deviceLabel} (${device.product || 'Unknown'})`;
                     select.appendChild(option);
                 });
                 
@@ -331,7 +331,8 @@
         if (deviceId) {
             const device = allDevices.find(d => d.device_id === deviceId);
             const deviceLabel = device ? (device.display_name || deviceId) : deviceId;
-            const deviceName = device ? `${deviceLabel} (${device.product})` : deviceId;
+            const productName = device && device.product ? device.product : 'Unknown';
+            const deviceName = `${deviceLabel} (${productName})`;
             deviceInfo.innerHTML = `Sending commands to: <strong>${deviceName}</strong>`;
             formsContainer.style.display = 'flex';
         } else {

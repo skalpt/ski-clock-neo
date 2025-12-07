@@ -291,7 +291,7 @@
                 // Escape all user-supplied data to prevent XSS
                 const safeDeviceId = escapeHtml(device.device_id);
                 const safeDisplayName = device.display_name ? escapeHtml(device.display_name) : null;
-                const safeProduct = escapeHtml(device.product || 'Unknown Product');
+                const safeProduct = escapeHtml(device.product || 'Unknown');
                 const safeBoard = escapeHtml(device.board);
                 const safeVersion = escapeHtml(device.version);
                 const safeSsid = escapeHtml(device.ssid);
@@ -1655,7 +1655,7 @@
                 return `
                     <div class="device-select-item ${statusClass}" onclick="pinDeviceVersion('${d.device_id}', '${selectedPushVersion}')">
                         <div class="device-select-info">
-                            <strong>${statusIcon} ${escapeHtml(deviceLabel)} (${escapeHtml(d.product || 'Unknown Product')})</strong>
+                            <strong>${statusIcon} ${escapeHtml(deviceLabel)} (${escapeHtml(d.product || 'Unknown')})</strong>
                             <span class="muted-text">v${escapeHtml(currentVersion)}</span>
                             ${pinnedBadge}
                         </div>
