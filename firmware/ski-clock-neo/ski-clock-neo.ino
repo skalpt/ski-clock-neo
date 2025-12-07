@@ -6,6 +6,7 @@
 #include "src/core/led_indicator.h"
 #include "src/core/device_config.h"
 #include "src/display/display_core.h"
+#include <MQTT.h>
 #include "src/connectivity/wifi_config.h"
 #include "src/connectivity/mqtt_client.h"
 
