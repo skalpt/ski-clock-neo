@@ -22,10 +22,12 @@
 #elif defined(ESP8266)
   #include <EEPROM.h>
   #define EEPROM_SIZE 16
-  #define EEPROM_MAGIC 0xAC
+  #define EEPROM_MAGIC_LEGACY 0xAB
+  #define EEPROM_MAGIC_V2     0xAC
   #define EEPROM_MAGIC_ADDR 0
   #define EEPROM_TEMP_OFFSET_ADDR 1
   #define EEPROM_ENV_SCOPE_ADDR 5
+  #define EEPROM_LEGACY_ENV_LEN 8
 #endif
 
 // ============================================================================
@@ -91,13 +93,53 @@ void initDeviceConfig() {
     DEBUG_PRINTLN(temperatureOffset);
   }
   
-  // Load environment scope (only if explicitly set)
-  if (preferences.isKey("env_scope")) {
-    uint8_t storedEnv = preferences.getUChar("env_scope", ENV_SCOPE_DEFAULT);
+  // Check for new v2 format first (byte enum under env_scope_v2)
+  if (preferences.isKey("env_scope_v2")) {
+    uint8_t storedEnv = preferences.getUChar("env_scope_v2", ENV_SCOPE_DEFAULT);
     if (storedEnv == ENV_SCOPE_DEV || storedEnv == ENV_SCOPE_PROD) {
       environmentScopeEnum = storedEnv;
-      DEBUG_PRINT("Loaded environment scope from NVS: ");
+      DEBUG_PRINT("Loaded environment scope from NVS (v2): ");
       DEBUG_PRINTLN(envEnumToString(environmentScopeEnum));
+    } else {
+      DEBUG_PRINTLN("Using default environment scope: dev");
+    }
+  }
+  // Migration: Check for legacy env_scope key (string or interim byte format)
+  else if (preferences.isKey("env_scope")) {
+    bool migrated = false;
+    
+    // First try reading as string (original legacy format)
+    String storedEnvStr = preferences.getString("env_scope", "");
+    if (storedEnvStr == "dev" || storedEnvStr == "prod") {
+      // Legacy string format detected
+      uint8_t newEnvEnum = envStringToEnum(storedEnvStr.c_str());
+      environmentScopeEnum = newEnvEnum;
+      migrated = true;
+      DEBUG_PRINT("Migrating legacy env_scope string '");
+      DEBUG_PRINT(storedEnvStr);
+      DEBUG_PRINT("' to enum ");
+      DEBUG_PRINTLN(newEnvEnum);
+    } else {
+      // Not a valid string, try reading as byte (interim build format)
+      uint8_t storedEnv = preferences.getUChar("env_scope", ENV_SCOPE_DEFAULT);
+      if (storedEnv == ENV_SCOPE_DEV || storedEnv == ENV_SCOPE_PROD) {
+        environmentScopeEnum = storedEnv;
+        migrated = true;
+        DEBUG_PRINT("Migrating interim env_scope byte ");
+        DEBUG_PRINT(storedEnv);
+        DEBUG_PRINT(" (");
+        DEBUG_PRINT(envEnumToString(storedEnv));
+        DEBUG_PRINTLN(")");
+      }
+    }
+    
+    // Remove old key and write new format
+    preferences.remove("env_scope");
+    if (migrated) {
+      preferences.putUChar("env_scope_v2", environmentScopeEnum);
+      DEBUG_PRINTLN("Migration complete: env_scope -> env_scope_v2");
+    } else {
+      DEBUG_PRINTLN("No valid env_scope found, using default: dev");
     }
   } else {
     DEBUG_PRINTLN("Using default environment scope: dev");
@@ -107,30 +149,67 @@ void initDeviceConfig() {
   EEPROM.begin(EEPROM_SIZE);
   
   uint8_t magic = EEPROM.read(EEPROM_MAGIC_ADDR);
-  if (magic == EEPROM_MAGIC) {
-    // Load temperature offset
+  
+  if (magic == EEPROM_MAGIC_V2) {
+    // New format: read byte enum directly
     float stored;
     EEPROM.get(EEPROM_TEMP_OFFSET_ADDR, stored);
     if (!isnan(stored) && stored >= -20.0 && stored <= 20.0) {
       temperatureOffset = stored;
-      DEBUG_PRINT("Loaded temperature offset from EEPROM: ");
+      DEBUG_PRINT("Loaded temperature offset from EEPROM (v2): ");
       DEBUG_PRINTLN(temperatureOffset);
     } else {
       temperatureOffset = TEMPERATURE_OFFSET;
-      DEBUG_PRINT("Invalid EEPROM value, using default: ");
-      DEBUG_PRINTLN(temperatureOffset);
     }
     
-    // Load environment scope (single byte enum)
     uint8_t storedEnv = EEPROM.read(EEPROM_ENV_SCOPE_ADDR);
     if (storedEnv == ENV_SCOPE_DEV || storedEnv == ENV_SCOPE_PROD) {
       environmentScopeEnum = storedEnv;
-      DEBUG_PRINT("Loaded environment scope from EEPROM: ");
+      DEBUG_PRINT("Loaded environment scope from EEPROM (v2): ");
       DEBUG_PRINTLN(envEnumToString(environmentScopeEnum));
-    } else {
-      DEBUG_PRINTLN("Using default environment scope: dev");
     }
+    
+  } else if (magic == EEPROM_MAGIC_LEGACY) {
+    // Legacy format: migrate from string to enum
+    DEBUG_PRINTLN("Detected legacy EEPROM format, migrating...");
+    
+    // Load temperature offset (same address, same format)
+    float stored;
+    EEPROM.get(EEPROM_TEMP_OFFSET_ADDR, stored);
+    if (!isnan(stored) && stored >= -20.0 && stored <= 20.0) {
+      temperatureOffset = stored;
+      DEBUG_PRINT("Migrated temperature offset: ");
+      DEBUG_PRINTLN(temperatureOffset);
+    } else {
+      temperatureOffset = TEMPERATURE_OFFSET;
+    }
+    
+    // Read legacy string at address 5 (was 8 bytes)
+    char storedEnvStr[EEPROM_LEGACY_ENV_LEN];
+    for (int i = 0; i < EEPROM_LEGACY_ENV_LEN; i++) {
+      storedEnvStr[i] = EEPROM.read(EEPROM_ENV_SCOPE_ADDR + i);
+    }
+    storedEnvStr[EEPROM_LEGACY_ENV_LEN - 1] = '\0';
+    
+    if (strcmp(storedEnvStr, "dev") == 0) {
+      environmentScopeEnum = ENV_SCOPE_DEV;
+      DEBUG_PRINTLN("Migrated environment: dev");
+    } else if (strcmp(storedEnvStr, "prod") == 0) {
+      environmentScopeEnum = ENV_SCOPE_PROD;
+      DEBUG_PRINTLN("Migrated environment: prod");
+    } else {
+      DEBUG_PRINTLN("Legacy env invalid, using default: dev");
+    }
+    
+    // Write new format with v2 magic
+    EEPROM.write(EEPROM_MAGIC_ADDR, EEPROM_MAGIC_V2);
+    EEPROM.put(EEPROM_TEMP_OFFSET_ADDR, temperatureOffset);
+    EEPROM.write(EEPROM_ENV_SCOPE_ADDR, environmentScopeEnum);
+    EEPROM.commit();
+    DEBUG_PRINTLN("Migration complete: EEPROM v1 -> v2");
+    
   } else {
+    // No valid magic - fresh device
     temperatureOffset = TEMPERATURE_OFFSET;
     DEBUG_PRINTLN("No stored config, using defaults (env: dev)");
   }
@@ -165,7 +244,7 @@ void setTemperatureOffset(float offset) {
   preferences.putFloat("temp_offset", offset);
   DEBUG_PRINTLN("Saved to NVS");
 #elif defined(ESP8266)
-  EEPROM.write(EEPROM_MAGIC_ADDR, EEPROM_MAGIC);
+  EEPROM.write(EEPROM_MAGIC_ADDR, EEPROM_MAGIC_V2);
   EEPROM.put(EEPROM_TEMP_OFFSET_ADDR, offset);
   EEPROM.commit();
   DEBUG_PRINTLN("Saved to EEPROM");
@@ -214,10 +293,10 @@ void setEnvironmentScope(const char* scope) {
   DEBUG_PRINTLN(scope);
   
 #if defined(ESP32)
-  preferences.putUChar("env_scope", newEnvEnum);
-  DEBUG_PRINTLN("Saved to NVS (1 byte)");
+  preferences.putUChar("env_scope_v2", newEnvEnum);
+  DEBUG_PRINTLN("Saved to NVS (env_scope_v2, 1 byte)");
 #elif defined(ESP8266)
-  EEPROM.write(EEPROM_MAGIC_ADDR, EEPROM_MAGIC);
+  EEPROM.write(EEPROM_MAGIC_ADDR, EEPROM_MAGIC_V2);
   EEPROM.write(EEPROM_ENV_SCOPE_ADDR, newEnvEnum);
   EEPROM.commit();
   DEBUG_PRINTLN("Saved to EEPROM (1 byte)");
