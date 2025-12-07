@@ -117,10 +117,8 @@ def on_connect(client, userdata, flags, rc, properties=None):
         client.unsubscribe(f"{MQTT_TOPIC_PREFIX}/{other_env}/ota/complete/+")
         client.unsubscribe(f"{MQTT_TOPIC_PREFIX}/{other_env}/display/snapshot/#")
         client.unsubscribe(f"{MQTT_TOPIC_PREFIX}/{other_env}/event/#")
-        # Also unsubscribe from legacy wildcard patterns that may have been used
-        client.unsubscribe(f"{MQTT_TOPIC_PREFIX}/#")
-        client.unsubscribe(f"{MQTT_TOPIC_PREFIX}/+/heartbeat/+")
-        client.unsubscribe(f"{MQTT_TOPIC_PREFIX}/+/info/+")
+        # NOTE: Do NOT unsubscribe from broad wildcards like norrtek-iot/#
+        # Those patterns match the current environment too, wiping out valid subscriptions
         print(f"✓ Cleared stale {other_env} subscriptions")
         
         # Subscribe ONLY to this dashboard's environment topics
