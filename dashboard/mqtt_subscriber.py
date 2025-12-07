@@ -142,20 +142,23 @@ def on_connect(client, userdata, flags, rc, properties=None):
         
         # Subscribe ONLY to this dashboard's environment topics
         # Dev dashboard sees only dev devices, prod dashboard sees only prod devices
-        client.subscribe(f"{MQTT_TOPIC_PREFIX}/{env}/heartbeat/+")
-        print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{env}/heartbeat/+")
-        client.subscribe(f"{MQTT_TOPIC_PREFIX}/{env}/info/+")
-        print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{env}/info/+")
-        client.subscribe(f"{MQTT_TOPIC_PREFIX}/{env}/ota/start/+")
-        print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{env}/ota/start/+")
-        client.subscribe(f"{MQTT_TOPIC_PREFIX}/{env}/ota/progress/+")
-        print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{env}/ota/progress/+")
-        client.subscribe(f"{MQTT_TOPIC_PREFIX}/{env}/ota/complete/+")
-        print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{env}/ota/complete/+")
-        client.subscribe(f"{MQTT_TOPIC_PREFIX}/{env}/display/snapshot/#")
-        print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{env}/display/snapshot/#")
-        client.subscribe(f"{MQTT_TOPIC_PREFIX}/{env}/event/#")
-        print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{env}/event/#")
+        # QoS levels:
+        #   - Heartbeats: QoS 0 (fire-and-forget, only latest matters)
+        #   - Everything else: QoS 1 (guaranteed delivery, queued when offline)
+        client.subscribe(f"{MQTT_TOPIC_PREFIX}/{env}/heartbeat/+", qos=0)
+        print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{env}/heartbeat/+ (QoS 0)")
+        client.subscribe(f"{MQTT_TOPIC_PREFIX}/{env}/info/+", qos=1)
+        print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{env}/info/+ (QoS 1)")
+        client.subscribe(f"{MQTT_TOPIC_PREFIX}/{env}/ota/start/+", qos=1)
+        print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{env}/ota/start/+ (QoS 1)")
+        client.subscribe(f"{MQTT_TOPIC_PREFIX}/{env}/ota/progress/+", qos=1)
+        print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{env}/ota/progress/+ (QoS 1)")
+        client.subscribe(f"{MQTT_TOPIC_PREFIX}/{env}/ota/complete/+", qos=1)
+        print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{env}/ota/complete/+ (QoS 1)")
+        client.subscribe(f"{MQTT_TOPIC_PREFIX}/{env}/display/snapshot/#", qos=1)
+        print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{env}/display/snapshot/# (QoS 1)")
+        client.subscribe(f"{MQTT_TOPIC_PREFIX}/{env}/event/#", qos=1)
+        print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{env}/event/# (QoS 1)")
     else:
         print(f"✗ Failed to connect to MQTT broker, return code {rc}")
 
