@@ -1,0 +1,49 @@
+2025-12-07T19:10:04.1130453Z ##[group]Run arduino-cli compile --fqbn esp32:esp32:esp32 \
+2025-12-07T19:10:04.1131307Z [36;1marduino-cli compile --fqbn esp32:esp32:esp32 \[0m
+2025-12-07T19:10:04.1131840Z [36;1m  --export-binaries \[0m
+2025-12-07T19:10:04.1132348Z [36;1m  --build-property "build.partitions=min_spiffs" \[0m
+2025-12-07T19:10:04.1134672Z [36;1m  --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"***\" -DDOWNLOAD_API_KEY=\"***\" -DFIRMWARE_VERSION=\"2025.12.7.124\" -DMQTT_HOST=\"***\" -DMQTT_USERNAME=\"***\" -DMQTT_PASSWORD=\"***\" -DBOARD_ESP32" \[0m
+2025-12-07T19:10:04.1135905Z [36;1m  --output-dir build/esp32 \[0m
+2025-12-07T19:10:04.1136362Z [36;1m  firmware/***[0m
+2025-12-07T19:10:04.1136941Z [36;1mcp build/esp32/***.ino.bin build/***-esp32.bin[0m
+2025-12-07T19:10:04.1138039Z [36;1mcp build/esp32/***.ino.bootloader.bin build/***-esp32.bootloader.bin || echo "Warning: Bootloader not found for ESP32"[0m
+2025-12-07T19:10:04.1139434Z [36;1mcp build/esp32/***.ino.partitions.bin build/***-esp32.partitions.bin || echo "Warning: Partitions not found for ESP32"[0m
+2025-12-07T19:10:04.1168426Z shell: /usr/bin/bash -e {0}
+2025-12-07T19:10:04.1168818Z ##[endgroup]
+2025-12-07T19:10:43.9446605Z In file included from /home/runner/work/***/***/firmware/***/***.ino:9:
+2025-12-07T19:10:43.9447837Z /home/runner/work/***/***/firmware/***/src/connectivity/mqtt_client.h:51:8: error: 'MQTTClient' does not name a type; did you mean 'WiFiClient'?
+2025-12-07T19:10:43.9448609Z  extern MQTTClient mqttClient;
+2025-12-07T19:10:43.9448957Z         ^~~~~~~~~~
+2025-12-07T19:10:43.9449269Z         WiFiClient
+2025-12-07T19:10:43.9449447Z 
+2025-12-07T19:10:44.0798129Z Error during build: exit status 1
+2025-12-07T19:10:44.0798513Z 
+2025-12-07T19:10:44.0800475Z [92mUsed library[0m      [92mVersion[0m [90mPath[0m                                                                                   
+2025-12-07T19:10:44.0801734Z [93mTicker[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Ticker[0m          
+2025-12-07T19:10:44.0802958Z [93mWiFi[0m              2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFi[0m            
+2025-12-07T19:10:44.0804190Z [93mWiFiClientSecure[0m  2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFiClientSecure[0m
+2025-12-07T19:10:44.0805445Z [93mMQTT[0m              2.5.2   [90m/home/runner/Arduino/libraries/MQTT[0m                                                    
+2025-12-07T19:10:44.0806937Z [93mWebServer[0m         2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WebServer[0m       
+2025-12-07T19:10:44.0807938Z [93mAutoConnect[0m       1.4.2   [90m/home/runner/Arduino/libraries/AutoConnect[0m                                             
+2025-12-07T19:10:44.0808696Z [93mDNSServer[0m         2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/DNSServer[0m       
+2025-12-07T19:10:44.0809440Z [93mEEPROM[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/EEPROM[0m          
+2025-12-07T19:10:44.0810197Z [93mPageBuilder[0m       1.5.6   [90m/home/runner/Arduino/libraries/PageBuilder[0m                                             
+2025-12-07T19:10:44.0810927Z [93mFS[0m                2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/FS[0m              
+2025-12-07T19:10:44.0811845Z [93mSPIFFS[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPIFFS[0m          
+2025-12-07T19:10:44.0812571Z [93mSD[0m                2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SD[0m              
+2025-12-07T19:10:44.0813274Z [93mSPI[0m               2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPI[0m             
+2025-12-07T19:10:44.0814018Z [93mPreferences[0m       2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Preferences[0m     
+2025-12-07T19:10:44.0814997Z [93mHTTPClient[0m        2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPClient[0m      
+2025-12-07T19:10:44.0815749Z [93mUpdate[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Update[0m          
+2025-12-07T19:10:44.0816474Z [93mOneWire[0m           2.3.8   [90m/home/runner/Arduino/libraries/OneWire[0m                                                 
+2025-12-07T19:10:44.0817254Z [93mDallasTemperature[0m 4.0.5   [90m/home/runner/Arduino/libraries/DallasTemperature[0m                                       
+2025-12-07T19:10:44.0818027Z [93mWire[0m              2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Wire[0m            
+2025-12-07T19:10:44.0818731Z [93mRTClib[0m            2.1.4   [90m/home/runner/Arduino/libraries/RTClib[0m                                                  
+2025-12-07T19:10:44.0819465Z [93mAdafruit BusIO[0m    1.17.4  [90m/home/runner/Arduino/libraries/Adafruit_BusIO[0m                                          
+2025-12-07T19:10:44.0820200Z [93mFastLED[0m           3.10.3  [90m/home/runner/Arduino/libraries/FastLED[0m                                                 
+2025-12-07T19:10:44.0820937Z [93mArduinoJson[0m       7.4.2   [90m/home/runner/Arduino/libraries/ArduinoJson[0m                                             
+2025-12-07T19:10:44.0821971Z [93mHTTPUpdate[0m        2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPUpdate[0m      
+2025-12-07T19:10:44.0822559Z 
+2025-12-07T19:10:44.0823083Z [92mUsed platform[0m [92mVersion[0m [90mPath[0m                                                        
+2025-12-07T19:10:44.0824080Z [93mesp32:esp32[0m   2.0.14  [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14[0m
+2025-12-07T19:10:44.0836201Z ##[error]Process completed with exit code 1.
