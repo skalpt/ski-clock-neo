@@ -98,8 +98,8 @@ jobs:
           EOF
           echo "Uploading configuration to dev dashboard via production proxy..."
           # Call production's proxy endpoint which forwards to the registered dev environment
-          curl --fail --show-error -X POST "${{ secrets.PROD_UPDATE_SERVER_URL }}/api/dev/config" \
-            -H "X-API-Key: ${{ secrets.PROD_UPLOAD_API_KEY }}" \
+          curl --fail --show-error -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/dev/config" \
+            -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
             -H "Content-Type: application/json" \
             -d @config.json \
             -w "\n"
@@ -209,8 +209,8 @@ jobs:
               # ESP32 family: upload firmware + bootloader + partitions
               echo "  → Full flash mode: uploading firmware, bootloader, and partitions"
               curl --fail --show-error \
-                -X POST "${{ secrets.PROD_UPDATE_SERVER_URL }}/api/dev/upload" \
-                -H "X-API-Key: ${{ secrets.PROD_UPLOAD_API_KEY }}" \
+                -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/dev/upload" \
+                -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
                 -F "file=@$file" \
                 -F "bootloader=@$BOOTLOADER" \
                 -F "partitions=@$PARTITIONS" \
@@ -220,8 +220,8 @@ jobs:
               # ESP8266: upload firmware only
               echo "  → Quick flash mode: uploading firmware only"
               curl --fail --show-error \
-                -X POST "${{ secrets.PROD_UPDATE_SERVER_URL }}/api/dev/upload" \
-                -H "X-API-Key: ${{ secrets.PROD_UPLOAD_API_KEY }}" \
+                -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/dev/upload" \
+                -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
                 -F "file=@$file" \
                 $COMMON_FIELDS \
                 -w "\n"

@@ -192,17 +192,17 @@ jobs:
         run: |
           cat > config.json << EOF
           {
-            "UPDATE_SERVER_URL": "${{ secrets.PROD_UPDATE_SERVER_URL }}",
-            "UPLOAD_API_KEY": "${{ secrets.PROD_UPLOAD_API_KEY }}",
-            "DOWNLOAD_API_KEY": "${{ secrets.PROD_DOWNLOAD_API_KEY }}",
+            "UPDATE_SERVER_URL": "${{ secrets.UPDATE_SERVER_URL }}",
+            "UPLOAD_API_KEY": "${{ secrets.UPLOAD_API_KEY }}",
+            "DOWNLOAD_API_KEY": "${{ secrets.DOWNLOAD_API_KEY }}",
             "MQTT_HOST": "${{ secrets.MQTT_HOST }}",
             "MQTT_USERNAME": "${{ secrets.MQTT_USERNAME }}",
             "MQTT_PASSWORD": "${{ secrets.MQTT_PASSWORD }}"
           }
           EOF
           echo "🚀 Uploading configuration to PRODUCTION..."
-          curl --fail --show-error -X POST "${{ secrets.PROD_UPDATE_SERVER_URL }}/api/config" \
-            -H "X-API-Key: ${{ secrets.PROD_UPLOAD_API_KEY }}" \
+          curl --fail --show-error -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/config" \
+            -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
             -H "Content-Type: application/json" \
             -d @config.json \
             -w "\n"
@@ -214,7 +214,7 @@ jobs:
           arduino-cli compile --fqbn esp32:esp32:esp32 \
             --export-binaries \
             --build-property "build.partitions=min_spiffs" \
-            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.PROD_UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.PROD_DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ needs.fetch-version.outputs.version }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_ESP32 -DPENDING_ENV_SCOPE=2 -DRELEASE_BUILD" \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ needs.fetch-version.outputs.version }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_ESP32 -DPENDING_ENV_SCOPE=2 -DRELEASE_BUILD" \
             --output-dir build/esp32 \
             firmware/ski-clock-neo
           cp build/esp32/ski-clock-neo.ino.bin build/ski-clock-neo-esp32.bin
@@ -226,7 +226,7 @@ jobs:
           arduino-cli compile --fqbn esp32:esp32:esp32c3:CDCOnBoot=cdc \
             --export-binaries \
             --build-property "build.partitions=min_spiffs" \
-            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.PROD_UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.PROD_DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ needs.fetch-version.outputs.version }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_ESP32C3 -DPENDING_ENV_SCOPE=2 -DRELEASE_BUILD" \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ needs.fetch-version.outputs.version }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_ESP32C3 -DPENDING_ENV_SCOPE=2 -DRELEASE_BUILD" \
             --output-dir build/esp32c3 \
             firmware/ski-clock-neo
           cp build/esp32c3/ski-clock-neo.ino.bin build/ski-clock-neo-esp32c3.bin
@@ -238,7 +238,7 @@ jobs:
           arduino-cli compile --fqbn esp32:esp32:esp32s3:CDCOnBoot=cdc \
             --export-binaries \
             --build-property "build.partitions=min_spiffs" \
-            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.PROD_UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.PROD_DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ needs.fetch-version.outputs.version }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_ESP32S3 -DPENDING_ENV_SCOPE=2 -DRELEASE_BUILD" \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ needs.fetch-version.outputs.version }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_ESP32S3 -DPENDING_ENV_SCOPE=2 -DRELEASE_BUILD" \
             --output-dir build/esp32s3 \
             firmware/ski-clock-neo
           cp build/esp32s3/ski-clock-neo.ino.bin build/ski-clock-neo-esp32s3.bin
@@ -248,7 +248,7 @@ jobs:
       - name: Build for ESP-12F
         run: |
           arduino-cli compile --fqbn esp8266:esp8266:generic:eesz=4M1M \
-            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.PROD_UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.PROD_DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ needs.fetch-version.outputs.version }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_ESP12F -DPENDING_ENV_SCOPE=2 -DRELEASE_BUILD" \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ needs.fetch-version.outputs.version }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_ESP12F -DPENDING_ENV_SCOPE=2 -DRELEASE_BUILD" \
             --output-dir build/esp12f \
             firmware/ski-clock-neo
           cp build/esp12f/ski-clock-neo.ino.bin build/ski-clock-neo-esp12f.bin
@@ -256,7 +256,7 @@ jobs:
       - name: Build for ESP-01 (1M)
         run: |
           arduino-cli compile --fqbn esp8266:esp8266:generic:eesz=1M \
-            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.PROD_UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.PROD_DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ needs.fetch-version.outputs.version }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_ESP01 -DPENDING_ENV_SCOPE=2 -DRELEASE_BUILD" \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ needs.fetch-version.outputs.version }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_ESP01 -DPENDING_ENV_SCOPE=2 -DRELEASE_BUILD" \
             --output-dir build/esp01 \
             firmware/ski-clock-neo
           cp build/esp01/ski-clock-neo.ino.bin build/ski-clock-neo-esp01.bin
@@ -264,7 +264,7 @@ jobs:
       - name: Build for Wemos D1 Mini
         run: |
           arduino-cli compile --fqbn esp8266:esp8266:d1_mini:eesz=4M1M \
-            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.PROD_UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.PROD_DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ needs.fetch-version.outputs.version }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_WEMOS_D1MINI -DPENDING_ENV_SCOPE=2 -DRELEASE_BUILD" \
+            --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"${{ secrets.UPDATE_SERVER_URL }}\" -DDOWNLOAD_API_KEY=\"${{ secrets.DOWNLOAD_API_KEY }}\" -DFIRMWARE_VERSION=\"${{ needs.fetch-version.outputs.version }}\" -DMQTT_HOST=\"${{ secrets.MQTT_HOST }}\" -DMQTT_USERNAME=\"${{ secrets.MQTT_USERNAME }}\" -DMQTT_PASSWORD=\"${{ secrets.MQTT_PASSWORD }}\" -DBOARD_WEMOS_D1MINI -DPENDING_ENV_SCOPE=2 -DRELEASE_BUILD" \
             --output-dir build/d1mini \
             firmware/ski-clock-neo
           cp build/d1mini/ski-clock-neo.ino.bin build/ski-clock-neo-d1mini.bin
@@ -297,8 +297,8 @@ jobs:
             if [ -f "$BOOTLOADER" ] && [ -f "$PARTITIONS" ]; then
               echo "  → Full flash mode: uploading firmware, bootloader, and partitions"
               curl --fail --show-error \
-                -X POST "${{ secrets.PROD_UPDATE_SERVER_URL }}/api/upload" \
-                -H "X-API-Key: ${{ secrets.PROD_UPLOAD_API_KEY }}" \
+                -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/upload" \
+                -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
                 -F "file=@$file" \
                 -F "bootloader=@$BOOTLOADER" \
                 -F "partitions=@$PARTITIONS" \
@@ -307,8 +307,8 @@ jobs:
             else
               echo "  → Quick flash mode: uploading firmware only"
               curl --fail --show-error \
-                -X POST "${{ secrets.PROD_UPDATE_SERVER_URL }}/api/upload" \
-                -H "X-API-Key: ${{ secrets.PROD_UPLOAD_API_KEY }}" \
+                -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/upload" \
+                -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
                 -F "file=@$file" \
                 $COMMON_FIELDS \
                 -w "\n"
