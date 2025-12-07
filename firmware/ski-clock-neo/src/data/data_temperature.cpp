@@ -197,14 +197,23 @@ bool getTemperature(float* temperature) {
 // PUBLIC API
 // ============================================================================
 
-// Format temperature as string (e.g., "23.5*C" or "-5.2*C")
+// Format temperature as string (e.g., "23,5*C" or "-5,2*C")
 bool formatTemperature(char* output, size_t outputSize) {
   if (!initialized || !lastReadValid || output == nullptr || outputSize < 8) {
     return false;
   }
   
-  // Format with one decimal place (e.g., "25.7*C", "-2.7*C", "-28.9*C")
+  // Format with one decimal place using comma as separator (e.g., "25,7*C", "-2,7*C", "-28,9*C")
+  // First format with period, then replace with comma
   snprintf(output, outputSize, "%.1f*C", lastTemperature);
+  
+  // Replace the decimal point with a comma
+  for (int i = 0; output[i] != '\0'; i++) {
+    if (output[i] == '.') {
+      output[i] = ',';
+      break;
+    }
+  }
   return true;
 }
 

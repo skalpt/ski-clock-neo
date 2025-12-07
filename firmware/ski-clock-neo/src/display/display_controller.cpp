@@ -228,14 +228,14 @@ bool updateRow0Content() {
   if (currentMode == MODE_NORMAL) {
     // Normal mode: alternate time/date
     if (!isTimeSynced()) {
-      return setTextNoRender(0, "~~.~~");
+      return setTextNoRender(0, "~~:~~");
     }
     
     if (showingTime) {
       if (formatTime(buffer, sizeof(buffer))) {
         return setTextNoRender(0, buffer);
       } else {
-        return setTextNoRender(0, "~~.~~");
+        return setTextNoRender(0, "~~:~~");
       }
     } else {
       if (formatDate(buffer, sizeof(buffer))) {
@@ -245,7 +245,7 @@ bool updateRow0Content() {
   } else if (currentMode == MODE_COUNTDOWN || currentMode == MODE_TIMER) {
     // Timer modes: cycle through time/date/temp on top row
     if (!isTimeSynced()) {
-      return setTextNoRender(0, "~~.~~");
+      return setTextNoRender(0, "~~:~~");
     }
     
     switch (timerTopRowState) {
@@ -253,7 +253,7 @@ bool updateRow0Content() {
         if (formatTime(buffer, sizeof(buffer))) {
           return setTextNoRender(0, buffer);
         } else {
-          return setTextNoRender(0, "~~.~~");
+          return setTextNoRender(0, "~~:~~");
         }
         break;
       case 1: // Date
@@ -265,14 +265,14 @@ bool updateRow0Content() {
         if (formatTemperature(buffer, sizeof(buffer))) {
           return setTextNoRender(0, buffer);
         } else {
-          return setTextNoRender(0, "~~.~*C");
+          return setTextNoRender(0, "~~,~*C");
         }
         break;
     }
   } else if (currentMode == MODE_FLASHING_RESULT || currentMode == MODE_DISPLAY_RESULT) {
     // Result modes: cycle through time/date/temp on top row (same as timer modes)
     if (!isTimeSynced()) {
-      return setTextNoRender(0, "~~.~~");
+      return setTextNoRender(0, "~~:~~");
     }
     
     switch (timerTopRowState) {
@@ -280,7 +280,7 @@ bool updateRow0Content() {
         if (formatTime(buffer, sizeof(buffer))) {
           return setTextNoRender(0, buffer);
         } else {
-          return setTextNoRender(0, "~~.~~");
+          return setTextNoRender(0, "~~:~~");
         }
         break;
       case 1: // Date
@@ -292,7 +292,7 @@ bool updateRow0Content() {
         if (formatTemperature(buffer, sizeof(buffer))) {
           return setTextNoRender(0, buffer);
         } else {
-          return setTextNoRender(0, "~~.~*C");
+          return setTextNoRender(0, "~~,~*C");
         }
         break;
     }
@@ -310,7 +310,7 @@ bool updateRow1Content() {
     if (formatTemperature(buffer, sizeof(buffer))) {
       return setTextNoRender(1, buffer);
     } else {
-      return setTextNoRender(1, "~~.~*C");
+      return setTextNoRender(1, "~~,~*C");
     }
   } else if (currentMode == MODE_COUNTDOWN) {
     // Countdown mode: show countdown number

@@ -260,6 +260,9 @@ int charToGlyph(char c) {
   if (c == ':') {
     return GLYPH_COLON;
   }
+  if (c == ',') {
+    return GLYPH_COMMA;
+  }
   return -1;
 }
 

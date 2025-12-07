@@ -308,7 +308,7 @@ bool isRtcAvailable() {
   return rtcAvailable;
 }
 
-// Format time as "hh.mm"
+// Format time as "hh:mm"
 bool formatTime(char* output, size_t outputSize) {
   if (!isTimeSynced() || outputSize < 6) {
     return false;
@@ -325,8 +325,8 @@ bool formatTime(char* output, size_t outputSize) {
     localtime_r(&now, &timeinfo);
   #endif
   
-  // Format as "hh.mm" (with leading zeros)
-  snprintf(output, outputSize, "%02d.%02d", timeinfo.tm_hour, timeinfo.tm_min);
+  // Format as "hh:mm" (with leading zeros)
+  snprintf(output, outputSize, "%02d:%02d", timeinfo.tm_hour, timeinfo.tm_min);
   
   // Periodic RTC sync from NTP (every hour)
   if (rtcAvailable && ntpSynced && (millis() - lastRtcSync > RTC_SYNC_INTERVAL)) {

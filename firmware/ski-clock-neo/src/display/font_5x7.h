@@ -20,7 +20,8 @@ enum GlyphIndex {
   GLYPH_DOT,
   GLYPH_DEGREE,
   GLYPH_C,
-  GLYPH_COLON
+  GLYPH_COLON,
+  GLYPH_COMMA
 };
 
 // -------------------- Font data --------------------
@@ -187,6 +188,16 @@ const uint8_t FONT_5x7[][7] PROGMEM = {
     B1,
     B1,
     B0
+  },
+  // ',' (comma - positioned 1 pixel lower than baseline)
+  {
+    B0,
+    B0,
+    B0,
+    B0,
+    B0,
+    B1,
+    B1
   }
 };
 
@@ -207,7 +218,8 @@ const uint8_t FONT_WIDTH_TABLE[] = {
   1, // '.'
   3, // '°'
   5, // 'C'
-  1  // ':'
+  1, // ':'
+  1  // ','
 };
 
 // Font dimensions
