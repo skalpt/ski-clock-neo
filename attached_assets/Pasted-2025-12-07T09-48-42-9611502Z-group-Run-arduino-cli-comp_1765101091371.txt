@@ -1,0 +1,130 @@
+2025-12-07T09:48:42.9611502Z ##[group]Run arduino-cli compile --fqbn esp32:esp32:esp32c3:CDCOnBoot=cdc \
+2025-12-07T09:48:42.9612259Z [36;1marduino-cli compile --fqbn esp32:esp32:esp32c3:CDCOnBoot=cdc \[0m
+2025-12-07T09:48:42.9612632Z [36;1m  --export-binaries \[0m
+2025-12-07T09:48:42.9612939Z [36;1m  --build-property "build.partitions=min_spiffs" \[0m
+2025-12-07T09:48:42.9614411Z [36;1m  --build-property "compiler.cpp.extra_flags=-DUPDATE_SERVER_URL=\"***\" -DDOWNLOAD_API_KEY=\"***\" -DFIRMWARE_VERSION=\"2025.12.7.118\" -DMQTT_HOST=\"***\" -DMQTT_USERNAME=\"***\" -DMQTT_PASSWORD=\"***\" -DBOARD_ESP32C3" \[0m
+2025-12-07T09:48:42.9615170Z [36;1m  --output-dir build/esp32c3 \[0m
+2025-12-07T09:48:42.9615451Z [36;1m  firmware/***[0m
+2025-12-07T09:48:42.9615809Z [36;1mcp build/esp32c3/***.ino.bin build/***-esp32c3.bin[0m
+2025-12-07T09:48:42.9616479Z [36;1mcp build/esp32c3/***.ino.bootloader.bin build/***-esp32c3.bootloader.bin || echo "Warning: Bootloader not found for ESP32-C3"[0m
+2025-12-07T09:48:42.9617355Z [36;1mcp build/esp32c3/***.ino.partitions.bin build/***-esp32c3.partitions.bin || echo "Warning: Partitions not found for ESP32-C3"[0m
+2025-12-07T09:48:42.9649780Z shell: /usr/bin/bash -e {0}
+2025-12-07T09:48:42.9650026Z ##[endgroup]
+2025-12-07T09:49:38.5849087Z /home/runner/work/***/***/firmware/***/src/data/data_button.cpp: In function 'void buttonChangeISR()':
+2025-12-07T09:49:38.5888951Z /home/runner/work/***/***/firmware/***/src/data/data_button.cpp:45:40: error: no match for 'operator>>' (operand types are 'volatile gpio_dev_s::<unnamed union>' and 'uint8_t' {aka 'unsigned char'})
+2025-12-07T09:49:38.5890382Z    #define FAST_PIN_READ(pin) ((GPIO.in >> (pin)) & 1)
+2025-12-07T09:49:38.5890892Z                                 ~~~~~~~~^~~~~~~~
+2025-12-07T09:49:38.5899282Z /home/runner/work/***/***/firmware/***/src/data/data_button.cpp:78:20: note: in expansion of macro 'FAST_PIN_READ'
+2025-12-07T09:49:38.5900145Z    bool pinIsLow = !FAST_PIN_READ(buttonPin);
+2025-12-07T09:49:38.5900594Z                     ^~~~~~~~~~~~~
+2025-12-07T09:49:38.5901664Z In file included from /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/soc/esp32c3/include/soc/dport_access.h:19,
+2025-12-07T09:49:38.5903454Z                  from /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/hal/esp32c3/include/hal/cpu_ll.h:11,
+2025-12-07T09:49:38.5904924Z                  from /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/hal/include/hal/cpu_hal.h:16,
+2025-12-07T09:49:38.5906368Z                  from /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/esp_hw_support/include/esp_cpu.h:14,
+2025-12-07T09:49:38.5908128Z                  from /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/esp_hw_support/include/soc/cpu.h:14,
+2025-12-07T09:49:38.5909637Z                  from /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/esp_hw_support/include/soc/spinlock.h:11,
+2025-12-07T09:49:38.5911290Z                  from /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/freertos/port/riscv/include/freertos/portmacro.h:38,
+2025-12-07T09:49:38.5953405Z                  from /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/freertos/include/freertos/portable.h:51,
+2025-12-07T09:49:38.5955035Z                  from /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/freertos/include/freertos/FreeRTOS.h:63,
+2025-12-07T09:49:38.5956353Z                  from /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/cores/esp32/Arduino.h:33,
+2025-12-07T09:49:38.5957529Z                  from /home/runner/work/***/***/firmware/***/src/data/data_button.h:4,
+2025-12-07T09:49:38.5958541Z                  from /home/runner/work/***/***/firmware/***/src/data/data_button.cpp:15:
+2025-12-07T09:49:38.5960171Z /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/esp_common/include/esp_attr.h:128:34: note: candidate: 'constexpr touch_pad_intr_mask_t operator>>(touch_pad_intr_mask_t, int)'
+2025-12-07T09:49:38.5963434Z  FORCE_INLINE_ATTR constexpr TYPE operator>> (TYPE a, int b) { return (TYPE)((INT_TYPE)a >> b); } \
+2025-12-07T09:49:38.5964198Z                                   ^~~~~~~~
+2025-12-07T09:49:38.5965381Z /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/esp_common/include/esp_attr.h:136:29: note: in expansion of macro 'FLAG_ATTR_IMPL'
+2025-12-07T09:49:38.5966708Z  #define FLAG_ATTR_U32(TYPE) FLAG_ATTR_IMPL(TYPE, uint32_t)
+2025-12-07T09:49:38.5967228Z                              ^~~~~~~~~~~~~~
+2025-12-07T09:49:38.5968383Z /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/esp_common/include/esp_attr.h:137:19: note: in expansion of macro 'FLAG_ATTR_U32'
+2025-12-07T09:49:38.5969558Z  #define FLAG_ATTR FLAG_ATTR_U32
+2025-12-07T09:49:38.5969943Z                    ^~~~~~~~~~~~~
+2025-12-07T09:49:38.5971118Z /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/hal/include/hal/touch_sensor_types.h:168:1: note: in expansion of macro 'FLAG_ATTR'
+2025-12-07T09:49:38.5972524Z  FLAG_ATTR(touch_pad_intr_mask_t)
+2025-12-07T09:49:38.5972924Z  ^~~~~~~~~
+2025-12-07T09:49:38.5974364Z /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/esp_common/include/esp_attr.h:128:34: note:   no known conversion for argument 1 from 'volatile gpio_dev_s::<unnamed union>' to 'touch_pad_intr_mask_t'
+2025-12-07T09:49:38.5976221Z  FORCE_INLINE_ATTR constexpr TYPE operator>> (TYPE a, int b) { return (TYPE)((INT_TYPE)a >> b); } \
+2025-12-07T09:49:38.5976942Z                                   ^~~~~~~~
+2025-12-07T09:49:38.5978105Z /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/esp_common/include/esp_attr.h:136:29: note: in expansion of macro 'FLAG_ATTR_IMPL'
+2025-12-07T09:49:38.5979386Z  #define FLAG_ATTR_U32(TYPE) FLAG_ATTR_IMPL(TYPE, uint32_t)
+2025-12-07T09:49:38.5979900Z                              ^~~~~~~~~~~~~~
+2025-12-07T09:49:38.5981043Z /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/esp_common/include/esp_attr.h:137:19: note: in expansion of macro 'FLAG_ATTR_U32'
+2025-12-07T09:49:38.5982390Z  #define FLAG_ATTR FLAG_ATTR_U32
+2025-12-07T09:49:38.5982785Z                    ^~~~~~~~~~~~~
+2025-12-07T09:49:38.5983949Z /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/hal/include/hal/touch_sensor_types.h:168:1: note: in expansion of macro 'FLAG_ATTR'
+2025-12-07T09:49:38.5985412Z  FLAG_ATTR(touch_pad_intr_mask_t)
+2025-12-07T09:49:38.5985805Z  ^~~~~~~~~
+2025-12-07T09:49:38.5986709Z /home/runner/work/***/***/firmware/***/src/data/data_button.cpp: In function 'bool isButtonPressed()':
+2025-12-07T09:49:38.5988643Z /home/runner/work/***/***/firmware/***/src/data/data_button.cpp:45:40: error: no match for 'operator>>' (operand types are 'volatile gpio_dev_s::<unnamed union>' and 'uint8_t' {aka 'unsigned char'})
+2025-12-07T09:49:38.5989904Z    #define FAST_PIN_READ(pin) ((GPIO.in >> (pin)) & 1)
+2025-12-07T09:49:38.5990395Z                                 ~~~~~~~~^~~~~~~~
+2025-12-07T09:49:38.5991429Z /home/runner/work/***/***/firmware/***/src/data/data_button.cpp:133:11: note: in expansion of macro 'FAST_PIN_READ'
+2025-12-07T09:49:38.5995105Z    return !FAST_PIN_READ(buttonPin);  // Active LOW, inverted
+2025-12-07T09:49:38.5995635Z            ^~~~~~~~~~~~~
+2025-12-07T09:49:38.5996666Z In file included from /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/soc/esp32c3/include/soc/dport_access.h:19,
+2025-12-07T09:49:38.5998281Z                  from /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/hal/esp32c3/include/hal/cpu_ll.h:11,
+2025-12-07T09:49:38.5999756Z                  from /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/hal/include/hal/cpu_hal.h:16,
+2025-12-07T09:49:38.6001441Z                  from /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/esp_hw_support/include/esp_cpu.h:14,
+2025-12-07T09:49:38.6003119Z                  from /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/esp_hw_support/include/soc/cpu.h:14,
+2025-12-07T09:49:38.6004618Z                  from /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/esp_hw_support/include/soc/spinlock.h:11,
+2025-12-07T09:49:38.6006248Z                  from /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/freertos/port/riscv/include/freertos/portmacro.h:38,
+2025-12-07T09:49:38.6007872Z                  from /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/freertos/include/freertos/portable.h:51,
+2025-12-07T09:49:38.6009412Z                  from /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/freertos/include/freertos/FreeRTOS.h:63,
+2025-12-07T09:49:38.6010690Z                  from /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/cores/esp32/Arduino.h:33,
+2025-12-07T09:49:38.6011812Z                  from /home/runner/work/***/***/firmware/***/src/data/data_button.h:4,
+2025-12-07T09:49:38.6012944Z                  from /home/runner/work/***/***/firmware/***/src/data/data_button.cpp:15:
+2025-12-07T09:49:38.6014817Z /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/esp_common/include/esp_attr.h:128:34: note: candidate: 'constexpr touch_pad_intr_mask_t operator>>(touch_pad_intr_mask_t, int)'
+2025-12-07T09:49:38.6016729Z  FORCE_INLINE_ATTR constexpr TYPE operator>> (TYPE a, int b) { return (TYPE)((INT_TYPE)a >> b); } \
+2025-12-07T09:49:38.6017451Z                                   ^~~~~~~~
+2025-12-07T09:49:38.6018731Z /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/esp_common/include/esp_attr.h:136:29: note: in expansion of macro 'FLAG_ATTR_IMPL'
+2025-12-07T09:49:38.6020069Z  #define FLAG_ATTR_U32(TYPE) FLAG_ATTR_IMPL(TYPE, uint32_t)
+2025-12-07T09:49:38.6020583Z                              ^~~~~~~~~~~~~~
+2025-12-07T09:49:38.6021740Z /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/esp_common/include/esp_attr.h:137:19: note: in expansion of macro 'FLAG_ATTR_U32'
+2025-12-07T09:49:38.6023093Z  #define FLAG_ATTR FLAG_ATTR_U32
+2025-12-07T09:49:38.6023493Z                    ^~~~~~~~~~~~~
+2025-12-07T09:49:38.6024901Z /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/hal/include/hal/touch_sensor_types.h:168:1: note: in expansion of macro 'FLAG_ATTR'
+2025-12-07T09:49:38.6026142Z  FLAG_ATTR(touch_pad_intr_mask_t)
+2025-12-07T09:49:38.6026530Z  ^~~~~~~~~
+2025-12-07T09:49:38.6027928Z /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/esp_common/include/esp_attr.h:128:34: note:   no known conversion for argument 1 from 'volatile gpio_dev_s::<unnamed union>' to 'touch_pad_intr_mask_t'
+2025-12-07T09:49:38.6029717Z  FORCE_INLINE_ATTR constexpr TYPE operator>> (TYPE a, int b) { return (TYPE)((INT_TYPE)a >> b); } \
+2025-12-07T09:49:38.6030427Z                                   ^~~~~~~~
+2025-12-07T09:49:38.6031586Z /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/esp_common/include/esp_attr.h:136:29: note: in expansion of macro 'FLAG_ATTR_IMPL'
+2025-12-07T09:49:38.6033391Z  #define FLAG_ATTR_U32(TYPE) FLAG_ATTR_IMPL(TYPE, uint32_t)
+2025-12-07T09:49:38.6033972Z                              ^~~~~~~~~~~~~~
+2025-12-07T09:49:38.6035162Z /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/esp_common/include/esp_attr.h:137:19: note: in expansion of macro 'FLAG_ATTR_U32'
+2025-12-07T09:49:38.6036357Z  #define FLAG_ATTR FLAG_ATTR_U32
+2025-12-07T09:49:38.6036744Z                    ^~~~~~~~~~~~~
+2025-12-07T09:49:38.6038137Z /home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/tools/sdk/esp32c3/include/hal/include/hal/touch_sensor_types.h:168:1: note: in expansion of macro 'FLAG_ATTR'
+2025-12-07T09:49:38.6039462Z  FLAG_ATTR(touch_pad_intr_mask_t)
+2025-12-07T09:49:38.6039866Z  ^~~~~~~~~
+2025-12-07T09:49:39.7614894Z 
+2025-12-07T09:49:39.8926921Z Error during build: exit status 1
+2025-12-07T09:49:39.8927216Z 
+2025-12-07T09:49:39.8928064Z [92mUsed library[0m      [92mVersion[0m [90mPath[0m                                                                                   
+2025-12-07T09:49:39.8929183Z [93mTicker[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Ticker[0m          
+2025-12-07T09:49:39.8930344Z [93mWiFi[0m              2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFi[0m            
+2025-12-07T09:49:39.8931509Z [93mWebServer[0m         2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WebServer[0m       
+2025-12-07T09:49:39.8932845Z [93mAutoConnect[0m       1.4.2   [90m/home/runner/Arduino/libraries/AutoConnect[0m                                             
+2025-12-07T09:49:39.8933807Z [93mDNSServer[0m         2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/DNSServer[0m       
+2025-12-07T09:49:39.8934607Z [93mEEPROM[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/EEPROM[0m          
+2025-12-07T09:49:39.8935376Z [93mPageBuilder[0m       1.5.6   [90m/home/runner/Arduino/libraries/PageBuilder[0m                                             
+2025-12-07T09:49:39.8936590Z [93mFS[0m                2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/FS[0m              
+2025-12-07T09:49:39.8937683Z [93mSPIFFS[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPIFFS[0m          
+2025-12-07T09:49:39.8938665Z [93mSD[0m                2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SD[0m              
+2025-12-07T09:49:39.8939397Z [93mSPI[0m               2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/SPI[0m             
+2025-12-07T09:49:39.8940168Z [93mPreferences[0m       2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Preferences[0m     
+2025-12-07T09:49:39.8940987Z [93mWiFiClientSecure[0m  2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/WiFiClientSecure[0m
+2025-12-07T09:49:39.8942522Z [93mPubSubClient[0m      2.8     [90m/home/runner/Arduino/libraries/PubSubClient[0m                                            
+2025-12-07T09:49:39.8943343Z [93mHTTPClient[0m        2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPClient[0m      
+2025-12-07T09:49:39.8944145Z [93mUpdate[0m            2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Update[0m          
+2025-12-07T09:49:39.8944899Z [93mOneWire[0m           2.3.8   [90m/home/runner/Arduino/libraries/OneWire[0m                                                 
+2025-12-07T09:49:39.8945719Z [93mDallasTemperature[0m 4.0.5   [90m/home/runner/Arduino/libraries/DallasTemperature[0m                                       
+2025-12-07T09:49:39.8946578Z [93mWire[0m              2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/Wire[0m            
+2025-12-07T09:49:39.8947327Z [93mRTClib[0m            2.1.4   [90m/home/runner/Arduino/libraries/RTClib[0m                                                  
+2025-12-07T09:49:39.8948071Z [93mAdafruit BusIO[0m    1.17.4  [90m/home/runner/Arduino/libraries/Adafruit_BusIO[0m                                          
+2025-12-07T09:49:39.8948823Z [93mFastLED[0m           3.10.3  [90m/home/runner/Arduino/libraries/FastLED[0m                                                 
+2025-12-07T09:49:39.8949722Z [93mArduinoJson[0m       7.4.2   [90m/home/runner/Arduino/libraries/ArduinoJson[0m                                             
+2025-12-07T09:49:39.8950509Z [93mHTTPUpdate[0m        2.0.0   [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14/libraries/HTTPUpdate[0m      
+2025-12-07T09:49:39.8950915Z 
+2025-12-07T09:49:39.8951209Z [92mUsed platform[0m [92mVersion[0m [90mPath[0m                                                        
+2025-12-07T09:49:39.8951821Z [93mesp32:esp32[0m   2.0.14  [90m/home/runner/.arduino15/packages/esp32/hardware/esp32/2.0.14[0m
+2025-12-07T09:49:39.8974204Z ##[error]Process completed with exit code 1.
