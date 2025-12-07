@@ -6,6 +6,11 @@
 #include "src/core/led_indicator.h"
 #include "src/core/device_config.h"
 #include "src/display/display_core.h"
+
+// Arduino library includes - must be in main .ino for Arduino CLI library discovery
+#include <MQTT.h>
+
+// Connectivity modules
 #include "src/connectivity/mqtt_client.h"
 #include "src/connectivity/wifi_config.h"
 
