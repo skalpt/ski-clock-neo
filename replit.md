@@ -27,7 +27,7 @@ The dashboard features a modern UI with CSS variables for light/dark mode, a con
 *   **Display Content & Control:** Alternates time and date, displays temperature (DS18B20), and uses event-driven updates. A button-controlled timer mode provides stopwatch functionality with a state machine for transitions.
 *   **Timekeeping:** Integrates DS3231 RTC for instant time on boot, with NTP syncing the RTC hourly.
 *   **System Stability:** Uses FreeRTOS tasks/TickTwo library for deterministic display control and rendering. Critical sections ensure thread-safe access for event-driven rendering. A centralized LED Connectivity State Management system tracks WiFi and MQTT status.
-*   **Event Logging:** A ring buffer stores and publishes device events (system, connectivity, temperature, RTC/Time, user input, display) to MQTT.
+*   **Event Logging:** A ring buffer stores and publishes device events (system, connectivity, temperature, RTC/Time, user input, display) to MQTT. **Timestamp Strategy:** Events queued while offline include accurate timestamps when published. If RTC/NTP is synced within 60 seconds of MQTT connection, events include a Unix `timestamp` field calculated from device RTC time minus millis() offset. If no time sync after 60 seconds, events fall back to `offset_ms` field allowing the dashboard to calculate event time from receive time. Dashboard handlers support both formats with priority order: timestamp > offset_ms > receive_time.
 *   **Code Organization:** Consistent structure in `.cpp` files with section headers. Files are organized in `src/` for Arduino recursive compilation with specific include path conventions.
 
 **Dashboard Server (Python Flask Application):**
