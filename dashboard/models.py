@@ -226,6 +226,7 @@ class Device(db.Model):
     ip_address = db.Column(db.String(45))
     display_snapshot = db.Column(db.JSON)  # Stores display dimensions and base64-encoded pixel data
     pinned_firmware_version = db.Column(db.String(32))  # Optional: pin device to specific firmware version
+    display_name = db.Column(db.String(64))  # Optional: friendly name like "Hedvalla Ski Clock"
     supported_commands = db.Column(db.JSON)  # Array of supported commands: ["temp_offset", "rollback", "restart", "snapshot", "info"]
     last_config = db.Column(db.JSON)  # Last known device configuration: {"temp_offset": -2.0}
     last_info_at = db.Column(db.DateTime(timezone=True))  # When device info was last received
@@ -285,6 +286,7 @@ class Device(db.Model):
         
         return {
             'device_id': self.device_id,
+            'display_name': self.display_name,
             'product': self.product,
             'board': self.board_type,
             'version': self.firmware_version,
