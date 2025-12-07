@@ -430,8 +430,20 @@ button {
     box-shadow: var(--shadow-md);
 }
 
+.promote-btn {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.9), rgba(5, 150, 105, 0.9));
+    color: white;
+}
+
+.promote-btn:hover {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 1), rgba(5, 150, 105, 1));
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
 .rollback-btn:disabled,
 .restart-btn:disabled,
+.promote-btn:disabled,
 .device-btn:disabled {
     background: #9ca3af;
     cursor: not-allowed;

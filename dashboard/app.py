@@ -1967,6 +1967,7 @@ def set_device_config(device_id):
     
     JSON body can include:
     - temp_offset: Temperature calibration offset in degrees C (-20.0 to 20.0)
+    - environment: Environment scope ('dev' or 'prod') for promoting/demoting devices
     """
     from mqtt_subscriber import publish_config
     
@@ -2001,6 +2002,15 @@ def set_device_config(device_id):
                 'success': False,
                 'error': 'temp_offset must be a number'
             }), 400
+    
+    if 'environment' in data:
+        env_value = data['environment']
+        if env_value not in ('dev', 'prod'):
+            return jsonify({
+                'success': False,
+                'error': "environment must be 'dev' or 'prod'"
+            }), 400
+        config_values['environment'] = env_value
     
     if not config_values:
         return jsonify({

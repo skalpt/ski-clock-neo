@@ -351,6 +351,11 @@
                                     <button class="device-btn delete-btn" data-device-id="${safeDeviceId}" data-action="delete">
                                         🗑️ Remove
                                     </button>
+                                    ${device.environment === 'dev' ? `
+                                    <button class="device-btn promote-btn" data-device-id="${safeDeviceId}" data-action="promote" ${device.status === 'offline' ? 'disabled title="Device must be online"' : ''}>
+                                        🚀 Promote to Prod
+                                    </button>
+                                    ` : ''}
                                 </div>
                             </div>
                         </div>
@@ -424,6 +429,8 @@
                         unpinDeviceVersion(deviceId);
                     } else if (action === 'set-temp-offset') {
                         setDeviceTempOffset(deviceId);
+                    } else if (action === 'promote') {
+                        promoteDeviceToProd(deviceId);
                     }
                 });
             });
@@ -573,6 +580,32 @@
         } catch (error) {
             console.error('Failed to set temperature offset:', error);
             alert('Failed to set temperature offset');
+        }
+    }
+
+    async function promoteDeviceToProd(deviceId) {
+        if (!confirm(`Promote ${deviceId} to production?\n\nThis will change the device's environment from DEV to PROD.\nThe device will reconnect on production MQTT topics and receive production firmware updates.\n\nThis action cannot be easily undone.`)) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/devices/${deviceId}/config`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ environment: 'prod' })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                alert(data.message || 'Device promotion command sent. The device will reconnect on production topics.');
+                loadDevices();
+            } else {
+                alert(`Failed to promote device: ${data.error}`);
+            }
+        } catch (error) {
+            console.error('Failed to promote device:', error);
+            alert('Failed to promote device to production');
         }
     }
 
