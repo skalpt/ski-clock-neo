@@ -105,23 +105,22 @@ def on_connect(client, userdata, flags, rc, properties=None):
         env = get_environment_scope()
         print(f"✓ Connected to MQTT broker: {MQTT_HOST} (dashboard env: {env})")
         
-        # Subscribe to BOTH environments (dev and prod) so dashboard can manage all devices
-        # Use + wildcard for environment: norrtek-iot/+/{path}/+
-        for target_env in ['dev', 'prod']:
-            client.subscribe(f"{MQTT_TOPIC_PREFIX}/{target_env}/heartbeat/+")
-            print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{target_env}/heartbeat/+")
-            client.subscribe(f"{MQTT_TOPIC_PREFIX}/{target_env}/info/+")
-            print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{target_env}/info/+")
-            client.subscribe(f"{MQTT_TOPIC_PREFIX}/{target_env}/ota/start/+")
-            print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{target_env}/ota/start/+")
-            client.subscribe(f"{MQTT_TOPIC_PREFIX}/{target_env}/ota/progress/+")
-            print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{target_env}/ota/progress/+")
-            client.subscribe(f"{MQTT_TOPIC_PREFIX}/{target_env}/ota/complete/+")
-            print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{target_env}/ota/complete/+")
-            client.subscribe(f"{MQTT_TOPIC_PREFIX}/{target_env}/display/snapshot/#")
-            print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{target_env}/display/snapshot/#")
-            client.subscribe(f"{MQTT_TOPIC_PREFIX}/{target_env}/event/#")
-            print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{target_env}/event/#")
+        # Subscribe ONLY to this dashboard's environment topics
+        # Dev dashboard sees only dev devices, prod dashboard sees only prod devices
+        client.subscribe(f"{MQTT_TOPIC_PREFIX}/{env}/heartbeat/+")
+        print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{env}/heartbeat/+")
+        client.subscribe(f"{MQTT_TOPIC_PREFIX}/{env}/info/+")
+        print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{env}/info/+")
+        client.subscribe(f"{MQTT_TOPIC_PREFIX}/{env}/ota/start/+")
+        print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{env}/ota/start/+")
+        client.subscribe(f"{MQTT_TOPIC_PREFIX}/{env}/ota/progress/+")
+        print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{env}/ota/progress/+")
+        client.subscribe(f"{MQTT_TOPIC_PREFIX}/{env}/ota/complete/+")
+        print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{env}/ota/complete/+")
+        client.subscribe(f"{MQTT_TOPIC_PREFIX}/{env}/display/snapshot/#")
+        print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{env}/display/snapshot/#")
+        client.subscribe(f"{MQTT_TOPIC_PREFIX}/{env}/event/#")
+        print(f"✓ Subscribed to topic: {MQTT_TOPIC_PREFIX}/{env}/event/#")
     else:
         print(f"✗ Failed to connect to MQTT broker, return code {rc}")
 

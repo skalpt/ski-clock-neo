@@ -105,6 +105,14 @@ def is_production_environment():
     # This includes REPLIT_DEPLOYMENT="1" (published apps)
     return True
 
+def get_dashboard_environment_scope():
+    """Get the environment scope for this dashboard instance.
+    
+    Returns 'prod' for production deployments, 'dev' for development.
+    Used to filter devices and MQTT topics to ensure strict environment separation.
+    """
+    return 'prod' if is_production_environment() else 'dev'
+
 # Production configuration validation
 def validate_production_config():
     """Enforce secure configuration in production environments"""
@@ -1844,8 +1852,14 @@ def get_environment():
 @app.route('/api/devices')
 @login_required
 def devices():
-    """Get all devices with online/offline status (15 minute threshold)"""
-    all_devices = Device.query.all()
+    """Get devices for this environment with online/offline status (15 minute threshold)
+    
+    Strict environment separation: dev dashboard only sees dev devices,
+    prod dashboard only sees prod devices.
+    """
+    # Filter devices by this dashboard's environment scope
+    current_env = get_dashboard_environment_scope()
+    all_devices = Device.query.filter_by(environment=current_env).all()
     device_list = [device.to_dict(online_threshold_minutes=15) for device in all_devices]
     
     # Sort: online devices alphabetically by device_id, offline devices by last_seen (most recent first)
@@ -1860,14 +1874,19 @@ def devices():
         'count': len(device_list),
         'online_count': online_count,
         'offline_count': len(device_list) - online_count,
-        'mqtt_enabled': mqtt_client is not None
+        'mqtt_enabled': mqtt_client is not None,
+        'environment': current_env
     })
 
 @app.route('/api/devices/<device_id>', methods=['DELETE'])
 @login_required
 def delete_device(device_id):
-    """Delete a device from the database (for decommissioned devices)"""
-    device = Device.query.filter_by(device_id=device_id).first()
+    """Delete a device from the database (for decommissioned devices)
+    
+    Only allows deleting devices that belong to this dashboard's environment.
+    """
+    current_env = get_dashboard_environment_scope()
+    device = Device.query.filter_by(device_id=device_id, environment=current_env).first()
     
     if not device:
         return jsonify({'error': 'Device not found'}), 404
