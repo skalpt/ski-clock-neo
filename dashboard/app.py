@@ -12,7 +12,7 @@ from typing import Dict, Optional, Any
 from functools import wraps
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from object_storage import ObjectStorageService, ObjectNotFoundError, ObjectStorageError
-from models import db, Device, FirmwareVersion, User, Role, PlatformPermission, DownloadLog
+from models import db, Device, FirmwareVersion, User, Role, PlatformPermission, DownloadLog, DevEnvironment
 
 # Map device board types (as reported by firmware) to platform identifiers
 # This must stay in sync with BOARD_TYPE_TO_PLATFORM in mqtt_subscriber.py

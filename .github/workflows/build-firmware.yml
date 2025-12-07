@@ -84,7 +84,7 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "Generated version: $VERSION"
 
-      - name: Create and upload config to dashboard
+      - name: Create and upload config to dev dashboard (via production proxy)
         run: |
           cat > config.json << EOF
           {
@@ -96,13 +96,14 @@ jobs:
             "MQTT_PASSWORD": "${{ secrets.MQTT_PASSWORD }}"
           }
           EOF
-          echo "Uploading configuration to dashboard server..."
-          curl --fail --show-error -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/config" \
-            -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
+          echo "Uploading configuration to dev dashboard via production proxy..."
+          # Call production's proxy endpoint which forwards to the registered dev environment
+          curl --fail --show-error -X POST "${{ secrets.PROD_UPDATE_SERVER_URL }}/api/dev/config" \
+            -H "X-API-Key: ${{ secrets.PROD_UPLOAD_API_KEY }}" \
             -H "Content-Type: application/json" \
             -d @config.json \
             -w "\n"
-          echo "✓ Configuration uploaded successfully"
+          echo "✓ Configuration uploaded to dev environment successfully"
           rm config.json
 
       # -------------------------------------------------------
@@ -177,13 +178,14 @@ jobs:
       # Upload Firmware to Server
       # -------------------------------------------------------
 
-      - name: Upload all firmware binaries
+      - name: Upload all firmware binaries to dev (via production proxy)
         if: success()  # Only upload to server if all builds succeeded
         run: |
           # Build description (optional)
           DESCRIPTION="${{ inputs.description || '' }}"
           
           # Upload main firmware binaries (exclude bootloader/partitions files)
+          # Uses production's /api/dev/upload proxy which forwards to registered dev environment
           for file in build/ski-clock-neo-*.bin; do
             # Skip bootloader and partitions files
             if [[ "$file" == *".bootloader.bin" ]] || [[ "$file" == *".partitions.bin" ]]; then
@@ -191,7 +193,7 @@ jobs:
             fi
 
             PLATFORM=$(basename "$file" .bin | sed 's/ski-clock-neo-//')
-            echo "Uploading $file (platform=$PLATFORM version=${{ steps.get_version.outputs.VERSION }})..."
+            echo "Uploading $file to DEV via production proxy (platform=$PLATFORM version=${{ steps.get_version.outputs.VERSION }})..."
 
             # Check if this is an ESP32 family platform (has bootloader/partitions)
             BOOTLOADER="build/ski-clock-neo-${PLATFORM}.bootloader.bin"
@@ -207,8 +209,8 @@ jobs:
               # ESP32 family: upload firmware + bootloader + partitions
               echo "  → Full flash mode: uploading firmware, bootloader, and partitions"
               curl --fail --show-error \
-                -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/upload" \
-                -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
+                -X POST "${{ secrets.PROD_UPDATE_SERVER_URL }}/api/dev/upload" \
+                -H "X-API-Key: ${{ secrets.PROD_UPLOAD_API_KEY }}" \
                 -F "file=@$file" \
                 -F "bootloader=@$BOOTLOADER" \
                 -F "partitions=@$PARTITIONS" \
@@ -218,14 +220,14 @@ jobs:
               # ESP8266: upload firmware only
               echo "  → Quick flash mode: uploading firmware only"
               curl --fail --show-error \
-                -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/upload" \
-                -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
+                -X POST "${{ secrets.PROD_UPDATE_SERVER_URL }}/api/dev/upload" \
+                -H "X-API-Key: ${{ secrets.PROD_UPLOAD_API_KEY }}" \
                 -F "file=@$file" \
                 $COMMON_FIELDS \
                 -w "\n"
             fi
 
-            echo "✓ Upload for platform '$PLATFORM' succeeded"
+            echo "✓ Upload for platform '$PLATFORM' to dev succeeded"
           done
 
       # -------------------------------------------------------

@@ -156,17 +156,17 @@ jobs:
         run: |
           cat > config.json << EOF
           {
-            "UPDATE_SERVER_URL": "${{ secrets.UPDATE_SERVER_URL }}",
-            "UPLOAD_API_KEY": "${{ secrets.UPLOAD_API_KEY }}",
-            "DOWNLOAD_API_KEY": "${{ secrets.DOWNLOAD_API_KEY }}",
+            "UPDATE_SERVER_URL": "${{ secrets.PROD_UPDATE_SERVER_URL }}",
+            "UPLOAD_API_KEY": "${{ secrets.PROD_UPLOAD_API_KEY }}",
+            "DOWNLOAD_API_KEY": "${{ secrets.PROD_DOWNLOAD_API_KEY }}",
             "MQTT_HOST": "${{ secrets.MQTT_HOST }}",
             "MQTT_USERNAME": "${{ secrets.MQTT_USERNAME }}",
             "MQTT_PASSWORD": "${{ secrets.MQTT_PASSWORD }}"
           }
           EOF
           echo "🚀 Uploading configuration to PRODUCTION..."
-          curl --fail --show-error -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/config" \
-            -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
+          curl --fail --show-error -X POST "${{ secrets.PROD_UPDATE_SERVER_URL }}/api/config" \
+            -H "X-API-Key: ${{ secrets.PROD_UPLOAD_API_KEY }}" \
             -H "Content-Type: application/json" \
             -d @config.json \
             -w "\n"
@@ -261,8 +261,8 @@ jobs:
             if [ -f "$BOOTLOADER" ] && [ -f "$PARTITIONS" ]; then
               echo "  → Full flash mode: uploading firmware, bootloader, and partitions"
               curl --fail --show-error \
-                -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/upload" \
-                -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
+                -X POST "${{ secrets.PROD_UPDATE_SERVER_URL }}/api/upload" \
+                -H "X-API-Key: ${{ secrets.PROD_UPLOAD_API_KEY }}" \
                 -F "file=@$file" \
                 -F "bootloader=@$BOOTLOADER" \
                 -F "partitions=@$PARTITIONS" \
@@ -271,8 +271,8 @@ jobs:
             else
               echo "  → Quick flash mode: uploading firmware only"
               curl --fail --show-error \
-                -X POST "${{ secrets.UPDATE_SERVER_URL }}/api/upload" \
-                -H "X-API-Key: ${{ secrets.UPLOAD_API_KEY }}" \
+                -X POST "${{ secrets.PROD_UPDATE_SERVER_URL }}/api/upload" \
+                -H "X-API-Key: ${{ secrets.PROD_UPLOAD_API_KEY }}" \
                 -F "file=@$file" \
                 $COMMON_FIELDS \
                 -w "\n"
