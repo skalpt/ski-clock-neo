@@ -100,7 +100,18 @@ void initDeviceConfig() {
       DEBUG_PRINTLN(envEnumToString(environmentScopeEnum));
     }
   } else {
-    DEBUG_PRINTLN("Using default environment scope: dev");
+    // First boot: apply pending environment from compile-time flag
+    #if PENDING_ENV_SCOPE == ENV_SCOPE_PROD
+      environmentScopeEnum = ENV_SCOPE_PROD;
+      preferences.putUChar("env_scope", ENV_SCOPE_PROD);
+      DEBUG_PRINTLN("First boot: provisioned to PROD environment");
+    #elif PENDING_ENV_SCOPE == ENV_SCOPE_DEV
+      environmentScopeEnum = ENV_SCOPE_DEV;
+      preferences.putUChar("env_scope", ENV_SCOPE_DEV);
+      DEBUG_PRINTLN("First boot: provisioned to DEV environment");
+    #else
+      DEBUG_PRINTLN("Using default environment scope: dev");
+    #endif
   }
   
 #elif defined(ESP8266)
@@ -131,8 +142,27 @@ void initDeviceConfig() {
       DEBUG_PRINTLN("Using default environment scope: dev");
     }
   } else {
+    // First boot: no valid EEPROM data
     temperatureOffset = TEMPERATURE_OFFSET;
-    DEBUG_PRINTLN("No stored config, using defaults (env: dev)");
+    
+    // Apply pending environment from compile-time flag
+    #if PENDING_ENV_SCOPE == ENV_SCOPE_PROD
+      environmentScopeEnum = ENV_SCOPE_PROD;
+      EEPROM.write(EEPROM_MAGIC_ADDR, EEPROM_MAGIC);
+      EEPROM.put(EEPROM_TEMP_OFFSET_ADDR, temperatureOffset);
+      EEPROM.write(EEPROM_ENV_SCOPE_ADDR, ENV_SCOPE_PROD);
+      EEPROM.commit();
+      DEBUG_PRINTLN("First boot: provisioned to PROD environment");
+    #elif PENDING_ENV_SCOPE == ENV_SCOPE_DEV
+      environmentScopeEnum = ENV_SCOPE_DEV;
+      EEPROM.write(EEPROM_MAGIC_ADDR, EEPROM_MAGIC);
+      EEPROM.put(EEPROM_TEMP_OFFSET_ADDR, temperatureOffset);
+      EEPROM.write(EEPROM_ENV_SCOPE_ADDR, ENV_SCOPE_DEV);
+      EEPROM.commit();
+      DEBUG_PRINTLN("First boot: provisioned to DEV environment");
+    #else
+      DEBUG_PRINTLN("No stored config, using defaults (env: dev)");
+    #endif
   }
 #endif
   

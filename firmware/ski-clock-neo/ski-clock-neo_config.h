@@ -21,10 +21,18 @@
 // #define FIRMWARE_VERSION  "2025.01.01.1"
 
 // Environment scope for MQTT topics (dev or prod)
-// Default is "dev" - devices must be explicitly promoted to "prod" via MQTT config
+// Default is "dev" - devices can be promoted to "prod" via MQTT config at runtime.
 // The environment is stored as a single-byte enum in EEPROM/NVS:
 //   0 = default (dev), 1 = dev, 2 = prod
-// To change: send {"environment": "prod"} to norrtek-iot/{env}/config/{device_id}
+// To change at runtime: send {"environment": "prod"} to norrtek-iot/{env}/config/{device_id}
+//
+// PENDING_ENV_SCOPE: Optional compile-time flag to set initial environment on first boot.
+// Use -DPENDING_ENV_SCOPE=2 in build flags to provision devices directly to prod.
+// This value is written to storage on first boot only, then MQTT can override it.
+// Values: 0 or undefined = dev (default), 1 = dev, 2 = prod
+#ifndef PENDING_ENV_SCOPE
+  #define PENDING_ENV_SCOPE 0
+#endif
 
 // Board type - uncomment ONE of these to match your hardware:
 // #define BOARD_ESP32        // Generic ESP32
