@@ -180,6 +180,12 @@ def handle_heartbeat(client, payload, topic):
             device = Device.query.filter_by(device_id=device_id).first()
             
             if device:
+                # Auto-restore soft-deleted devices that send heartbeats
+                # (device was deleted but is still running - user probably wants it back)
+                if device.deleted_at:
+                    print(f"🔄 Restoring soft-deleted device: {device_id}")
+                    device.deleted_at = None
+                
                 # Update existing device telemetry
                 device.last_seen = datetime.now(timezone.utc)
                 device.last_uptime = payload.get('uptime', 0)
@@ -434,6 +440,12 @@ def handle_device_info(client, payload, topic):
             now = datetime.now(timezone.utc)
             
             if device:
+                # Auto-restore soft-deleted devices that send device info
+                # (device was deleted but is still running - user probably wants it back)
+                if device.deleted_at:
+                    print(f"🔄 Restoring soft-deleted device: {device_id}")
+                    device.deleted_at = None
+                
                 # Update existing device
                 device.product = product
                 device.board_type = board_type

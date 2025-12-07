@@ -229,6 +229,7 @@ class Device(db.Model):
     supported_commands = db.Column(db.JSON)  # Array of supported commands: ["temp_offset", "rollback", "restart", "snapshot", "info"]
     last_config = db.Column(db.JSON)  # Last known device configuration: {"temp_offset": -2.0}
     last_info_at = db.Column(db.DateTime(timezone=True))  # When device info was last received
+    deleted_at = db.Column(db.DateTime(timezone=True), index=True)  # Soft delete: NULL = active, timestamp = deleted
     
     # Relationships
     ota_update_logs = db.relationship('OTAUpdateLog', back_populates='device', cascade='all, delete-orphan')

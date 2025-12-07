@@ -1852,8 +1852,11 @@ def get_environment():
 @app.route('/api/devices')
 @login_required
 def devices():
-    """Get all devices with online/offline status (15 minute threshold)"""
-    all_devices = Device.query.all()
+    """Get all active devices with online/offline status (15 minute threshold)
+    
+    Excludes soft-deleted devices (those with deleted_at set)
+    """
+    all_devices = Device.query.filter(Device.deleted_at.is_(None)).all()
     device_list = [device.to_dict(online_threshold_minutes=15) for device in all_devices]
     
     # Sort: online devices alphabetically by device_id, offline devices by last_seen (most recent first)
@@ -1875,16 +1878,26 @@ def devices():
 @app.route('/api/devices/<device_id>', methods=['DELETE'])
 @login_required
 def delete_device(device_id):
-    """Delete a device from the database (for decommissioned devices)"""
+    """Soft-delete a device (sets deleted_at timestamp instead of actually removing)
+    
+    This is much faster than hard delete as it doesn't cascade through
+    thousands of related events, heartbeats, snapshots, etc.
+    The device and its history remain in the database but are hidden from views.
+    """
+    from datetime import datetime, timezone
+    
     device = Device.query.filter_by(device_id=device_id).first()
     
     if not device:
         return jsonify({'error': 'Device not found'}), 404
     
-    db.session.delete(device)
+    if device.deleted_at:
+        return jsonify({'error': 'Device already deleted'}), 400
+    
+    device.deleted_at = datetime.now(timezone.utc)
     db.session.commit()
     
-    print(f"🗑️  Device removed: {device_id} ({device.board_type})")
+    print(f"🗑️  Device soft-deleted: {device_id} ({device.board_type})")
     
     return jsonify({
         'success': True,
@@ -1897,7 +1910,7 @@ def rollback_device(device_id):
     """Send rollback command to a device via MQTT"""
     from mqtt_subscriber import publish_command
     
-    device = Device.query.filter_by(device_id=device_id).first()
+    device = Device.query.filter_by(device_id=device_id).filter(Device.deleted_at.is_(None)).first()
     if not device:
         return jsonify({
             'success': False,
@@ -1930,7 +1943,7 @@ def restart_device(device_id):
     """Send restart command to a device via MQTT"""
     from mqtt_subscriber import publish_command
     
-    device = Device.query.filter_by(device_id=device_id).first()
+    device = Device.query.filter_by(device_id=device_id).filter(Device.deleted_at.is_(None)).first()
     if not device:
         return jsonify({
             'success': False,
@@ -1959,7 +1972,7 @@ def request_snapshot(device_id):
     """Send snapshot command to a device via MQTT"""
     from mqtt_subscriber import publish_command
     
-    device = Device.query.filter_by(device_id=device_id).first()
+    device = Device.query.filter_by(device_id=device_id).filter(Device.deleted_at.is_(None)).first()
     if not device:
         return jsonify({
             'success': False,
@@ -1992,7 +2005,7 @@ def set_device_config(device_id):
     """
     from mqtt_subscriber import publish_config
     
-    device = Device.query.filter_by(device_id=device_id).first()
+    device = Device.query.filter_by(device_id=device_id).filter(Device.deleted_at.is_(None)).first()
     if not device:
         return jsonify({
             'success': False,
@@ -2172,7 +2185,7 @@ def pin_device_version(device_id):
     
     DELETE: Unpin device (follow latest)
     """
-    device = Device.query.filter_by(device_id=device_id).first()
+    device = Device.query.filter_by(device_id=device_id).filter(Device.deleted_at.is_(None)).first()
     
     if not device:
         return jsonify({'error': 'Device not found'}), 404
@@ -2238,7 +2251,7 @@ def rename_device(device_id):
     - Body: {"display_name": "Hedvalla Ski Clock"} to set
     - Body: {"display_name": null} or {"display_name": ""} to clear
     """
-    device = Device.query.filter_by(device_id=device_id).first()
+    device = Device.query.filter_by(device_id=device_id).filter(Device.deleted_at.is_(None)).first()
     
     if not device:
         return jsonify({'error': 'Device not found'}), 404
@@ -2280,6 +2293,8 @@ def get_events():
     - end_date: ISO 8601 date (events before this time)
     - limit: Number of events to return (default: 100)
     - offset: Pagination offset (default: 0)
+    
+    Note: Excludes events from soft-deleted devices
     """
     from models import EventLog
     from sqlalchemy import desc
@@ -2292,7 +2307,8 @@ def get_events():
     limit = request.args.get('limit', type=int, default=100)
     offset = request.args.get('offset', type=int, default=0)
     
-    query = EventLog.query
+    # Join with Device to filter out events from deleted devices
+    query = EventLog.query.join(Device).filter(Device.deleted_at.is_(None))
     
     if device_id:
         query = query.filter_by(device_id=device_id)
@@ -2343,6 +2359,8 @@ def get_events_summary():
     Query parameters:
     - device_id: Filter by specific device
     - hours: Time range in hours (default: 24)
+    
+    Note: Excludes events from soft-deleted devices
     """
     from models import EventLog
     from sqlalchemy import func
@@ -2353,7 +2371,8 @@ def get_events_summary():
     
     since = datetime.now(timezone.utc) - timedelta(hours=hours)
     
-    query = EventLog.query.filter(EventLog.timestamp >= since)
+    # Join with Device to filter out events from deleted devices
+    query = EventLog.query.join(Device).filter(Device.deleted_at.is_(None)).filter(EventLog.timestamp >= since)
     
     if device_id:
         query = query.filter_by(device_id=device_id)
@@ -2372,9 +2391,12 @@ def get_events_summary():
 @app.route('/api/ota-logs')
 @login_required
 def ota_logs():
-    """Get OTA update logs with optional filters"""
+    """Get OTA update logs with optional filters
+    
+    Note: Excludes logs for soft-deleted devices
+    """
     from models import OTAUpdateLog
-    from sqlalchemy import desc, and_
+    from sqlalchemy import desc, and_, or_
     from datetime import datetime, timedelta
     
     # Get query parameters
@@ -2386,7 +2408,10 @@ def ota_logs():
     limit = request.args.get('limit', type=int, default=50)
     offset = request.args.get('offset', type=int, default=0)
     
-    query = OTAUpdateLog.query
+    # Filter out logs for deleted devices (USB flash logs may have null device_id)
+    query = OTAUpdateLog.query.outerjoin(Device).filter(
+        or_(OTAUpdateLog.device_id.is_(None), Device.deleted_at.is_(None))
+    )
     
     # Apply filters
     if device_id:
@@ -2534,7 +2559,10 @@ def ota_stats():
 @app.route('/api/commands', methods=['GET'])
 @login_required
 def get_commands():
-    """Get command history with optional filters"""
+    """Get command history with optional filters
+    
+    Note: Excludes commands for soft-deleted devices
+    """
     from models import CommandLog
     from sqlalchemy import desc
     from datetime import datetime
@@ -2547,7 +2575,8 @@ def get_commands():
     limit = request.args.get('limit', type=int, default=50)
     offset = request.args.get('offset', type=int, default=0)
     
-    query = CommandLog.query
+    # Join with Device to filter out commands for deleted devices
+    query = CommandLog.query.join(Device).filter(Device.deleted_at.is_(None))
     
     # Apply filters
     if device_id:
@@ -2610,8 +2639,8 @@ def send_command():
     if command_type not in valid_commands:
         return jsonify({'error': f'Invalid command_type. Must be one of: {valid_commands}'}), 400
     
-    # Validate device exists
-    device = Device.query.filter_by(device_id=device_id).first()
+    # Validate device exists and is not deleted
+    device = Device.query.filter_by(device_id=device_id).filter(Device.deleted_at.is_(None)).first()
     if not device:
         return jsonify({'error': f'Device {device_id} not found'}), 404
     
