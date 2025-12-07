@@ -6,6 +6,9 @@
 // - Events are flushed to MQTT when connection is established
 // - Thread-safe access using critical sections
 // - Includes reset reason detection for boot events
+// - Timestamp handling: waits for RTC/NTP sync (max 60s) before flushing
+//   - If time syncs within 60s: uses Unix timestamp
+//   - If timeout: uses offset_ms for server-side time calculation
 // ============================================================================
 
 // ============================================================================
@@ -14,6 +17,7 @@
 
 #include "event_log.h"                   // This file's header
 #include "../connectivity/mqtt_client.h" // For MQTT publishing
+#include "../data/data_time.h"           // For time sync and timestamp functions
 #include "device_info.h"                 // For device ID and version info
 #include "debug.h"                       // For debug logging
 
@@ -35,6 +39,13 @@
 #endif
 
 // ============================================================================
+// CONSTANTS
+// ============================================================================
+
+// Maximum time to wait for RTC/NTP sync before using offset fallback
+static const unsigned long TIME_SYNC_TIMEOUT_MS = 60000;  // 60 seconds
+
+// ============================================================================
 // STATE VARIABLES
 // ============================================================================
 
@@ -43,6 +54,7 @@ static volatile uint8_t queueHead = 0;
 static volatile uint8_t queueTail = 0;
 static volatile uint8_t queueCount = 0;
 static bool eventLogReady = false;
+static uint32_t bootMillis = 0;  // millis() at boot, for timeout calculation
 
 // ============================================================================
 // RESET REASON DETECTION
@@ -86,6 +98,9 @@ static const char* getResetReason() {
 // ============================================================================
 
 void initEventLog() {
+  // Record boot time for 60-second timeout calculation
+  bootMillis = millis();
+  
   // Clear event queue
   for (int i = 0; i < EVENT_QUEUE_SIZE; i++) {
     eventQueue[i].valid = false;
@@ -172,9 +187,33 @@ void logEvent(const char* type, const char* dataJson) {
 // EVENT FLUSHING
 // ============================================================================
 
+// Check if we should use timestamps (time synced) or offset (fallback)
+// Returns true if time is synced OR 60 seconds have passed since boot
+static bool shouldFlushEvents() {
+  // If time is synced, always allow flushing with timestamps
+  if (isTimeSynced()) {
+    return true;
+  }
+  
+  // Check if 60-second timeout has elapsed - use offset fallback
+  uint32_t elapsed = millis() - bootMillis;
+  if (elapsed >= TIME_SYNC_TIMEOUT_MS) {
+    return true;
+  }
+  
+  // Still waiting for time sync
+  return false;
+}
+
 // Flush all queued events to MQTT
 void flushEventQueue() {
   if (!mqttIsConnected) return;
+  
+  // Check if we should flush (time synced or timeout elapsed)
+  if (!shouldFlushEvents()) {
+    DEBUG_PRINTLN("Waiting for time sync before flushing events...");
+    return;
+  }
   
   EVENT_ENTER_CRITICAL();
   if (queueCount == 0) {
@@ -185,10 +224,18 @@ void flushEventQueue() {
   
   String topic = buildDeviceTopic(MQTT_TOPIC_EVENTS);
   uint32_t now = millis();
+  bool timeAvailable = isTimeSynced();
   int flushed = 0;
   
   // Static buffer for event payloads (reused across iterations)
   static char payload[256];
+  
+  // Log which mode we're using
+  if (timeAvailable) {
+    DEBUG_PRINTLN("Flushing events with Unix timestamps");
+  } else {
+    DEBUG_PRINTLN("Flushing events with offset_ms (time sync timeout)");
+  }
   
   // Process all queued events
   while (true) {
@@ -200,7 +247,7 @@ void flushEventQueue() {
     
     // Copy event data (thread-safe)
     EventEntry& entry = eventQueue[queueHead];
-    uint32_t timestamp = entry.timestamp_ms;
+    uint32_t event_millis = entry.timestamp_ms;
     char type[EVENT_TYPE_MAX_LEN];
     char data[EVENT_DATA_MAX_LEN];
     bool valid = entry.valid;
@@ -215,22 +262,38 @@ void flushEventQueue() {
     EVENT_EXIT_CRITICAL();
     
     if (valid) {
-      // Calculate time offset from now
-      uint32_t offset_ms = now - timestamp;
-      
-      // Build JSON payload using snprintf
-      if (data[0] != '\0') {
-        snprintf(payload, sizeof(payload),
-          "{\"type\":\"%s\",\"data\":%s,\"offset_ms\":%lu}",
-          type, data, offset_ms);
+      if (timeAvailable) {
+        // Use Unix timestamp - calculate when event actually occurred
+        time_t eventTimestamp = getTimestampForEvent(event_millis);
+        
+        // Build JSON payload with timestamp
+        if (data[0] != '\0') {
+          snprintf(payload, sizeof(payload),
+            "{\"type\":\"%s\",\"data\":%s,\"timestamp\":%lu}",
+            type, data, (unsigned long)eventTimestamp);
+        } else {
+          snprintf(payload, sizeof(payload),
+            "{\"type\":\"%s\",\"timestamp\":%lu}",
+            type, (unsigned long)eventTimestamp);
+        }
       } else {
-        snprintf(payload, sizeof(payload),
-          "{\"type\":\"%s\",\"offset_ms\":%lu}",
-          type, offset_ms);
+        // Fallback: use offset_ms - server calculates receive_time - offset
+        uint32_t offset_ms = now - event_millis;
+        
+        // Build JSON payload with offset
+        if (data[0] != '\0') {
+          snprintf(payload, sizeof(payload),
+            "{\"type\":\"%s\",\"data\":%s,\"offset_ms\":%lu}",
+            type, data, offset_ms);
+        } else {
+          snprintf(payload, sizeof(payload),
+            "{\"type\":\"%s\",\"offset_ms\":%lu}",
+            type, offset_ms);
+        }
       }
       
-      // Publish to MQTT using helper
-      if (publishMqttPayload(topic, payload)) {
+      // Publish to MQTT using helper (QoS 1 for events)
+      if (publishMqttPayload(topic, payload, 1)) {
         flushed++;
       } else {
         break;

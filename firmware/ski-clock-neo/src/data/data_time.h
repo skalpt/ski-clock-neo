@@ -47,6 +47,12 @@ void resyncTime();
 // Returns 0 if not synced
 time_t getCurrentTime();
 
+// Get Unix timestamp for an event that occurred at a given millis() value
+// Uses current time minus elapsed milliseconds to calculate when the event happened
+// Returns the calculated timestamp, or 0 if time is not synced
+// This is useful for adding accurate timestamps to queued MQTT messages
+time_t getTimestampForEvent(uint32_t event_millis);
+
 // Sync RTC from NTP (called automatically when NTP syncs)
 // Can also be called manually if needed
 void syncRtcFromNtp();

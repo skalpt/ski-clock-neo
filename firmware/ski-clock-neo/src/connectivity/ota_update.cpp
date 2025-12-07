@@ -16,6 +16,7 @@
 #include "ota_update.h"               // This file's header
 #include "../../ski-clock-neo_config.h" // For PRODUCT_NAME
 #include "../core/led_indicator.h"    // For LED status patterns when OTA is in progress
+#include "../data/data_time.h"        // For timestamp functions
 #include "mqtt_client.h"              // For publishing OTA progress to MQTT
 
 // ============================================================================
@@ -28,9 +29,23 @@ bool otaUpdateInProgress = false;
 // MQTT PROGRESS REPORTING
 // ============================================================================
 
+// Helper to append timestamp to payload if time is synced
+static void appendTimestamp(char* payload, size_t payloadSize) {
+  time_t currentTime = getCurrentTime();
+  if (currentTime > 0) {
+    size_t len = strlen(payload);
+    if (len > 0 && payload[len-1] == '}') {
+      // Insert timestamp before closing brace
+      payload[len-1] = '\0';
+      snprintf(payload + len - 1, payloadSize - len + 1, 
+        ",\"timestamp\":%lu}", (unsigned long)currentTime);
+    }
+  }
+}
+
 // Publish OTA start message (to device-specific topic)
 void publishOTAStart(String newVersion) {
-  static char payload[256];
+  static char payload[320];
   snprintf(payload, sizeof(payload),
     "{\"product\":\"%s\",\"platform\":\"%s\",\"old_version\":\"%s\",\"new_version\":\"%s\"}",
     PRODUCT_NAME,
@@ -39,20 +54,28 @@ void publishOTAStart(String newVersion) {
     newVersion.c_str()
   );
   
-  publishMqttPayload(buildDeviceTopic(MQTT_TOPIC_OTA_START), payload);
+  // Add timestamp if available
+  appendTimestamp(payload, sizeof(payload));
+  
+  // OTA start uses QoS 1 for guaranteed delivery
+  publishMqttPayload(buildDeviceTopic(MQTT_TOPIC_OTA_START), payload, 1);
 }
 
 // Publish OTA progress message (0-100%, to device-specific topic)
 void publishOTAProgress(int progress) {
-  static char payload[32];
+  static char payload[64];
   snprintf(payload, sizeof(payload), "{\"progress\":%d}", progress);
   
-  publishMqttPayload(buildDeviceTopic(MQTT_TOPIC_OTA_PROGRESS), payload);
+  // Add timestamp if available
+  appendTimestamp(payload, sizeof(payload));
+  
+  // OTA progress uses QoS 1 for guaranteed delivery
+  publishMqttPayload(buildDeviceTopic(MQTT_TOPIC_OTA_PROGRESS), payload, 1);
 }
 
 // Publish OTA complete message (to device-specific topic)
 void publishOTAComplete(bool success, String errorMessage) {
-  static char payload[256];
+  static char payload[320];
   if (success) {
     snprintf(payload, sizeof(payload), "{\"status\":\"success\"}");
   } else {
@@ -62,7 +85,11 @@ void publishOTAComplete(bool success, String errorMessage) {
     );
   }
   
-  publishMqttPayload(buildDeviceTopic(MQTT_TOPIC_OTA_COMPLETE), payload);
+  // Add timestamp if available
+  appendTimestamp(payload, sizeof(payload));
+  
+  // OTA complete uses QoS 1 for guaranteed delivery
+  publishMqttPayload(buildDeviceTopic(MQTT_TOPIC_OTA_COMPLETE), payload, 1);
 }
 
 // ============================================================================

@@ -768,6 +768,16 @@ def handle_display_snapshot(client, payload, topic):
                     # Check for new per-row format: {"rows": [{...}, {...}]}
                     rows_data = payload.get('rows')
                     
+                    # Determine snapshot time: use device timestamp if available, otherwise receive time
+                    unix_timestamp = payload.get('timestamp')
+                    receive_time = datetime.now(timezone.utc)
+                    if unix_timestamp and unix_timestamp > 0:
+                        snapshot_time = datetime.fromtimestamp(unix_timestamp, tz=timezone.utc)
+                        time_source = "device"
+                    else:
+                        snapshot_time = receive_time
+                        time_source = "receive"
+                    
                     if rows_data and isinstance(rows_data, list) and len(rows_data) > 0 and isinstance(rows_data[0], dict):
                         # NEW PER-ROW FORMAT: Each row is a dict with own dimensions
                         total_bytes = 0
@@ -788,11 +798,11 @@ def handle_display_snapshot(client, payload, topic):
                         
                         snapshot_data = {
                             'rows': rows_data,
-                            'timestamp': datetime.now(timezone.utc).isoformat()
+                            'timestamp': snapshot_time.isoformat()
                         }
                         
                         device.display_snapshot = snapshot_data
-                        device.last_seen = datetime.now(timezone.utc)
+                        device.last_seen = receive_time  # Always use receive time for last_seen
                         
                         bitmap_data = {
                             'rows': rows_data
@@ -802,13 +812,14 @@ def handle_display_snapshot(client, payload, topic):
                             device_id=device_id,
                             row_text=row_texts,
                             bitmap_data=bitmap_data,
-                            timestamp=datetime.now(timezone.utc)
+                            timestamp=snapshot_time  # Use device timestamp when available
                         )
                         db.session.add(snapshot)
                         db.session.commit()
                         
                         row_info = ", ".join([f"{r.get('cols', '?')}x{r.get('height', '?')}" for r in rows_data])
-                        print(f"📸 Display snapshot stored for {device_id} ({total_bytes} bytes, rows: [{row_info}])")
+                        time_info = f" (time: {time_source})" if time_source != "receive" else ""
+                        print(f"📸 Display snapshot stored for {device_id} ({total_bytes} bytes, rows: [{row_info}]){time_info}")
                     
                     else:
                         # LEGACY FORMAT: Single mono/color with shared dimensions
@@ -875,10 +886,20 @@ def handle_event(client, payload, topic):
     """Handle device event messages for analytics
     
     Events are queued on device when offline and flushed when MQTT connects.
-    Each event includes offset_ms which is millis() - event_timestamp_ms,
-    allowing us to calculate actual event time from receive time.
     
-    Payload format:
+    Timestamp handling (priority order):
+    1. 'timestamp' - Unix timestamp from device RTC/NTP (preferred, most accurate)
+    2. 'offset_ms' - Fallback when device has no RTC sync (calculate from receive time)
+    3. Neither - Use receive time (legacy fallback)
+    
+    New payload format (with RTC/NTP sync):
+    {
+        "type": "temperature_read",
+        "data": {"value": 5.2},
+        "timestamp": 1733580123
+    }
+    
+    Fallback payload format (no RTC sync, uses offset):
     {
         "type": "temperature_read",
         "data": {"value": 5.2},
@@ -901,7 +922,8 @@ def handle_event(client, payload, topic):
     
     event_type = payload.get('type')
     event_data = payload.get('data')
-    offset_ms = payload.get('offset_ms', 0)
+    unix_timestamp = payload.get('timestamp')  # Unix timestamp from device RTC/NTP
+    offset_ms = payload.get('offset_ms', 0)    # Fallback offset when no RTC sync
     product = payload.get('product')
     board_type = payload.get('board')
     
@@ -914,9 +936,21 @@ def handle_event(client, payload, topic):
         from datetime import timedelta
         
         with _app_context.app_context():
-            # Calculate actual event time: receive_time - offset
             receive_time = datetime.now(timezone.utc)
-            event_time = receive_time - timedelta(milliseconds=offset_ms)
+            
+            # Determine event time using priority: timestamp > offset_ms > receive_time
+            if unix_timestamp and unix_timestamp > 0:
+                # Use Unix timestamp from device (most accurate when RTC/NTP is synced)
+                event_time = datetime.fromtimestamp(unix_timestamp, tz=timezone.utc)
+                time_source = "timestamp"
+            elif offset_ms > 0:
+                # Use offset from receive time (fallback when no RTC sync)
+                event_time = receive_time - timedelta(milliseconds=offset_ms)
+                time_source = "offset"
+            else:
+                # Use receive time (legacy fallback)
+                event_time = receive_time
+                time_source = "receive"
             
             # Ensure device exists (create if new)
             device = Device.query.filter_by(device_id=device_id).first()
@@ -945,8 +979,8 @@ def handle_event(client, payload, topic):
             
             # Format data for logging
             data_str = f", data={event_data}" if event_data else ""
-            offset_str = f" (offset: {offset_ms}ms)" if offset_ms > 0 else ""
-            print(f"📊 Event logged: {device_id} [{event_type}]{data_str}{offset_str}")
+            time_info = f" (time: {time_source})" if time_source != "receive" else ""
+            print(f"📊 Event logged: {device_id} [{event_type}]{data_str}{time_info}")
 
 def on_message(client, userdata, msg):
     try:

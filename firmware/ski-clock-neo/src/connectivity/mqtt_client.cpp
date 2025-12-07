@@ -18,6 +18,7 @@
 #include "../../ski-clock-neo_config.h" // For importing main configuration (credentials, etc.)
 #include "../core/led_indicator.h"     // For LED status patterns when MQTT connection state changes
 #include "../core/device_config.h"     // For device configuration handling
+#include "../data/data_time.h"         // For timestamp functions
 #include "ota_update.h"                // For OTA update publishing
 #include "../display/display_core.h"   // For display snapshot publishing
 #include "../core/event_log.h"         // For event log publishing
@@ -427,17 +428,35 @@ void publishDeviceInfo() {
   
   // Build JSON payload with static device info, config, and supported commands
   // Include environment scope so dashboard knows which namespace the device uses
+  // Include timestamp if time is synced, otherwise omit (dashboard will use receive time)
   static char payload[512];
-  snprintf(payload, sizeof(payload),
-    "{\"product\":\"%s\",\"board\":\"%s\",\"version\":\"%s\",\"environment\":\"%s\",\"config\":{\"temp_offset\":%.1f},\"supported_commands\":[\"temp_offset\",\"rollback\",\"restart\",\"snapshot\",\"info\",\"environment\"]}",
-    PRODUCT_NAME,
-    getBoardType().c_str(),
-    FIRMWARE_VERSION,
-    getEnvironmentScope(),
-    getTemperatureOffset()
-  );
   
-  if (publishMqttPayload(buildDeviceTopic(MQTT_TOPIC_INFO), payload)) {
+  time_t currentTime = getCurrentTime();
+  if (currentTime > 0) {
+    // Time is synced - include timestamp
+    snprintf(payload, sizeof(payload),
+      "{\"product\":\"%s\",\"board\":\"%s\",\"version\":\"%s\",\"environment\":\"%s\",\"config\":{\"temp_offset\":%.1f},\"supported_commands\":[\"temp_offset\",\"rollback\",\"restart\",\"snapshot\",\"info\",\"environment\"],\"timestamp\":%lu}",
+      PRODUCT_NAME,
+      getBoardType().c_str(),
+      FIRMWARE_VERSION,
+      getEnvironmentScope(),
+      getTemperatureOffset(),
+      (unsigned long)currentTime
+    );
+  } else {
+    // No time sync - omit timestamp (dashboard uses receive time)
+    snprintf(payload, sizeof(payload),
+      "{\"product\":\"%s\",\"board\":\"%s\",\"version\":\"%s\",\"environment\":\"%s\",\"config\":{\"temp_offset\":%.1f},\"supported_commands\":[\"temp_offset\",\"rollback\",\"restart\",\"snapshot\",\"info\",\"environment\"]}",
+      PRODUCT_NAME,
+      getBoardType().c_str(),
+      FIRMWARE_VERSION,
+      getEnvironmentScope(),
+      getTemperatureOffset()
+    );
+  }
+  
+  // Device info uses QoS 1 for guaranteed delivery
+  if (publishMqttPayload(buildDeviceTopic(MQTT_TOPIC_INFO), payload, 1)) {
     DEBUG_PRINTLN("Device info published successfully");
   }
 }
@@ -512,8 +531,8 @@ void publishDisplaySnapshot() {
   snprintf(monoColorStr, sizeof(monoColorStr), "[%u,%u,%u,%u]", 
            DISPLAY_COLOR_R, DISPLAY_COLOR_G, DISPLAY_COLOR_B, BRIGHTNESS);
   
-  // Build JSON payload with per-row structure
-  // Format: {"rows":[{row0},{row1},...]}
+  // Build JSON payload with per-row structure and timestamp
+  // Format: {"rows":[{row0},{row1},...], "timestamp": 1234567890}
   String payload = "{\"rows\":[";
   
   for (uint8_t i = 0; i < cfg.rows; i++) {
@@ -550,7 +569,15 @@ void publishDisplaySnapshot() {
     payload += "}";
   }
   
-  payload += "]}";
+  payload += "]";
+  
+  // Add timestamp if time is synced
+  time_t currentTime = getCurrentTime();
+  if (currentTime > 0) {
+    payload += ",\"timestamp\":" + String((unsigned long)currentTime);
+  }
+  
+  payload += "}";
   
   // Check payload size
   if (payload.length() > 2000) {
@@ -560,8 +587,8 @@ void publishDisplaySnapshot() {
     return;
   }
   
-  // Publish to device-specific snapshot topic
-  if (publishMqttPayload(buildDeviceTopic(MQTT_TOPIC_DISPLAY_SNAPSHOT), payload)) {
+  // Publish to device-specific snapshot topic (QoS 1 for guaranteed delivery)
+  if (publishMqttPayload(buildDeviceTopic(MQTT_TOPIC_DISPLAY_SNAPSHOT), payload, 1)) {
     DEBUG_PRINT("Display snapshot size: ");
     DEBUG_PRINT(payload.length());
     DEBUG_PRINTLN(" bytes");

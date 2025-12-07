@@ -379,3 +379,31 @@ time_t getCurrentTime() {
   }
   return time(nullptr);
 }
+
+// Get Unix timestamp for an event that occurred at a given millis() value
+// Calculates: current_time - (current_millis - event_millis) / 1000
+time_t getTimestampForEvent(uint32_t event_millis) {
+  if (!isTimeSynced()) {
+    return 0;
+  }
+  
+  time_t now = time(nullptr);
+  uint32_t current_millis = millis();
+  
+  // Calculate how long ago the event occurred (in seconds)
+  // Handle millis() overflow by treating large differences carefully
+  uint32_t elapsed_ms;
+  if (current_millis >= event_millis) {
+    elapsed_ms = current_millis - event_millis;
+  } else {
+    // millis() wrapped around (happens every ~49 days)
+    elapsed_ms = (0xFFFFFFFF - event_millis) + current_millis + 1;
+  }
+  
+  uint32_t elapsed_seconds = elapsed_ms / 1000;
+  
+  // Calculate the timestamp when the event occurred
+  time_t event_time = now - elapsed_seconds;
+  
+  return event_time;
+}
