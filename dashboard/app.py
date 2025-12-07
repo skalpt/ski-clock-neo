@@ -77,8 +77,8 @@ def is_production_environment():
     Returns False (development) ONLY if:
     - DEV_MODE='true' (explicit development flag)
     - SAFE_CONFIG_BYPASS='true' (emergency override)
-    - REPL_ID set but REPL_DEPLOYMENT_TYPE not set (Replit workspace)
-    - REPL_DEPLOYMENT_TYPE in {'staging', 'qa', 'dev'} (known non-prod)
+    - REPL_ID set but REPLIT_DEPLOYMENT not set (Replit workspace, not deployed)
+    - REPLIT_DEPLOYMENT in {'staging', 'qa', 'dev'} (known non-prod deployment)
     
     Otherwise returns True (production), enforcing secure configuration
     for Docker, bare metal, and unknown cloud deployments.
@@ -91,16 +91,18 @@ def is_production_environment():
     if os.getenv('DEV_MODE', '').lower() == 'true':
         return False
     
-    # Replit workspace (not a deployment)
-    if os.getenv('REPL_ID') and not os.getenv('REPL_DEPLOYMENT_TYPE'):
+    # Replit workspace (not a deployment) - REPL_ID exists but no REPLIT_DEPLOYMENT
+    # REPLIT_DEPLOYMENT is set to "1" when deployed
+    if os.getenv('REPL_ID') and not os.getenv('REPLIT_DEPLOYMENT'):
         return False
     
-    # Known non-production environments (staging, qa, dev)
-    deployment_type = os.getenv('REPL_DEPLOYMENT_TYPE', '').lower()
+    # Known non-production deployment types (if Replit adds more granular types)
+    deployment_type = os.getenv('REPLIT_DEPLOYMENT', '').lower()
     if deployment_type in {'staging', 'qa', 'dev'}:
         return False
     
     # Default to production (fail closed) for all other environments
+    # This includes REPLIT_DEPLOYMENT="1" (published apps)
     return True
 
 # Production configuration validation
@@ -424,8 +426,8 @@ def _sync_single_firmware(product: str, platform: str, fw_data: dict) -> int:
 
 def sync_firmware_from_production():
     """Sync firmware metadata from production to dev database (dev environment only)"""
-    env = os.getenv('REPL_DEPLOYMENT_TYPE', 'dev')
-    if env != 'dev':
+    # Only sync in dev environment (workspace, not deployed)
+    if is_production_environment():
         return
     
     production_url = os.getenv('PRODUCTION_API_URL')
@@ -478,8 +480,8 @@ def sync_firmware_from_production():
 
 def start_production_sync_thread():
     """Start background thread that periodically syncs firmware from production (dev only)"""
-    env = os.getenv('REPL_DEPLOYMENT_TYPE', 'dev')
-    if env != 'dev':
+    # Only sync in dev environment (workspace, not deployed)
+    if is_production_environment():
         return
     
     production_url = os.getenv('PRODUCTION_API_URL')
@@ -1824,7 +1826,7 @@ def get_environment():
         'environment': 'production' if is_prod else 'development',
         'is_production': is_prod,
         'dev_domain': dev_domain if not is_prod else None,
-        'repl_deployment_type': os.getenv('REPL_DEPLOYMENT_TYPE', 'unknown')
+        'replit_deployment': os.getenv('REPLIT_DEPLOYMENT', 'not_set')
     })
 
 
