@@ -275,12 +275,30 @@ h3 {
 .device-header-left {
     display: flex;
     align-items: center;
+    gap: var(--spacing-xs);
 }
 
 .device-header-text {
     display: flex;
     flex-direction: column;
     line-height: 1.2;
+}
+
+.rename-btn {
+    background: transparent;
+    border: none;
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 2px 4px;
+    line-height: 1;
+    transition: all var(--transition-base);
+    opacity: 0.6;
+    margin-left: var(--spacing-xs);
+}
+
+.rename-btn:hover {
+    transform: scale(1.15);
+    opacity: 1;
 }
 
 .device-subheading {

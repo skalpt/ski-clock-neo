@@ -277,11 +277,16 @@
             const devicesHtml = data.devices.map(device => {
                 // Escape all user-supplied data to prevent XSS
                 const safeDeviceId = escapeHtml(device.device_id);
+                const safeDisplayName = device.display_name ? escapeHtml(device.display_name) : null;
                 const safeProduct = escapeHtml(device.product || 'Unknown Product');
                 const safeBoard = escapeHtml(device.board);
                 const safeVersion = escapeHtml(device.version);
                 const safeSsid = escapeHtml(device.ssid);
                 const safeIpAddress = escapeHtml(device.ip_address);
+                
+                // Device title: show display_name if set, otherwise device_id
+                const deviceTitle = safeDisplayName || safeDeviceId;
+                const deviceSubtitle = safeDisplayName ? safeDeviceId : safeProduct;
                 
                 // Check if this device has an OTA update in progress
                 const ota = otaProgress[device.device_id];
@@ -310,9 +315,10 @@
                                     <div class="device-header-left">
                                         <span class="status ${statusClass}"></span>
                                         <div class="device-header-text">
-                                            <span class="device-product-name">${safeProduct}</span>
-                                            <div class="device-subheading">${safeDeviceId}</div>
+                                            <span class="device-product-name">${deviceTitle}</span>
+                                            <div class="device-subheading">${deviceSubtitle}</div>
                                         </div>
+                                        <button class="rename-btn" data-device-id="${safeDeviceId}" data-current-name="${safeDisplayName || ''}" title="Rename device">✏️</button>
                                     </div>
                                     <div class="flex-align-center">
                                         <span class="badge">${safeBoard}</span>
@@ -364,8 +370,8 @@
                                 <div class="device-header-left">
                                     <span class="status ${statusClass}"></span>
                                     <div class="device-header-text">
-                                        <span class="device-product-name">${safeProduct}</span>
-                                        <div class="device-subheading">${safeDeviceId}</div>
+                                        <span class="device-product-name">${deviceTitle}</span>
+                                        <div class="device-subheading">${deviceSubtitle}</div>
                                     </div>
                                 </div>
                                 <div class="flex-align-center">
@@ -435,6 +441,16 @@
                 });
             });
             
+            // Attach event listeners to rename buttons
+            document.querySelectorAll('.rename-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const deviceId = btn.getAttribute('data-device-id');
+                    const currentName = btn.getAttribute('data-current-name') || '';
+                    renameDevice(deviceId, currentName);
+                });
+            });
+            
             // Update all progress bar widths from data attributes
             updateProgressBars();
             
@@ -493,6 +509,37 @@
         } catch (error) {
             console.error('Failed to delete device:', error);
             alert('Failed to remove device');
+        }
+    }
+
+    async function renameDevice(deviceId, currentName) {
+        const newName = prompt(
+            `Enter a friendly name for device ${deviceId}:\n\n(Leave empty to clear the name)`,
+            currentName
+        );
+        
+        if (newName === null) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/devices/${deviceId}/rename`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ display_name: newName.trim() || null })
+            });
+            
+            if (response.ok) {
+                loadDevices();
+            } else {
+                const error = await response.json();
+                alert(`Failed to rename device: ${error.error}`);
+            }
+        } catch (error) {
+            console.error('Failed to rename device:', error);
+            alert('Failed to rename device');
         }
     }
 
