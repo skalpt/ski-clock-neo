@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify, send_file, Response, render_template, redirect, url_for, session
+from werkzeug.middleware.proxy_fix import ProxyFix
 import os
 import hashlib
 import json
@@ -27,7 +28,18 @@ BOARD_TYPE_TO_PLATFORM = {
 
 app = Flask(__name__)
 
+# Apply ProxyFix to handle Replit's reverse proxy
+# This ensures url_for(_external=True) generates correct public URLs
+# x_for=1: Trust one level of X-Forwarded-For
+# x_proto=1: Trust one level of X-Forwarded-Proto (https)
+# x_host=1: Trust one level of X-Forwarded-Host
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
 app.secret_key = os.environ.get("FLASK_SECRET_KEY") or "a secret key"
+
+# Configure preferred URL scheme for external URLs (important for ESP Web Tools)
+# In production/Replit, we're behind a reverse proxy that terminates TLS
+app.config['PREFERRED_URL_SCHEME'] = 'https'
 
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
@@ -36,6 +48,30 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 }
 
 db.init_app(app)
+
+# CORS handler for ESP Web Tools firmware downloads
+# ESP Web Tools makes cross-origin requests to download firmware files
+@app.after_request
+def add_cors_headers(response):
+    """Add CORS headers to firmware download routes for ESP Web Tools"""
+    # Only add CORS headers to firmware download endpoints
+    if request.path.startswith('/firmware/'):
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    return response
+
+@app.route('/firmware/user-download-firmware/<token>', methods=['OPTIONS'])
+@app.route('/firmware/user-download-bootloader/<token>', methods=['OPTIONS'])
+@app.route('/firmware/user-download-partitions/<token>', methods=['OPTIONS'])
+@app.route('/firmware/manifest/<platform>.json', methods=['OPTIONS'])
+def handle_cors_preflight(token=None, platform=None):
+    """Handle CORS preflight requests for ESP Web Tools firmware downloads"""
+    response = Response()
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    return response
 
 # Token serializer for signed download URLs (24-hour expiration)
 token_serializer = URLSafeTimedSerializer(app.secret_key)
