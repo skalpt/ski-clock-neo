@@ -1,7 +1,6 @@
 #ifndef NORRTEK_MQTT_CLIENT_H
 #define NORRTEK_MQTT_CLIENT_H
 
-// Include product config for local build credentials
 #include "../../ski-clock-neo_config.h"
 
 #if defined(ESP32)
@@ -14,12 +13,11 @@
   #error "This code requires ESP32 or ESP8266"
 #endif
 
-#include <MQTT.h>
+#include <PubSubClient.h>
 #include <Ticker.h>
 #include "../core/debug.h"
 #include "../core/device_info.h"
 
-// MQTT broker configuration (injected at build time)
 #ifndef MQTT_HOST
   #error "MQTT_HOST must be defined at compile time via -DMQTT_HOST=\"...\""
 #endif
@@ -32,10 +30,8 @@
   #error "MQTT_PASSWORD must be defined at compile time via -DMQTT_PASSWORD=\"...\""
 #endif
 
-// MQTT broker port
 extern const uint16_t MQTT_PORT;
 
-// MQTT topics (constexpr for compile-time optimization)
 extern const char MQTT_TOPIC_HEARTBEAT[];
 extern const char MQTT_TOPIC_INFO[];
 extern const char MQTT_TOPIC_VERSION_RESPONSE[];
@@ -46,25 +42,22 @@ extern const char MQTT_TOPIC_OTA_COMPLETE[];
 extern const char MQTT_TOPIC_DISPLAY_SNAPSHOT[];
 extern const char MQTT_TOPIC_EVENTS[];
 
-// MQTT client objects
 extern WiFiClientSecure wifiSecureClient;
-extern MQTTClient mqttClient;
+extern PubSubClient mqttClient;
 
-// Heartbeat timing
 extern const unsigned long HEARTBEAT_INTERVAL;
 extern Ticker heartbeatTicker;
 extern bool mqttIsConnected;
 
-// Display snapshot timing
 extern const unsigned long DISPLAY_SNAPSHOT_INTERVAL;
 extern Ticker displaySnapshotTicker;
 
-// Function declarations
 void initMQTT();
 bool connectMQTT();
 void disconnectMQTT();
 void updateMQTT();
 void resetMQTTReconnectTimer();
+void processDeferredMQTT();
 void publishHeartbeat();
 void publishDeviceInfo();
 void publishDisplaySnapshot();
@@ -73,14 +66,11 @@ void handleRollbackCommand(String message);
 void handleRestartCommand();
 String base64Encode(const uint8_t* data, uint16_t length);
 
-// MQTT publishing helpers (reduces code duplication across modules)
-// QoS 0 = fire-and-forget (for heartbeats), QoS 1 = guaranteed delivery (default)
 String buildDeviceTopic(const char* baseTopic);
-bool publishMqttPayload(const char* topic, const char* payload, int qos = 1);
-bool publishMqttPayload(const String& topic, const char* payload, int qos = 1);
-bool publishMqttPayload(const String& topic, const String& payload, int qos = 1);
+bool publishMqttPayload(const char* topic, const char* payload);
+bool publishMqttPayload(const String& topic, const char* payload);
+bool publishMqttPayload(const String& topic, const String& payload);
 
-// WiFi event handlers
 #if defined(ESP32)
   void onWiFiConnected(WiFiEvent_t event, WiFiEventInfo_t info);
   void onWiFiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info);

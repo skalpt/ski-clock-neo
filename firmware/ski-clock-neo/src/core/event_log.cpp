@@ -290,8 +290,7 @@ void flushEventQueue() {
         }
       }
       
-      // Publish to MQTT using helper (QoS 1 for events)
-      if (publishMqttPayload(topic, payload, 1)) {
+      if (publishMqttPayload(topic, payload)) {
         flushed++;
       } else {
         break;

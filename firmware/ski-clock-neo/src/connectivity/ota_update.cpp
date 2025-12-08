@@ -54,11 +54,9 @@ void publishOTAStart(String newVersion) {
     newVersion.c_str()
   );
   
-  // Add timestamp if available
   appendTimestamp(payload, sizeof(payload));
   
-  // OTA start uses QoS 1 for guaranteed delivery
-  publishMqttPayload(buildDeviceTopic(MQTT_TOPIC_OTA_START), payload, 1);
+  publishMqttPayload(buildDeviceTopic(MQTT_TOPIC_OTA_START), payload);
 }
 
 // Publish OTA progress message (0-100%, to device-specific topic)
@@ -66,11 +64,9 @@ void publishOTAProgress(int progress) {
   static char payload[64];
   snprintf(payload, sizeof(payload), "{\"progress\":%d}", progress);
   
-  // Add timestamp if available
   appendTimestamp(payload, sizeof(payload));
   
-  // OTA progress uses QoS 1 for guaranteed delivery
-  publishMqttPayload(buildDeviceTopic(MQTT_TOPIC_OTA_PROGRESS), payload, 1);
+  publishMqttPayload(buildDeviceTopic(MQTT_TOPIC_OTA_PROGRESS), payload);
 }
 
 // Publish OTA complete message (to device-specific topic)
@@ -85,11 +81,9 @@ void publishOTAComplete(bool success, String errorMessage) {
     );
   }
   
-  // Add timestamp if available
   appendTimestamp(payload, sizeof(payload));
   
-  // OTA complete uses QoS 1 for guaranteed delivery
-  publishMqttPayload(buildDeviceTopic(MQTT_TOPIC_OTA_COMPLETE), payload, 1);
+  publishMqttPayload(buildDeviceTopic(MQTT_TOPIC_OTA_COMPLETE), payload);
 }
 
 // ============================================================================
