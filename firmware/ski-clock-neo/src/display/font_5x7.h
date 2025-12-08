@@ -219,7 +219,33 @@ const uint8_t FONT_WIDTH_TABLE[] = {
   3, // '°'
   5, // 'C'
   1, // ':'
-  2  // ',' (drop-case glyph)
+  2  // ','
+};
+
+// -------------------- Glyph flags --------------------
+// Bit flags for special rendering behavior
+const uint8_t FLAG_NONE      = 0x00;
+const uint8_t FLAG_DROP_CASE = 0x01;  // Render 1px lower (2px at 2x scale)
+
+// Flags for each glyph (must match GlyphIndex enum order)
+const uint8_t FONT_FLAGS_TABLE[] = {
+  FLAG_NONE,      // 0
+  FLAG_NONE,      // 1
+  FLAG_NONE,      // 2
+  FLAG_NONE,      // 3
+  FLAG_NONE,      // 4
+  FLAG_NONE,      // 5
+  FLAG_NONE,      // 6
+  FLAG_NONE,      // 7
+  FLAG_NONE,      // 8
+  FLAG_NONE,      // 9
+  FLAG_NONE,      // '-'
+  FLAG_NONE,      // '—'
+  FLAG_NONE,      // '.'
+  FLAG_NONE,      // '°'
+  FLAG_NONE,      // 'C'
+  FLAG_NONE,      // ':'
+  FLAG_DROP_CASE  // ',' (renders below baseline)
 };
 
 // Font dimensions

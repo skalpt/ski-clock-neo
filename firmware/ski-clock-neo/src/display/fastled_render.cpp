@@ -335,8 +335,10 @@ void applySmoothScale2x(const uint8_t* glyphData,
 
 // Drop-case glyphs are rendered 1 pixel lower (at 1x) or 2 pixels lower (at 2x)
 // This allows certain punctuation (like comma) to sit below the text baseline
+// Flag is defined in FONT_FLAGS_TABLE in font_5x7.h
 static inline bool isDropCaseGlyph(int glyphIndex) {
-  return (glyphIndex == GLYPH_COMMA);
+  if (glyphIndex < 0) return false;
+  return (FONT_FLAGS_TABLE[glyphIndex] & FLAG_DROP_CASE) != 0;
 }
 
 static inline int getDropCaseOffset(int glyphIndex, uint8_t scale) {
