@@ -343,7 +343,7 @@ static inline bool isDropCaseGlyph(int glyphIndex) {
 
 static inline int getDropCaseOffset(int glyphIndex, uint8_t scale) {
   if (!isDropCaseGlyph(glyphIndex)) return 0;
-  return (scale == 2) ? 2 : 1;
+  return 1;  // Always 1 pixel offset regardless of scale
 }
 
 // ============================================================================
