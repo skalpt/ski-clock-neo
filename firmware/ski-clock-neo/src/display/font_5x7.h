@@ -189,15 +189,15 @@ const uint8_t FONT_5x7[][7] PROGMEM = {
     B1,
     B0
   },
-  // ',' (comma - positioned 1 pixel lower than baseline)
+  // ',' (comma - uses drop-case rendering rule, shifted down 1px during render)
   {
-    B0,
-    B0,
-    B0,
-    B0,
-    B0,
-    B1,
-    B1
+    B00,
+    B00,
+    B00,
+    B00,
+    B01,
+    B01,
+    B10
   }
 };
 
@@ -219,7 +219,7 @@ const uint8_t FONT_WIDTH_TABLE[] = {
   3, // '°'
   5, // 'C'
   1, // ':'
-  1  // ','
+  2  // ',' (drop-case glyph)
 };
 
 // Font dimensions

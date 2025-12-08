@@ -44,12 +44,33 @@ const uint8_t GLYPH_2X_DEGREE_DATA[] PROGMEM = {
   B001100   // ..##..
 };
 
+// Comma (,) at 2x scale - hand-crafted for drop-case rendering
+// Uses drop-case rule: rendered 2px lower than other glyphs at 2x scale
+// The glyph data itself is positioned at top; the rendering offset handles placement
+const uint8_t GLYPH_2X_COMMA_DATA[] PROGMEM = {
+  B00,  // row 0
+  B00,  // row 1
+  B00,  // row 2
+  B00,  // row 3
+  B00,  // row 4
+  B00,  // row 5
+  B00,  // row 6
+  B00,  // row 7
+  B00,  // row 8
+  B00,  // row 9
+  B11,  // row 10: ##
+  B11,  // row 11: ##
+  B01,  // row 12: .#
+  B10   // row 13: #.
+};
+
 // ============================================================================
 // Override Lookup Table
 // ============================================================================
 
 const Glyph2xOverride GLYPH_2X_OVERRIDES[] PROGMEM = {
-  { GLYPH_DEGREE, 6, 6, GLYPH_2X_DEGREE_DATA }
+  { GLYPH_DEGREE, 6, 6, GLYPH_2X_DEGREE_DATA },
+  { GLYPH_COMMA, 2, 14, GLYPH_2X_COMMA_DATA }
 };
 
 const uint8_t GLYPH_2X_OVERRIDE_COUNT = sizeof(GLYPH_2X_OVERRIDES) / sizeof(GLYPH_2X_OVERRIDES[0]);

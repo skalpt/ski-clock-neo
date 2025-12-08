@@ -330,6 +330,21 @@ void applySmoothScale2x(const uint8_t* glyphData,
 }
 
 // ============================================================================
+// DROP-CASE GLYPHS
+// ============================================================================
+
+// Drop-case glyphs are rendered 1 pixel lower (at 1x) or 2 pixels lower (at 2x)
+// This allows certain punctuation (like comma) to sit below the text baseline
+static inline bool isDropCaseGlyph(int glyphIndex) {
+  return (glyphIndex == GLYPH_COMMA);
+}
+
+static inline int getDropCaseOffset(int glyphIndex, uint8_t scale) {
+  if (!isDropCaseGlyph(glyphIndex)) return 0;
+  return (scale == 2) ? 2 : 1;
+}
+
+// ============================================================================
 // DRAWING PRIMITIVES
 // ============================================================================
 
@@ -353,6 +368,10 @@ static void drawGlyphForRow(uint8_t rowIdx,
 
   const uint8_t w0 = FONT_WIDTH_TABLE[glyphIndex];
   const uint8_t h0 = FONT_HEIGHT;
+  
+  // Apply drop-case offset for special glyphs (comma, etc.)
+  int yOffset = getDropCaseOffset(glyphIndex, scale);
+  int y0Adjusted = y0 + yOffset;
 
   if (scale == 2) {
     const Glyph2xOverride* override = find2xOverride(glyphIndex);
@@ -362,6 +381,8 @@ static void drawGlyphForRow(uint8_t rowIdx,
       uint8_t overrideH = pgm_read_byte(&override->height);
       const uint8_t* overrideData = (const uint8_t*)pgm_read_ptr(&override->data);
       
+      // Note: 2x overrides have positioning baked into their row data,
+      // so we use y0 directly (not y0Adjusted) to avoid double-offsetting
       for (uint8_t r = 0; r < overrideH; r++) {
         uint8_t bits = pgm_read_byte(&overrideData[r]);
         for (uint8_t c = 0; c < overrideW; c++) {
@@ -384,7 +405,7 @@ static void drawGlyphForRow(uint8_t rowIdx,
     for (uint8_t r = 0; r < H; r++)
       for (uint8_t c = 0; c < W; c++)
         if (glyphBuffer[r][c])
-          setPixelRow(rowIdx, x0 + c, y0 + r, color);
+          setPixelRow(rowIdx, x0 + c, y0Adjusted + r, color);
 
     return;
   }
@@ -398,7 +419,7 @@ static void drawGlyphForRow(uint8_t rowIdx,
       for (uint8_t dy=0; dy<scale; dy++)
       for (uint8_t dx=0; dx<scale; dx++)
         setPixelRow(rowIdx, x0 + c*scale + dx,
-                          y0 + r*scale + dy,
+                          y0Adjusted + r*scale + dy,
                           color);
     }
   }
