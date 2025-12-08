@@ -161,9 +161,11 @@ void updateWiFi() {
 }
 
 // WiFi event handlers - update connectivity state for centralized LED management
+// IMPORTANT: These run in callback context with limited stack space.
+// DO NOT call heavy operations (TLS/MQTT) directly here - use deferred request functions.
 #if defined(ESP32)
   void onWiFiConnected(WiFiEvent_t event, WiFiEventInfo_t info) {
-    DEBUG_PRINTLN("WiFi connected, connecting to MQTT...");
+    DEBUG_PRINTLN("WiFi connected, requesting MQTT connection...");
     
     // Log wifi_connect event with connection details
     String wifiData = "{\"ssid\":\"";
@@ -177,20 +179,21 @@ void updateWiFi() {
     
     setConnectivityState(true, false);  // WiFi=connected, MQTT=disconnected
     
-    // Reset reconnect timer so first attempt happens immediately
-    resetMQTTReconnectTimer();
-    connectMQTT();
+    // Request MQTT connection (deferred to main loop - safe from callback context)
+    requestMQTTConnect();
   }
 
   void onWiFiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info) {
-    DEBUG_PRINTLN("WiFi disconnected, stopping MQTT...");
+    DEBUG_PRINTLN("WiFi disconnected, requesting MQTT disconnection...");
     logEvent("wifi_disconnect");
-    disconnectMQTT();
+    
+    // Request MQTT disconnection (deferred to main loop - safe from callback context)
+    requestMQTTDisconnect();
     setConnectivityState(false, false);  // WiFi=disconnected, MQTT=disconnected
   }
 #elif defined(ESP8266)
   void onWiFiConnected(const WiFiEventStationModeGotIP& event) {
-    DEBUG_PRINTLN("WiFi connected, connecting to MQTT...");
+    DEBUG_PRINTLN("WiFi connected, requesting MQTT connection...");
     
     // Log wifi_connect event with connection details
     String wifiData = "{\"ssid\":\"";
@@ -204,15 +207,16 @@ void updateWiFi() {
     
     setConnectivityState(true, false);  // WiFi=connected, MQTT=disconnected
     
-    // Reset reconnect timer so first attempt happens immediately
-    resetMQTTReconnectTimer();
-    connectMQTT();
+    // Request MQTT connection (deferred to main loop - safe from callback context)
+    requestMQTTConnect();
   }
 
   void onWiFiDisconnected(const WiFiEventStationModeDisconnected& event) {
-    DEBUG_PRINTLN("WiFi disconnected, stopping MQTT...");
+    DEBUG_PRINTLN("WiFi disconnected, requesting MQTT disconnection...");
     logEvent("wifi_disconnect");
-    disconnectMQTT();
+    
+    // Request MQTT disconnection (deferred to main loop - safe from callback context)
+    requestMQTTDisconnect();
     setConnectivityState(false, false);  // WiFi=disconnected, MQTT=disconnected
   }
 #endif

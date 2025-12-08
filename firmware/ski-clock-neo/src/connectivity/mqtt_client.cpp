@@ -57,6 +57,11 @@ Ticker heartbeatTicker;
 Ticker displaySnapshotTicker;
 bool mqttIsConnected = false;
 
+// Deferred connection flags - set from WiFi event handlers (callback context),
+// processed safely in updateMQTT() (main loop context with full stack)
+volatile bool mqttConnectionRequested = false;
+volatile bool mqttDisconnectionRequested = false;
+
 // Base64 encoding lookup table (stored in PROGMEM to save RAM)
 static const char BASE64_CHARS[] PROGMEM = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -308,8 +313,50 @@ void resetMQTTReconnectTimer() {
   DEBUG_PRINTLN("MQTT reconnect timer reset");
 }
 
+// Request MQTT connection from WiFi event handler (safe, deferred)
+// This just sets a flag - actual connection happens in updateMQTT() main loop
+void requestMQTTConnect() {
+  mqttConnectionRequested = true;
+  mqttDisconnectionRequested = false;  // Cancel any pending disconnect
+  resetMQTTReconnectTimer();
+  DEBUG_PRINTLN("MQTT connection requested (deferred to main loop)");
+}
+
+// Request MQTT disconnection from WiFi event handler (safe, deferred)
+// This just sets a flag - actual disconnection happens in updateMQTT() main loop
+void requestMQTTDisconnect() {
+  mqttDisconnectionRequested = true;
+  mqttConnectionRequested = false;  // Cancel any pending connect
+  DEBUG_PRINTLN("MQTT disconnection requested (deferred to main loop)");
+}
+
 // Main MQTT update loop (call from main loop)
 void updateMQTT() {
+  // Process deferred disconnect request first (higher priority)
+  if (mqttDisconnectionRequested) {
+    mqttDisconnectionRequested = false;
+    DEBUG_PRINTLN("Processing deferred MQTT disconnect...");
+    disconnectMQTT();
+    return;  // Don't try to reconnect in the same cycle
+  }
+  
+  // Process deferred connect request
+  if (mqttConnectionRequested) {
+    mqttConnectionRequested = false;
+    DEBUG_PRINTLN("Processing deferred MQTT connect...");
+    if (WiFi.status() == WL_CONNECTED) {
+      if (connectMQTT()) {
+        reconnectAttempts = 0;
+        DEBUG_PRINTLN("MQTT connected successfully");
+      } else {
+        DEBUG_PRINT("MQTT connect failed, error: ");
+        DEBUG_PRINTLN(mqttClient.lastError());
+        // Will retry via normal reconnection logic below
+      }
+    }
+    return;  // Don't double-attempt in the same cycle
+  }
+  
   // Check for connection loss
   if (mqttIsConnected && !mqttClient.connected()) {
     DEBUG_PRINTLN("MQTT connection lost unexpectedly, cleaning up...");
