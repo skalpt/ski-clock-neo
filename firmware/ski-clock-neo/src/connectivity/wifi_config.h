@@ -176,6 +176,9 @@ void updateWiFi() {
     logEvent("wifi_connect", wifiData.c_str());
     
     setConnectivityState(true, false);  // WiFi=connected, MQTT=disconnected
+    
+    // Reset reconnect timer so first attempt happens immediately
+    resetMQTTReconnectTimer();
     connectMQTT();
   }
 
@@ -200,6 +203,9 @@ void updateWiFi() {
     logEvent("wifi_connect", wifiData.c_str());
     
     setConnectivityState(true, false);  // WiFi=connected, MQTT=disconnected
+    
+    // Reset reconnect timer so first attempt happens immediately
+    resetMQTTReconnectTimer();
     connectMQTT();
   }
 

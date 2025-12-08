@@ -64,6 +64,7 @@ void initMQTT();
 bool connectMQTT();
 void disconnectMQTT();
 void updateMQTT();
+void resetMQTTReconnectTimer();
 void publishHeartbeat();
 void publishDeviceInfo();
 void publishDisplaySnapshot();

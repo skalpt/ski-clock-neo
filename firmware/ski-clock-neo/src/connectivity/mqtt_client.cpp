@@ -264,22 +264,49 @@ bool connectMQTT() {
 }
 
 // Disconnect from MQTT broker
+// Called when WiFi drops or when we detect connection loss
 void disconnectMQTT() {
+  // Always clean up resources, even if we think we're not connected
+  // This ensures a clean state for reconnection
+  DEBUG_PRINTLN("Disconnecting from MQTT broker...");
+  
+  // Detach tickers first to prevent callbacks during cleanup
+  heartbeatTicker.detach();
+  displaySnapshotTicker.detach();
+  
+  // Only log event if we were actually connected (avoid spam)
   if (mqttIsConnected) {
-    DEBUG_PRINTLN("Disconnecting from MQTT broker...");
     logEvent("mqtt_disconnect");
-    setEventLogReady(false);
-    heartbeatTicker.detach();
-    displaySnapshotTicker.detach();
-    mqttClient.disconnect();
-    setConnectivityState(WiFi.status() == WL_CONNECTED, false);
-    mqttIsConnected = false;
   }
+  setEventLogReady(false);
+  
+  // Disconnect MQTT client
+  mqttClient.disconnect();
+  
+  // Force-close the TLS socket to ensure clean state
+  // This is critical: without this, the socket can be in a bad state
+  // after WiFi drops and reconnects, preventing new connections
+  wifiSecureClient.stop();
+  
+  setConnectivityState(WiFi.status() == WL_CONNECTED, false);
+  mqttIsConnected = false;
 }
 
 // ============================================================================
 // MAIN LOOP
 // ============================================================================
+
+// Reconnection state
+static unsigned long lastReconnectAttempt = 0;
+static uint8_t reconnectAttempts = 0;
+const uint8_t MAX_RECONNECT_LOG_ATTEMPTS = 5;  // Only log first N attempts to avoid spam
+
+// Reset reconnect timer (called after WiFi reconnects)
+void resetMQTTReconnectTimer() {
+  lastReconnectAttempt = 0;
+  reconnectAttempts = 0;
+  DEBUG_PRINTLN("MQTT reconnect timer reset");
+}
 
 // Main MQTT update loop (call from main loop)
 void updateMQTT() {
@@ -289,14 +316,35 @@ void updateMQTT() {
     disconnectMQTT();
   }
   
-  // Attempt reconnection
+  // Attempt reconnection with exponential backoff
   if (!mqttClient.connected() && WiFi.status() == WL_CONNECTED) {
-    static unsigned long lastReconnectAttempt = 0;
     unsigned long now = millis();
-    if (now - lastReconnectAttempt > 5000) {
+    
+    // Calculate backoff interval: 5s, 10s, 20s, 30s (capped)
+    unsigned long backoffInterval = 5000UL * (1UL << min(reconnectAttempts, (uint8_t)3));
+    if (backoffInterval > 30000) backoffInterval = 30000;
+    
+    if (now - lastReconnectAttempt > backoffInterval) {
       lastReconnectAttempt = now;
-      DEBUG_PRINTLN("Attempting MQTT reconnection...");
-      connectMQTT();
+      reconnectAttempts++;
+      
+      // Log first few attempts, then reduce verbosity
+      if (reconnectAttempts <= MAX_RECONNECT_LOG_ATTEMPTS) {
+        DEBUG_PRINT("MQTT reconnect attempt ");
+        DEBUG_PRINT(reconnectAttempts);
+        DEBUG_PRINT(" (next in ");
+        DEBUG_PRINT(backoffInterval / 1000);
+        DEBUG_PRINTLN("s if fails)...");
+      }
+      
+      if (connectMQTT()) {
+        // Success! Reset counter
+        reconnectAttempts = 0;
+        DEBUG_PRINTLN("MQTT reconnected successfully");
+      } else {
+        DEBUG_PRINT("MQTT reconnect failed, error: ");
+        DEBUG_PRINTLN(mqttClient.lastError());
+      }
     }
   }
   
