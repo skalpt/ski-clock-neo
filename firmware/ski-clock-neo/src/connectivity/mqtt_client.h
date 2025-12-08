@@ -55,16 +55,6 @@ extern const unsigned long HEARTBEAT_INTERVAL;
 extern Ticker heartbeatTicker;
 extern bool mqttIsConnected;
 
-// Deferred connection flags (set from WiFi event handlers, processed in main loop)
-// WiFi event handlers run in callback context with limited stack - don't call heavy
-// operations (TLS/MQTT) directly. Instead, set flags and let updateMQTT() handle them.
-extern volatile bool mqttConnectionRequested;
-extern volatile bool mqttDisconnectionRequested;
-
-// Request MQTT connect/disconnect (safe to call from WiFi event handlers)
-void requestMQTTConnect();
-void requestMQTTDisconnect();
-
 // Display snapshot timing
 extern const unsigned long DISPLAY_SNAPSHOT_INTERVAL;
 extern Ticker displaySnapshotTicker;
