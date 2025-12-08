@@ -119,6 +119,12 @@
                     </div>
                 </div>
                 <p class="flash-version-info" id="flash-version-info"></p>
+                <div class="flash-pin-section" id="flash-pin-section">
+                    <label for="flash-device-select">Pin device to this version after flash (optional):</label>
+                    <select id="flash-device-select" class="device-select">
+                        <option value="">-- Don't pin any device --</option>
+                    </select>
+                </div>
             </div>
         </div>
     </div>
@@ -1745,13 +1751,14 @@
         selectedPushPlatform = null;
     }
     
-    function showFlashModal(platform, version, supportsFullFlash, product) {
+    async function showFlashModal(platform, version, supportsFullFlash, product) {
         const modal = document.getElementById('flash-modal');
         const title = document.getElementById('flash-modal-title');
         const versionInfo = document.getElementById('flash-version-info');
         const fullOption = document.getElementById('flash-modal-full-option');
         const quickInstaller = document.getElementById('flash-modal-installer-quick');
         const fullInstaller = document.getElementById('flash-modal-installer-full');
+        const deviceSelect = document.getElementById('flash-device-select');
         
         // Store flash info for logging
         currentFlashInfo = {
@@ -1778,6 +1785,67 @@
         } else {
             fullOption.style.display = 'none';
         }
+        
+        // Load matching devices for optional pinning
+        deviceSelect.innerHTML = '<option value="">-- Don\'t pin any device --</option>';
+        try {
+            const response = await fetch('/api/devices');
+            const data = await response.json();
+            
+            // Filter devices that match the platform and product
+            const boardToPlatform = {
+                'ESP32-C3': 'esp32c3',
+                'ESP32-S3': 'esp32s3',
+                'ESP32': 'esp32',
+                'ESP-12F': 'esp12f',
+                'ESP-01': 'esp01',
+                'D1 Mini': 'd1mini',
+                'ESP8266': 'esp8266'
+            };
+            
+            const matchingDevices = data.devices.filter(d => {
+                const platformMatch = boardToPlatform[d.board] === platform || d.board.toLowerCase().includes(platform.toLowerCase());
+                const productMatch = !product || d.product === product;
+                return platformMatch && productMatch;
+            });
+            
+            matchingDevices.forEach(d => {
+                const option = document.createElement('option');
+                option.value = d.device_id;
+                const deviceLabel = d.display_name || d.device_id;
+                const statusIcon = d.online ? '🟢' : '🔴';
+                option.textContent = `${statusIcon} ${deviceLabel} (v${d.version || 'Unknown'})`;
+                deviceSelect.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Failed to load devices for flash modal:', error);
+        }
+        
+        // Set up ESP Web Tools state change listeners for pinning
+        // Store handler on elements to allow proper removal
+        const handleFlashSuccess = async (e) => {
+            if (e.detail.state === 'finished') {
+                const selectedDeviceId = deviceSelect.value;
+                if (selectedDeviceId && currentFlashInfo) {
+                    // Pin the selected device to this version
+                    await pinDeviceVersion(selectedDeviceId, currentFlashInfo.version);
+                }
+            }
+        };
+        
+        // Remove old listeners if they exist
+        if (quickInstaller._flashHandler) {
+            quickInstaller.removeEventListener('state-changed', quickInstaller._flashHandler);
+        }
+        if (fullInstaller._flashHandler) {
+            fullInstaller.removeEventListener('state-changed', fullInstaller._flashHandler);
+        }
+        
+        // Store and add new listeners
+        quickInstaller._flashHandler = handleFlashSuccess;
+        fullInstaller._flashHandler = handleFlashSuccess;
+        quickInstaller.addEventListener('state-changed', handleFlashSuccess);
+        fullInstaller.addEventListener('state-changed', handleFlashSuccess);
         
         modal.classList.remove('hidden');
     }
