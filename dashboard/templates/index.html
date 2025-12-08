@@ -1761,9 +1761,6 @@
             flashMode: 'quick'  // Default, updated when user clicks
         };
         
-        // Pause all refresh intervals to reduce memory pressure during flashing
-        pauseAllRefresh();
-        
         const displayName = product ? `${product} (${platform.toUpperCase()})` : platform.toUpperCase();
         title.textContent = `USB Flash - ${displayName} v${version}`;
         versionInfo.textContent = `Flashing ${displayName} firmware version ${version}`;
@@ -1790,8 +1787,6 @@
         // Clear flash info
         currentFlashInfo = null;
         currentFlashSession = null;
-        // Resume all refresh intervals after flashing completes
-        resumeAllRefresh();
     }
     
     // Description modal state
