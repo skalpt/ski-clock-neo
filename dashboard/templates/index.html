@@ -1583,8 +1583,6 @@
             const supportsFullFlash = fw.supports_full_flash || false;
             const description = fw.description ? `<div class="version-description">${escapeHtml(fw.description)}</div>` : '';
             
-            const escapedDescription = fw.description ? escapeHtml(fw.description).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '\\r') : '';
-            
             return `
                 <tr>
                     <td>
@@ -1595,13 +1593,26 @@
                     <td>${sizeMB} MB</td>
                     <td>${uploadDate}</td>
                     <td class="version-actions">
-                        <button class="btn-icon btn-small" onclick="showDescriptionModal(${fw.id}, '${escapeHtml(product)}', '${platform}', '${escapeHtml(fw.version)}', '${escapedDescription}')" title="Edit description">
+                        <button class="btn-icon btn-small btn-description" 
+                            data-id="${fw.id}" 
+                            data-product="${escapeHtml(product)}" 
+                            data-platform="${platform}" 
+                            data-version="${escapeHtml(fw.version)}" 
+                            data-description="${escapeHtml(fw.description || '')}"
+                            title="Edit description">
                             ✏️
                         </button>
-                        <button class="btn-primary btn-small" onclick="showPushModal('${platform}', '${escapeHtml(fw.version)}', '${escapeHtml(product)}')">
+                        <button class="btn-primary btn-small btn-push" 
+                            data-platform="${platform}" 
+                            data-version="${escapeHtml(fw.version)}" 
+                            data-product="${escapeHtml(product)}">
                             📤 OTA Push
                         </button>
-                        <button class="btn-secondary btn-small" onclick="showFlashModal('${platform}', '${escapeHtml(fw.version)}', ${supportsFullFlash}, '${escapeHtml(product)}')">
+                        <button class="btn-secondary btn-small btn-flash" 
+                            data-platform="${platform}" 
+                            data-version="${escapeHtml(fw.version)}" 
+                            data-supports-full="${supportsFullFlash}" 
+                            data-product="${escapeHtml(product)}">
                             ⚡ USB Flash
                         </button>
                     </td>
@@ -1626,6 +1637,36 @@
                 </table>
             </div>
         `;
+        
+        // Attach event handlers using event delegation
+        body.querySelectorAll('.btn-description').forEach(btn => {
+            btn.addEventListener('click', () => {
+                showDescriptionModal(
+                    parseInt(btn.dataset.id),
+                    btn.dataset.product,
+                    btn.dataset.platform,
+                    btn.dataset.version,
+                    btn.dataset.description
+                );
+            });
+        });
+        
+        body.querySelectorAll('.btn-push').forEach(btn => {
+            btn.addEventListener('click', () => {
+                showPushModal(btn.dataset.platform, btn.dataset.version, btn.dataset.product);
+            });
+        });
+        
+        body.querySelectorAll('.btn-flash').forEach(btn => {
+            btn.addEventListener('click', () => {
+                showFlashModal(
+                    btn.dataset.platform,
+                    btn.dataset.version,
+                    btn.dataset.supportsFull === 'true',
+                    btn.dataset.product
+                );
+            });
+        });
     }
     
     function closeVersionModal() {
