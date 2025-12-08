@@ -120,8 +120,6 @@ void logBootEvent() {
   bootData += FIRMWARE_VERSION;
   bootData += "\"}";
   logEvent("boot", bootData.c_str());
-  DEBUG_PRINT("Boot event logged: ");
-  DEBUG_PRINTLN(bootData);
 }
 
 // ============================================================================
