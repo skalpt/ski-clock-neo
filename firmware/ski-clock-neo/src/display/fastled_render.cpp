@@ -383,14 +383,12 @@ static void drawGlyphForRow(uint8_t rowIdx,
       uint8_t overrideH = pgm_read_byte(&override->height);
       const uint8_t* overrideData = (const uint8_t*)pgm_read_ptr(&override->data);
       
-      // Note: 2x overrides have positioning baked into their row data,
-      // so we use y0 directly (not y0Adjusted) to avoid double-offsetting
       for (uint8_t r = 0; r < overrideH; r++) {
         uint8_t bits = pgm_read_byte(&overrideData[r]);
         for (uint8_t c = 0; c < overrideW; c++) {
           bool on = bits & (1 << (overrideW - 1 - c));
           if (on) {
-            setPixelRow(rowIdx, x0 + c, y0 + r, color);
+            setPixelRow(rowIdx, x0 + c, y0Adjusted + r, color);
           }
         }
       }

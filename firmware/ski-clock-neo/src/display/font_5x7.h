@@ -225,7 +225,7 @@ const uint8_t FONT_WIDTH_TABLE[] = {
 // -------------------- Glyph flags --------------------
 // Bit flags for special rendering behavior
 const uint8_t FLAG_NONE      = 0x00;
-const uint8_t FLAG_DROP_CASE = 0x01;  // Render 1px lower (2px at 2x scale)
+const uint8_t FLAG_DROP_CASE = 0x01;  // Render 1px lower (regardless of scale)
 
 // Flags for each glyph (must match GlyphIndex enum order)
 const uint8_t FONT_FLAGS_TABLE[] = {
