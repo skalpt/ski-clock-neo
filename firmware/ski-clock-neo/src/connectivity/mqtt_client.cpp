@@ -56,6 +56,7 @@ MQTTClient mqttClient(2048);  // Buffer size for display snapshots
 Ticker heartbeatTicker;
 Ticker displaySnapshotTicker;
 bool mqttIsConnected = false;
+bool mqttInitialized = false;  // Set true after initMQTT() completes
 
 // Deferred connection flags - set from WiFi event handlers (callback context),
 // processed safely in updateMQTT() (main loop context with full stack)
@@ -184,6 +185,9 @@ void initMQTT() {
   DEBUG_PRINTLN(MQTT_PORT);
   DEBUG_PRINTLN("TLS encryption enabled (no cert validation)");
 
+  // Mark as initialized - now connectMQTT() can be called safely
+  mqttInitialized = true;
+
   // Initial connection attempt if WiFi already connected
   if (WiFi.status() == WL_CONNECTED) {
     connectMQTT();
@@ -196,6 +200,12 @@ void initMQTT() {
 
 // Connect to MQTT broker
 bool connectMQTT() {
+  // Don't attempt connection before initMQTT() has been called
+  if (!mqttInitialized) {
+    DEBUG_PRINTLN("MQTT not initialized yet, skipping connection attempt");
+    return false;
+  }
+  
   if (mqttClient.connected()) {
     setConnectivityState(true, true);
     return true;
