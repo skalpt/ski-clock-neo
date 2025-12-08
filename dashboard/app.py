@@ -2771,19 +2771,19 @@ def send_command():
             # Send config command with temp_offset
             topic = f"norrtek-iot/{env_scope}/config/{device_id}"
             payload = json.dumps({'temp_offset': parameters.get('temp_offset')})
-            mqtt_client.publish(topic, payload, qos=1)
+            mqtt_client.publish(topic, payload, qos=0)
         elif command_type == 'rollback':
             topic = f"norrtek-iot/{env_scope}/command/{device_id}"
-            mqtt_client.publish(topic, 'rollback', qos=1)
+            mqtt_client.publish(topic, 'rollback', qos=0)
         elif command_type == 'restart':
             topic = f"norrtek-iot/{env_scope}/command/{device_id}"
-            mqtt_client.publish(topic, 'restart', qos=1)
+            mqtt_client.publish(topic, 'restart', qos=0)
         elif command_type == 'snapshot':
             topic = f"norrtek-iot/{env_scope}/command/{device_id}"
-            mqtt_client.publish(topic, 'snapshot', qos=1)
+            mqtt_client.publish(topic, 'snapshot', qos=0)
         elif command_type == 'info':
             topic = f"norrtek-iot/{env_scope}/command/{device_id}"
-            mqtt_client.publish(topic, 'info', qos=1)
+            mqtt_client.publish(topic, 'info', qos=0)
         
         status = 'sent'
         error_message = None

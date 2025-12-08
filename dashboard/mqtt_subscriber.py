@@ -1063,7 +1063,7 @@ def publish_command(device_id: str, command: str, environment: str = None, **kwa
     }
     
     try:
-        result = _mqtt_client.publish(topic, json.dumps(payload), qos=1)
+        result = _mqtt_client.publish(topic, json.dumps(payload), qos=0)
         if result.rc == mqtt.MQTT_ERR_SUCCESS:
             print(f"✓ Published command '{command}' to {device_id} (env={environment}) [subscriber: {_subscriber_id}]")
             return True
@@ -1106,7 +1106,7 @@ def publish_config(device_id: str, topic_environment: str = None, **config_value
     }
     
     try:
-        result = _mqtt_client.publish(topic, json.dumps(payload), qos=1)
+        result = _mqtt_client.publish(topic, json.dumps(payload), qos=0)
         if result.rc == mqtt.MQTT_ERR_SUCCESS:
             # Log environment change details if promoting/demoting
             if 'environment' in config_values:
