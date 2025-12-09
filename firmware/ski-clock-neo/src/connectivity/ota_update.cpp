@@ -16,6 +16,7 @@
 #include "ota_update.h"               // This file's header
 #include "../../ski-clock-neo_config.h" // For PRODUCT_NAME
 #include "../core/led_indicator.h"    // For LED status patterns when OTA is in progress
+#include "../core/device_config.h"    // For getEnvironmentScope()
 #include "../data/data_time.h"        // For timestamp functions
 #include "mqtt_client.h"              // For publishing OTA progress to MQTT
 
@@ -101,7 +102,7 @@ bool performOTAUpdate(String version) {
   // Enter LED override mode for OTA progress indication
   beginLedOverride(LED_OTA_PROGRESS);
   
-  String binaryUrl = String(UPDATE_SERVER_URL) + "/api/firmware/" + getPlatform() + "?product=" + PRODUCT_NAME;
+  String binaryUrl = String(UPDATE_SERVER_URL) + "/api/firmware/" + getPlatform() + "?product=" + PRODUCT_NAME + "&env=" + getEnvironmentScope();
   
   DEBUG_PRINTLN("===========================================");
   DEBUG_PRINTLN("OTA UPDATE STARTING");
