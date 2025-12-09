@@ -1240,9 +1240,22 @@ def download_firmware(platform):
     
     platform = platform.lower()
     product = request.args.get('product')
+    env = request.args.get('env', 'prod')
     
     if not product:
         return jsonify({'error': 'Missing required parameter: product'}), 400
+    
+    print(f"[OTA] Firmware download request: platform={platform}, product={product}, env={env}")
+    
+    if is_production_environment() and env == 'dev':
+        dev_env = DevEnvironment.query.filter_by(name='default', is_active=True).first()
+        if dev_env:
+            redirect_url = f"{dev_env.base_url}/api/firmware/{platform}?product={product}&env={env}"
+            print(f"[OTA] Redirecting dev device to: {redirect_url}")
+            return redirect(redirect_url, code=302)
+        else:
+            print(f"[OTA] ERROR: No active dev environment registered, cannot serve dev firmware")
+            return jsonify({'error': 'No dev environment registered'}), 503
     
     # Apply platform firmware mapping
     if platform in PLATFORM_FIRMWARE_MAPPING:
@@ -1280,6 +1293,8 @@ def download_firmware(platform):
             # Download as bytes and stream to client
             firmware_data = storage.download_as_bytes(object_path)
             
+            print(f"[OTA] Serving firmware: version={version_info.get('version')}, env={env}, path={object_path}, size={len(firmware_data)} bytes")
+            
             return Response(
                 firmware_data,
                 mimetype='application/octet-stream',
@@ -1313,6 +1328,8 @@ def download_firmware(platform):
         
         if not firmware_path.exists():
             return jsonify({'error': 'Firmware file not found'}), 404
+        
+        print(f"[OTA] Serving firmware from local: version={version_info.get('version')}, env={env}, path={firmware_path}")
         
         return send_file(
             firmware_path,
