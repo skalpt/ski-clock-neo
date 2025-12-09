@@ -1241,16 +1241,19 @@ def download_firmware(platform):
     platform = platform.lower()
     product = request.args.get('product')
     env = request.args.get('env', 'prod')
+    version = request.args.get('version')  # Specific version for pinned devices/rollback
     
     if not product:
         return jsonify({'error': 'Missing required parameter: product'}), 400
     
-    print(f"[OTA] Firmware download request: platform={platform}, product={product}, env={env}")
+    print(f"[OTA] Firmware download request: platform={platform}, product={product}, env={env}, version={version or 'latest'}")
     
     if is_production_environment() and env == 'dev':
         dev_env = DevEnvironment.query.filter_by(name='default', is_active=True).first()
         if dev_env:
             redirect_url = f"{dev_env.base_url}/api/firmware/{platform}?product={product}&env={env}"
+            if version:
+                redirect_url += f"&version={version}"
             print(f"[OTA] Redirecting dev device to: {redirect_url}")
             return redirect(redirect_url, code=302)
         else:
@@ -1269,7 +1272,15 @@ def download_firmware(platform):
             'supported_platforms': SUPPORTED_PLATFORMS
         }), 400
     
-    version_info = get_firmware_version(platform, product)
+    # If specific version requested (for pinned devices or rollback), look it up
+    if version:
+        fw = FirmwareVersion.query.filter_by(product=product, platform=platform, version=version).first()
+        if not fw:
+            return jsonify({'error': f'Version {version} not found for {product}/{platform}'}), 404
+        version_info = fw.to_dict()
+    else:
+        # Get latest version
+        version_info = get_firmware_version(platform, product)
     
     if not version_info:
         return jsonify({'error': 'No firmware available'}), 404
